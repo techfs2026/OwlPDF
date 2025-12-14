@@ -81,7 +81,7 @@ void ThumbnailWidget::initializeThumbnails(int pageCount)
 
     for (int i = 0; i < pageCount; ++i) {
         auto* item = new ThumbnailItem(i, m_thumbnailWidth, m_container);
-        item->setPlaceholder(tr("第%1页").arg(i + 1));
+        item->setPlaceholder(tr("Page %1").arg(i + 1));
 
         connect(item, &ThumbnailItem::clicked,
                 this, &ThumbnailWidget::onThumbnailClicked);
@@ -95,9 +95,7 @@ void ThumbnailWidget::initializeThumbnails(int pageCount)
 
     qInfo() << "ThumbnailWidget: Created" << pageCount << "placeholder items";
 
-    // 延迟发送初始可见信号
     QTimer::singleShot(100, this, [this]() {
-        // 强制布局立即计算
         m_container->adjustSize();
         m_layout->activate();
         QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
@@ -107,7 +105,6 @@ void ThumbnailWidget::initializeThumbnails(int pageCount)
         qDebug() << "ThumbnailWidget: Initial visible count =" << initialVisible.size();
         if (initialVisible.isEmpty()) {
             qWarning() << "ThumbnailWidget: No initial visible items found!";
-            // 打印前几个widget的geometry用于调试
             for (int i = 0; i < qMin(5, m_thumbnailItems.size()); ++i) {
                 if (m_thumbnailItems.contains(i)) {
                     qDebug() << "  Widget" << i << "geometry:"
@@ -241,7 +238,6 @@ void ThumbnailWidget::onScrollThrottle()
         return;
     }
 
-    // 只有在应该响应滚动时才通知
     if (m_manager && m_manager->shouldRespondToScroll()) {
         notifyVisibleRange();
     }
@@ -258,19 +254,16 @@ void ThumbnailWidget::onScrollDebounce()
 
     qDebug() << "ThumbnailWidget: Scroll stopped";
 
-    // 检查当前Tab是否可见
     if (!isVisible()) {
         qDebug() << "ThumbnailWidget: Not visible, ignoring scroll stop";
         return;
     }
 
-    // 检查是否应该响应滚动停止(避免批次加载期间触发)
     if (m_manager && !m_manager->shouldRespondToScroll()) {
         qDebug() << "ThumbnailWidget: Ignoring scroll stop during batch loading";
         return;
     }
 
-    // 检查可见区域是否有未加载的占位页
     QSet<int> unloadedVisible = getUnloadedVisiblePages();
 
     qDebug() << "onScrollDebounce:" << unloadedVisible;
@@ -288,15 +281,12 @@ void ThumbnailWidget::onThumbnailClicked(int pageIndex)
     emit pageJumpRequested(pageIndex);
 }
 
-// ========== 可见性判断方法 ==========
-
 QSet<int> ThumbnailWidget::getVisibleIndices(int margin) const
 {
     QSet<int> visible;
     if (m_thumbnailItems.isEmpty())
         return visible;
 
-    // 以 viewport 为基准的可见区域，加一点上下 margin 作为预加载区域
     QRect visibleRect = viewport()->rect();
     qDebug() << "getVisibleIndices visibleRect 1:" << visibleRect;
     visibleRect.adjust(0, -margin, 0, margin);
@@ -308,7 +298,6 @@ QSet<int> ThumbnailWidget::getVisibleIndices(int margin) const
         if (!item)
             continue;
 
-        // 把 item 的矩形转换到 viewport 坐标系
         QPoint topLeft = item->mapTo(viewport(), QPoint(0, 0));
         QRect itemRect(topLeft, item->size());
 
@@ -325,7 +314,6 @@ QSet<int> ThumbnailWidget::getUnloadedVisiblePages() const
 {
     QSet<int> unloaded;
 
-    // 检查当前Tab是否可见
     if (!isVisible()) {
         return unloaded;
     }
@@ -334,10 +322,8 @@ QSet<int> ThumbnailWidget::getUnloadedVisiblePages() const
         return unloaded;
     }
 
-    // 获取严格可见区域(不带margin)
     QSet<int> visible = getVisibleIndices(0);
 
-    // 检查哪些页面还是占位符
     for (int pageIndex : visible) {
         if (m_thumbnailItems.contains(pageIndex)) {
             ThumbnailItem* item = m_thumbnailItems[pageIndex];
@@ -411,10 +397,6 @@ int ThumbnailWidget::getPreloadMargin(ScrollState state) const
     return 800;
 }
 
-// ================================================================
-//                       ThumbnailItem
-// ================================================================
-
 ThumbnailItem::ThumbnailItem(int pageIndex, int width, QWidget* parent)
     : QWidget(parent)
     , m_pageIndex(pageIndex)
@@ -448,7 +430,7 @@ ThumbnailItem::ThumbnailItem(int pageIndex, int width, QWidget* parent)
     shadow->setOffset(0, 2);
     m_imageContainer->setGraphicsEffect(shadow);
 
-    m_pageLabel = new QLabel(tr("第%1页").arg(pageIndex + 1), this);
+    m_pageLabel = new QLabel(tr("Page %1").arg(pageIndex + 1), this);
     m_pageLabel->setAlignment(Qt::AlignCenter);
     QFont font = m_pageLabel->font();
     font.setPointSize(9);
@@ -484,7 +466,7 @@ void ThumbnailItem::setPlaceholder(const QString& text)
 void ThumbnailItem::setThumbnail(const QImage& image)
 {
     if (image.isNull()) {
-        setError(tr("加载失败"));
+        setError(tr("Load failed"));
         return;
     }
 

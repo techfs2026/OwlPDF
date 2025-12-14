@@ -28,7 +28,6 @@ PDFPageWidget::PDFPageWidget(PDFDocumentSession* session, QWidget* parent)
         return;
     }
 
-    // 从Session获取组件引用
     m_renderer = m_session->renderer();
     m_cacheManager = m_session->pageCache();
 
@@ -48,7 +47,6 @@ void PDFPageWidget::setDisplayImages(const QImage& primaryImage, const QImage& s
     m_currentImage = primaryImage;
     m_secondImage = secondaryImage;
 
-    // 更新尺寸
     QSize targetSize = sizeHint();
     resize(targetSize);
 
@@ -57,7 +55,6 @@ void PDFPageWidget::setDisplayImages(const QImage& primaryImage, const QImage& s
 
 void PDFPageWidget::refreshVisiblePages()
 {
-    // 连续滚动模式：通知Tab需要更新可见区域
     emit visibleAreaChanged();
 }
 
@@ -89,7 +86,6 @@ int PDFPageWidget::getPageAtPos(const QPoint& pos, int* pageX, int* pageY) const
     const int margin = AppConfig::PAGE_MARGIN;
     const PDFDocumentState* state = m_session->state();
 
-    // 连续滚动模式
     if (state->isContinuousScroll() && !state->pageYPositions().isEmpty()) {
         const QVector<int>& positions = state->pageYPositions();
         const QVector<int>& heights = state->pageHeights();
@@ -117,13 +113,11 @@ int PDFPageWidget::getPageAtPos(const QPoint& pos, int* pageX, int* pageY) const
         }
         return -1;
     }
-    // 单页/双页模式
     else {
         int currentPage = state->currentPage();
         int contentX = (width() - m_currentImage.width()) / 2;
         int contentY = (height() - m_currentImage.height()) / 2;
 
-        // 检查第一页
         QRect firstPageRect(contentX, contentY, m_currentImage.width(), m_currentImage.height());
         if (firstPageRect.contains(pos)) {
             if (pageX) *pageX = contentX;
@@ -131,7 +125,6 @@ int PDFPageWidget::getPageAtPos(const QPoint& pos, int* pageX, int* pageY) const
             return currentPage;
         }
 
-        // 双页模式：检查第二页
         if (state->currentDisplayMode() == PageDisplayMode::DoublePage && !m_secondImage.isNull()) {
             int secondX = contentX + m_currentImage.width() + AppConfig::DOUBLE_PAGE_SPACING;
             int maxHeight = qMax(m_currentImage.height(), m_secondImage.height());
@@ -195,7 +188,6 @@ QSize PDFPageWidget::sizeHint() const
 
     const int margin = AppConfig::PAGE_MARGIN;
 
-    // 连续滚动模式
     if (state->isContinuousScroll() && !state->pageYPositions().isEmpty()) {
         int maxWidth = 0;
 
@@ -213,7 +205,6 @@ QSize PDFPageWidget::sizeHint() const
         return QSize(maxWidth + 2 * margin, totalHeight + 2 * margin);
     }
 
-    // 单页/双页模式
     int contentWidth = m_currentImage.width();
     int contentHeight = m_currentImage.height();
 
@@ -232,13 +223,11 @@ void PDFPageWidget::paintEvent(QPaintEvent* event)
 
     const PDFDocumentState* state = m_session->state();
 
-    // 连续滚动模式
     if (state->isContinuousScroll() && !state->pageYPositions().isEmpty()) {
         paintContinuousMode(painter, event->rect());
         return;
     }
 
-    // 无文档
     if (m_currentImage.isNull()) {
         painter.setPen(Qt::white);
         QFont font = painter.font();
@@ -247,12 +236,11 @@ void PDFPageWidget::paintEvent(QPaintEvent* event)
 
         QScrollArea* scrollArea = getScrollArea();
         if (scrollArea && scrollArea->viewport()) {
-            painter.drawText(scrollArea->viewport()->rect(), Qt::AlignCenter, tr("未加载文档"));
+            painter.drawText(scrollArea->viewport()->rect(), Qt::AlignCenter, tr("No document loaded"));
         }
         return;
     }
 
-    // 单页/双页模式
     if (state->currentDisplayMode() == PageDisplayMode::SinglePage || m_secondImage.isNull()) {
         paintSinglePageMode(painter);
     } else {
@@ -283,13 +271,11 @@ void PDFPageWidget::paintDoublePageMode(QPainter& painter)
     int currentPage = state->currentPage();
     double actualZoom = state->currentZoom();
 
-    // 第一页
     int x1 = startX;
     int y1 = startY + (maxHeight - m_currentImage.height()) / 2;
     drawPageImage(painter, m_currentImage, x1, y1);
     drawOverlays(painter, currentPage, x1, y1, actualZoom);
 
-    // 第二页
     int x2 = startX + m_currentImage.width() + AppConfig::DOUBLE_PAGE_SPACING;
     int y2 = startY + (maxHeight - m_secondImage.height()) / 2;
     drawPageImage(painter, m_secondImage, x2, y2);
@@ -337,7 +323,6 @@ void PDFPageWidget::paintContinuousMode(QPainter& painter, const QRect& visibleR
         }
     }
 
-    // 绘制占位符
     painter.setPen(Qt::white);
     QFont font = painter.font();
     font.setPointSize(10);
@@ -361,18 +346,16 @@ void PDFPageWidget::paintContinuousMode(QPainter& painter, const QRect& visibleR
 
 void PDFPageWidget::drawPageImage(QPainter& painter, const QImage& image, int x, int y)
 {
-    // 阴影
     QRect shadowRect = image.rect().translated(x + AppConfig::SHADOW_OFFSET, y + AppConfig::SHADOW_OFFSET);
     painter.fillRect(shadowRect, QColor(0, 0, 0, 100));
 
-    // 页面
     painter.drawImage(x, y, image);
 }
 
 void PDFPageWidget::drawPagePlaceholder(QPainter& painter, const QRect& rect, int pageIndex)
 {
     painter.fillRect(rect, QColor(80, 80, 80));
-    painter.drawText(rect, Qt::AlignCenter, tr("加载页面%1中...").arg(pageIndex + 1));
+    painter.drawText(rect, Qt::AlignCenter, tr("Loading page %1...").arg(pageIndex + 1));
 }
 
 void PDFPageWidget::drawOverlays(QPainter& painter, int pageIndex, int pageX, int pageY, double zoom)
@@ -399,7 +382,7 @@ void PDFPageWidget::drawSearchHighlights(QPainter& painter, int pageIndex, int p
     int currentMatchIndex = state->searchCurrentMatchIndex();
 
     for (const SearchResult& result : results) {
-        bool isCurrent = false; // 判断逻辑保持不变
+        bool isCurrent = false;
 
         for (const QRectF& quad : result.quads) {
             QRectF scaledQuad(quad.x() * zoom, quad.y() * zoom, quad.width() * zoom, quad.height() * zoom);
@@ -487,20 +470,15 @@ void PDFPageWidget::triggerOCRAtCurrentPosition()
         return;
     }
 
-    // 使用上次记录的鼠标位置
-    // 如果没有记录,使用widget中心点
     QPoint hoverPos = m_lastHoverPos;
     if (hoverPos.isNull() || !rect().contains(hoverPos)) {
-        // 使用当前鼠标位置
         hoverPos = mapFromGlobal(QCursor::pos());
 
-        // 如果鼠标不在widget上,使用widget中心
         if (!rect().contains(hoverPos)) {
             hoverPos = rect().center();
         }
     }
 
-    // 检查是否在页面上
     int pageX, pageY;
     int pageIndex = getPageAtPos(hoverPos, &pageX, &pageY);
 
@@ -509,7 +487,6 @@ void PDFPageWidget::triggerOCRAtCurrentPosition()
         return;
     }
 
-    // 提取悬浮区域的图像
     QImage image = extractHoverRegion(hoverPos);
     if (!image.isNull()) {
         QRect regionRect = calculateHoverRect(hoverPos);
@@ -522,19 +499,15 @@ void PDFPageWidget::triggerOCRAtCurrentPosition()
 
 void PDFPageWidget::mouseMoveEvent(QMouseEvent* event)
 {
-    // 始终更新鼠标位置(用于快捷键触发OCR)
     m_lastHoverPos = event->pos();
 
-    // OCR模式下不需要定时器,只记录位置
     if (m_ocrHoverEnabled) {
-        // 可以在这里更新光标样式
         event->accept();
         return;
     }
 
     const PDFDocumentState* state = m_session->state();
 
-    // 文本选择拖拽中
     if (m_isTextSelecting) {
         int pageX, pageY;
         int pageIndex = getPageAtPos(event->pos(), &pageX, &pageY);
@@ -548,7 +521,6 @@ void PDFPageWidget::mouseMoveEvent(QMouseEvent* event)
         return;
     }
 
-    // 普通移动:检测页面和链接
     int pageX, pageY;
     int pageIndex = getPageAtPos(event->pos(), &pageX, &pageY);
 
@@ -579,10 +551,8 @@ void PDFPageWidget::mousePressEvent(QMouseEvent* event)
 
     QPointF pagePos = screenToPageCoord(event->pos(), pageX, pageY);
 
-    // 发射点击信号，由Tab处理所有业务逻辑
     emit pageClicked(pageIndex, pagePos, event->button(), event->modifiers());
 
-    // 记录拖拽起始点
     if (event->button() == Qt::LeftButton) {
         m_dragStartPos = event->pos();
     }
@@ -599,7 +569,6 @@ void PDFPageWidget::mouseReleaseEvent(QMouseEvent* event)
         return;
     }
 
-    // 右键菜单
     if (event->button() == Qt::RightButton) {
         int pageX, pageY;
         int pageIndex = getPageAtPos(event->pos(), &pageX, &pageY);
@@ -616,7 +585,6 @@ void PDFPageWidget::mouseReleaseEvent(QMouseEvent* event)
 
 void PDFPageWidget::setupOCRHover()
 {
-    // 配置悬停计时器
     m_hoverTimer.setSingleShot(true);
     m_hoverTimer.setInterval(AppConfig::instance().ocrDebounceDelay());
 }
@@ -629,7 +597,6 @@ void PDFPageWidget::setOCRHoverEnabled(bool enabled)
         m_hoverTimer.stop();
     }
 
-    // 修改光标样式
     if (enabled) {
         setCursor(Qt::CrossCursor);
     } else {
@@ -646,22 +613,11 @@ void PDFPageWidget::setOCRHoverEnabled(bool enabled)
 
 QImage PDFPageWidget::extractHoverRegion(const QPoint& pos)
 {
-    /*
-     * 提取鼠标周围的图像区域
-     *
-     * 步骤：
-     * 1. 确定鼠标在哪个页面上
-     * 2. 计算悬停矩形区域
-     * 3. 从缓存或渲染器获取页面图像
-     * 4. 裁剪出目标区域
-     */
-
     const PDFDocumentState* state = m_session->state();
     if (!state->isDocumentLoaded()) {
         return QImage();
     }
 
-    // 1. 获取鼠标所在的页面
     int pageX, pageY;
     int pageIndex = getPageAtPos(pos, &pageX, &pageY);
 
@@ -669,17 +625,14 @@ QImage PDFPageWidget::extractHoverRegion(const QPoint& pos)
         return QImage();
     }
 
-    // 2. 计算悬停矩形（Widget坐标系）
     QRect hoverRect = calculateHoverRect(pos);
 
-    // 3. 获取页面图像
     double zoom = state->currentZoom();
     int rotation = state->currentRotation();
 
     QImage pageImage = m_cacheManager->getPage(pageIndex, zoom, rotation);
 
     if (pageImage.isNull()) {
-        // 缓存未命中，临时渲染
         auto result = m_renderer->renderPage(pageIndex, zoom, rotation, RenderScene::Page);
         if (!result.success) {
             return QImage();
@@ -687,7 +640,6 @@ QImage PDFPageWidget::extractHoverRegion(const QPoint& pos)
         pageImage = result.image;
     }
 
-    // 4. 转换为图像坐标并裁剪
     QRect imageRect = hoverRect.translated(-pageX, -pageY);
     imageRect = imageRect.intersected(pageImage.rect());
 
@@ -705,7 +657,6 @@ QRect PDFPageWidget::calculateHoverRect(const QPoint& centerPos)
 
     int actualSize = baseSize;
 
-    // 以鼠标为中心的矩形
     QRect rect(
         centerPos.x() - actualSize / 2,
         centerPos.y() - actualSize / 2,
@@ -713,7 +664,6 @@ QRect PDFPageWidget::calculateHoverRect(const QPoint& centerPos)
         actualSize
         );
 
-    // 限制在widget范围内
     rect = rect.intersected(this->rect());
 
     return rect;

@@ -57,15 +57,15 @@ void PDFDocumentTab::setupUI()
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
-    // 创建Session
+
     m_session = new PDFDocumentSession(this);
 
-    // 创建导航面板
+
     m_navigationPanel = new NavigationPanel(m_session, this);
     m_navigationPanel->setVisible(false);
     m_navigationPanel->setObjectName("navigationPanel");
 
-    // 创建滚动区域 - 使用纸质感背景色
+
     m_scrollArea = new QScrollArea(this);
     m_scrollArea->setWidgetResizable(false);
     m_scrollArea->setAlignment(Qt::AlignCenter);
@@ -74,17 +74,17 @@ void PDFDocumentTab::setupUI()
     m_scrollArea->setFrameShape(QFrame::NoFrame);
     m_scrollArea->setObjectName("pdfScrollArea");
 
-    // 创建页面显示组件
+
     m_pageWidget = new PDFPageWidget(m_session, this);
     m_pageWidget->setObjectName("pdfPageWidget");
     m_scrollArea->setWidget(m_pageWidget);
 
-    // 创建搜索工具栏
+
     m_searchWidget = new SearchWidget(m_session, this);
     m_searchWidget->setVisible(false);
     m_searchWidget->setObjectName("searchWidget");
 
-    // 创建进度条 - 使用纸质感样式
+
     m_textPreloadProgress = new QProgressBar(this);
     m_textPreloadProgress->setMaximumWidth(220);
     m_textPreloadProgress->setMaximumHeight(24);
@@ -93,11 +93,11 @@ void PDFDocumentTab::setupUI()
     m_textPreloadProgress->setAlignment(Qt::AlignCenter);
     m_textPreloadProgress->setObjectName("textPreloadProgress");
 
-    // 组装主布局
+
     mainLayout->addWidget(m_searchWidget);
     mainLayout->addWidget(m_scrollArea, 1);
 
-    // 进度条居中显示
+
     QHBoxLayout* progressLayout = new QHBoxLayout();
     progressLayout->addStretch();
     progressLayout->addWidget(m_textPreloadProgress);
@@ -105,7 +105,7 @@ void PDFDocumentTab::setupUI()
     progressLayout->setContentsMargins(0, 8, 0, 8);
     mainLayout->addLayout(progressLayout);
 
-    // 创建OCR浮层
+
     m_ocrFloatingWidget = new OCRFloatingWidget(this);
     m_ocrFloatingWidget->hide();
 }
@@ -131,7 +131,7 @@ void PDFDocumentTab::setupConnections()
     connect(m_session, &PDFDocumentSession::zoomSettingCompleted,
             this, [this](double zoom, ZoomMode mode) {
                 if (zoom < 0) {
-                    // 需要重新计算zoom
+
                     QSize viewportSize = m_scrollArea->viewport()->size();
                     m_session->updateZoom(viewportSize);
                 } else {
@@ -218,7 +218,7 @@ void PDFDocumentTab::setupConnections()
 
     connect(m_searchWidget, &SearchWidget::searchResultNavigated,
             this, [this](const SearchResult& result) {
-                // 页面已经通过 Session 跳转了，这里只需要更新高亮
+
                 m_pageWidget->update();
             });
 
@@ -231,18 +231,18 @@ void PDFDocumentTab::setupConnections()
             this, &PDFDocumentTab::paperEffectChanged);
 
 
-    // PageWidget的OCR悬停信号
+
     connect(m_pageWidget, &PDFPageWidget::ocrHoverTriggered,
             this, &PDFDocumentTab::onOCRHoverTriggered);
 
-    // OCRManager的信号（全局单例）
+
     connect(&OCRManager::instance(), &OCRManager::ocrCompleted,
             this, &PDFDocumentTab::onOCRCompleted);
 
     connect(&OCRManager::instance(), &OCRManager::ocrFailed,
             this, &PDFDocumentTab::onOCRFailed);
 
-    // 浮层的查词信号
+
     connect(m_ocrFloatingWidget, &OCRFloatingWidget::lookupRequested,
             this, &PDFDocumentTab::onLookupRequested);
 }
@@ -274,7 +274,7 @@ QString PDFDocumentTab::documentPath() const
 QString PDFDocumentTab::documentTitle() const
 {
     if (documentPath().isEmpty()) {
-        return tr("新标签页");
+        return tr("New Tab");
     }
     return QFileInfo(documentPath()).fileName();
 }
@@ -356,8 +356,8 @@ void PDFDocumentTab::setContinuousScroll(bool continuous)
 void PDFDocumentTab::showSearchBar()
 {
     if (!m_session->state()->isTextPDF()) {
-        QMessageBox::information(this, tr("搜索不可用"),
-                                 tr("扫描文件不包含文本"));
+        QMessageBox::information(this, tr("Search Unavailable"),
+                                 tr("Scanned file contains no text"));
         return;
     }
 
@@ -366,10 +366,8 @@ void PDFDocumentTab::showSearchBar()
 
         QMessageBox::StandardButton reply = QMessageBox::question(
             this,
-            tr("文本正在提取中..."),
-            tr("文本正在提取中...(%1%).\n\n"
-               "你只能搜索提取好文本的页面\n\n"
-               "继续搜索?").arg(progress),
+            tr("Extracting text..."),
+            tr("Extracting text...(%1%).\n\nYou can only search pages with extracted text.\n\nContinue searching?").arg(progress),
             QMessageBox::Yes | QMessageBox::No);
 
         if (reply == QMessageBox::No) {
@@ -466,7 +464,7 @@ QSize PDFDocumentTab::getViewportSize() const
     if (m_scrollArea && m_scrollArea->viewport()) {
         return m_scrollArea->viewport()->size();
     }
-    return QSize(800, 600); // 默认值
+    return QSize(800, 600);
 }
 
 void PDFDocumentTab::updateZoom(const QSize& viewportSize)
@@ -481,7 +479,7 @@ void PDFDocumentTab::findNext()
     if (m_session) {
         SearchResult result = m_session->findNext();
         if (result.isValid()) {
-            // 结果已经通过 Session 的信号处理了
+
             m_pageWidget->update();
         }
     }
@@ -492,7 +490,7 @@ void PDFDocumentTab::findPrevious()
     if (m_session) {
         SearchResult result = m_session->findPrevious();
         if (result.isValid()) {
-            // 结果已经通过 Session 的信号处理了
+
             m_pageWidget->update();
         }
     }
@@ -525,12 +523,12 @@ void PDFDocumentTab::onDocumentLoaded(const QString& filePath, int pageCount)
 
 void PDFDocumentTab::onPageChanged(int pageIndex)
 {
-    // 更新导航面板
+
     if (m_navigationPanel) {
         m_navigationPanel->updateCurrentPage(pageIndex);
     }
 
-    // 渲染并更新页面
+
     renderAndUpdatePages();
 
     emit pageChanged(pageIndex);
@@ -547,7 +545,7 @@ void PDFDocumentTab::onDisplayModeChanged(PageDisplayMode mode)
     updateScrollBarPolicy();
     m_session->textCache()->clear();
 
-    // 如果是自适应模式，需要重新计算缩放
+
     if (m_session->state()->currentZoomMode() != ZoomMode::Custom) {
         QSize viewportSize = m_scrollArea->viewport()->size();
         m_session->updateZoom(viewportSize);
@@ -561,7 +559,7 @@ void PDFDocumentTab::onContinuousScrollChanged(bool continuous)
 {
     updateScrollBarPolicy();
 
-    // 如果是自适应模式，需要重新计算缩放
+
     if (m_session->state()->currentZoomMode() != ZoomMode::Custom) {
         QSize viewportSize = m_scrollArea->viewport()->size();
         m_session->updateZoom(viewportSize);
@@ -582,12 +580,12 @@ void PDFDocumentTab::onPagePositionsChanged(const QVector<int>& positions, const
         if (!m_isUserScrolling) {
             int targetY = -1;
 
-            // 优先使用State中保存的恢复位置
+
             if (m_session->state()->needRestoreViewport()) {
                 targetY = m_session->state()->getRestoredScrollPosition(AppConfig::PAGE_MARGIN);
                 m_session->clearViewportRestore();
             } else {
-                // 默认行为：当前页顶部
+
                 int currentPage = m_session->state()->currentPage();
                 targetY = m_session->getScrollPositionForPage(currentPage, AppConfig::PAGE_MARGIN);
             }
@@ -637,7 +635,7 @@ void PDFDocumentTab::onPageClicked(int pageIndex, const QPointF& pagePos, Qt::Mo
     const PDFDocumentState* state = m_session->state();
     double zoom = state->currentZoom();
 
-    // 1. 优先检查链接
+
     if (state->linksVisible()) {
         const PDFLink* link = m_session->hitTestLink(pageIndex, pagePos, zoom);
         if (link) {
@@ -646,15 +644,15 @@ void PDFDocumentTab::onPageClicked(int pageIndex, const QPointF& pagePos, Qt::Mo
         }
     }
 
-    // 2. 处理文本PDF的选择
+
     if (state->isTextPDF()) {
-        // Shift扩展选择
+
         if (modifiers & Qt::ShiftModifier) {
             m_session->extendTextSelection(pageIndex, pagePos, zoom);
             return;
         }
 
-        // 多击检测
+
         qint64 now = QDateTime::currentMSecsSinceEpoch();
         qint64 timeDiff = now - m_lastClickTime;
 
@@ -669,16 +667,16 @@ void PDFDocumentTab::onPageClicked(int pageIndex, const QPointF& pagePos, Qt::Mo
         m_lastClickTime = now;
         m_lastClickPos = QPoint(pagePos.x(), pagePos.y());
 
-        // 三击：选择整行
+
         if (m_clickCount >= 3) {
             m_session->selectLine(pageIndex, pagePos, zoom);
             m_clickCount = 0;
         }
-        // 双击：选择单词
+
         else if (m_clickCount == 2) {
             m_session->selectWord(pageIndex, pagePos, zoom);
         }
-        // 单击：开始字符级别选择
+
         else {
             m_session->startTextSelection(pageIndex, pagePos, zoom);
             m_pageWidget->setTextSelectionMode(true);
@@ -743,7 +741,7 @@ void PDFDocumentTab::renderAndUpdatePages()
     if (state->isContinuousScroll()) {
         m_session->calculatePagePositions();
     } else {
-        // 单页/双页模式
+
         QImage img1 = renderPage(state->currentPage());
         QImage img2;
 
@@ -771,12 +769,12 @@ QImage PDFDocumentTab::renderPage(int pageIndex)
     PageCacheManager* cache = m_session->pageCache();
     PerThreadMuPDFRenderer* renderer = m_session->renderer();
 
-    // 检查缓存
+
     if (cache->contains(pageIndex, zoom, rotation)) {
         return cache->getPage(pageIndex, zoom, rotation);
     }
 
-    // 渲染新页面
+
     auto result = renderer->renderPage(pageIndex, zoom, rotation);
     if (result.success) {
         cache->addPage(pageIndex, zoom, rotation, result.image);
@@ -801,7 +799,7 @@ void PDFDocumentTab::refreshVisiblePages()
     int scrollY = m_scrollArea->verticalScrollBar()->value();
     QRect visibleRect(0, scrollY, m_scrollArea->viewport()->width(), m_scrollArea->viewport()->height());
 
-    // 使用Session的ViewHandler获取可见页面
+
     QSet<int> visiblePages = m_session->viewHandler()->getVisiblePages(
         visibleRect,
         AppConfig::instance().preloadMargin(),
@@ -810,11 +808,11 @@ void PDFDocumentTab::refreshVisiblePages()
         state->pageHeights()
         );
 
-    // 标记可见页面
+
     PageCacheManager* cache = m_session->pageCache();
     cache->markVisiblePages(visiblePages);
 
-    // 渲染可见页面
+
     double zoom = state->currentZoom();
     int rotation = state->currentRotation();
 
@@ -859,7 +857,7 @@ void PDFDocumentTab::updateCursorForPage(int pageIndex, const QPointF& pagePos)
     const PDFDocumentState* state = m_session->state();
     double zoom = state->currentZoom();
 
-    // 检查链接
+
     if (state->linksVisible()) {
         const PDFLink* link = m_session->hitTestLink(pageIndex, pagePos, zoom);
         if (link) {
@@ -867,9 +865,9 @@ void PDFDocumentTab::updateCursorForPage(int pageIndex, const QPointF& pagePos)
 
             QString tooltip;
             if (link->isInternal()) {
-                tooltip = tr("跳转到%1页").arg(link->targetPage + 1);
+                tooltip = tr("Jump to page %1").arg(link->targetPage + 1);
             } else if (link->isExternal()) {
-                tooltip = tr("打开%1").arg(link->uri);
+                tooltip = tr("Open %1").arg(link->uri);
             }
             QToolTip::showText(QCursor::pos(), tooltip, m_pageWidget);
             return;
@@ -878,7 +876,7 @@ void PDFDocumentTab::updateCursorForPage(int pageIndex, const QPointF& pagePos)
 
     QToolTip::hideText();
 
-    // 设置默认光标
+
     if (state->isTextPDF()) {
         m_pageWidget->setCursor(Qt::IBeamCursor);
     } else {
@@ -896,26 +894,26 @@ void PDFDocumentTab::showContextMenu(int pageIndex, const QPointF& pagePos, cons
 
     QMenu menu(this);
 
-    // 如果有选中的文本
+
     if (state->hasTextSelection()) {
-        QAction* copyAction = menu.addAction(tr("复制"));
+        QAction* copyAction = menu.addAction(tr("Copy"));
         copyAction->setShortcut(QKeySequence::Copy);
         connect(copyAction, &QAction::triggered, this, &PDFDocumentTab::copySelectedText);
 
         menu.addSeparator();
     }
 
-    // 如果是文本PDF
+
     if (state->isTextPDF()) {
         if (!state->hasTextSelection()) {
             double zoom = state->currentZoom();
 
-            QAction* selectWordAction = menu.addAction(tr("选择单词"));
+            QAction* selectWordAction = menu.addAction(tr("Select Word"));
             connect(selectWordAction, &QAction::triggered, this, [=]() {
                 m_session->selectWord(pageIndex, pagePos, zoom);
             });
 
-            QAction* selectLineAction = menu.addAction(tr("选择行"));
+            QAction* selectLineAction = menu.addAction(tr("Select Line"));
             connect(selectLineAction, &QAction::triggered, this, [=]() {
                 m_session->selectLine(pageIndex, pagePos, zoom);
             });
@@ -923,7 +921,7 @@ void PDFDocumentTab::showContextMenu(int pageIndex, const QPointF& pagePos, cons
             menu.addSeparator();
         }
 
-        QAction* selectAllAction = menu.addAction(tr("全选"));
+        QAction* selectAllAction = menu.addAction(tr("Select All"));
         selectAllAction->setShortcut(QKeySequence::SelectAll);
         connect(selectAllAction, &QAction::triggered, this, &PDFDocumentTab::selectAll);
     }
@@ -951,17 +949,17 @@ void PDFDocumentTab::updateOCRHoverState()
 {
     bool enabled = OCRManager::instance().isOCRHoverEnabled();
 
-    // 如果不是扫描版PDF，强制禁用
+
     if (!isDocumentLoaded() || isTextPDF()) {
         enabled = false;
     }
 
-    // 通知PageWidget
+
     if (m_pageWidget) {
         m_pageWidget->setOCRHoverEnabled(enabled);
     }
 
-    // 禁用时隐藏浮层
+
     if (!enabled && m_ocrFloatingWidget) {
         m_ocrFloatingWidget->hideFloating();
     }
@@ -973,19 +971,19 @@ void PDFDocumentTab::onOCRHoverTriggered(const QImage& image, const QRect& regio
         return;
     }
 
-    // 检查OCR是否就绪
+
     if (!OCRManager::instance().isReady()) {
         qWarning() << "OCR not ready";
 
-        // 显示错误提示
+
         if (m_ocrFloatingWidget) {
             QRect globalRect = regionRect.translated(m_pageWidget->mapToGlobal(QPoint(0, 0)));
             m_ocrFloatingWidget->showRecognizing(image, globalRect);
 
-            // 延迟更新为错误状态
+
             QTimer::singleShot(100, this, [this]() {
                 if (m_ocrFloatingWidget) {
-                    m_ocrFloatingWidget->updateResult(tr("OCR引擎未就绪"), 0.0f);
+                    m_ocrFloatingWidget->updateResult(tr("OCR engine not ready"), 0.0f);
                 }
             });
         }
@@ -996,13 +994,13 @@ void PDFDocumentTab::onOCRHoverTriggered(const QImage& image, const QRect& regio
     m_lastOCRRegion = regionRect;
     m_lastHoverPos = lastHoverPos;
 
-    // 1. 先显示悬浮框和截图,显示"识别中"状态
+
     if (m_ocrFloatingWidget) {
         QRect globalRect = regionRect.translated(m_pageWidget->mapToGlobal(QPoint(0, 0)));
         m_ocrFloatingWidget->showRecognizing(image, globalRect);
     }
 
-    // 2. 然后请求OCR识别
+
     OCRManager::instance().requestOCR(image, regionRect, lastHoverPos);
 }
 
@@ -1015,28 +1013,28 @@ void PDFDocumentTab::onOCRCompleted(const OCRResult& result, const QRect& region
     if (!result.success || result.text.isEmpty()) {
         qDebug() << "OCR result empty";
 
-        // 更新为"未识别到文字"
+
         if (m_ocrFloatingWidget) {
             m_ocrFloatingWidget->updateResult(QString(), 0.0f);
         }
         return;
     }
 
-    // 使用分词找到鼠标位置的词
-    QString targetWord = result.text; // 默认使用全部文本
+
+    QString targetWord = result.text;
 
     if (ChineseTokenizer::instance().isInitialized()) {
-        // 分词并找到最接近鼠标的词
+
         QVector<TokenWithPosition> tokens =
             ChineseTokenizer::instance().tokenizeWithPosition(result);
 
         qDebug() << "onOCRCompleted TokenWithPosition size:" << tokens.size();
 
         if (!tokens.isEmpty()) {
-            // 转换到 regionRect 坐标
+
             QPoint posInRegion = lastHoverPos - regionRect.topLeft();
 
-            // 如果有缩放 factor
+
             double scale = m_session->state()->currentZoom();
             QPoint posInRegionScaled(posInRegion.x()/scale, posInRegion.y()/scale);
 
@@ -1044,7 +1042,7 @@ void PDFDocumentTab::onOCRCompleted(const OCRResult& result, const QRect& region
                      << "scale:" << scale
                      << "posInRegionScaled:" << posInRegionScaled;
 
-            // 查找最近词
+
             TokenWithPosition closestToken =
                 ChineseTokenizer::instance().findClosestToken(tokens, posInRegion);
 
@@ -1057,7 +1055,7 @@ void PDFDocumentTab::onOCRCompleted(const OCRResult& result, const QRect& region
         qWarning() << "ChineseTokenizer not initialized, using full text";
     }
 
-    // 更新悬浮框结果
+
     if (m_ocrFloatingWidget) {
         m_ocrFloatingWidget->updateResult(targetWord, result.confidence);
     }
@@ -1071,9 +1069,9 @@ void PDFDocumentTab::onOCRFailed(const QString& error)
 
     qWarning() << "OCR failed:" << error;
 
-    // 更新悬浮框显示错误
+
     if (m_ocrFloatingWidget) {
-        m_ocrFloatingWidget->updateResult(tr("识别失败: %1").arg(error), 0.0f);
+        m_ocrFloatingWidget->updateResult(tr("Recognition failed: %1").arg(error), 0.0f);
     }
 }
 
@@ -1083,18 +1081,17 @@ void PDFDocumentTab::triggerOCRAtCurrentPosition()
         return;
     }
 
-    // 委托给PageWidget处理
+
     m_pageWidget->triggerOCRAtCurrentPosition();
 }
 
 void PDFDocumentTab::onLookupRequested(const QString& text)
 {
-    // 调用词典（全局单例）
+
     DictionaryConnector::instance().lookup(text);
 
-    // 隐藏浮层
+
     if (m_ocrFloatingWidget) {
         m_ocrFloatingWidget->hideFloating();
     }
 }
-

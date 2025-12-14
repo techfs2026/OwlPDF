@@ -15,10 +15,10 @@ class ThumbnailItem;
 class ThumbnailManagerV2;
 
 enum class ScrollState {
-    IDLE,         // 静止或极慢 (< 500 px/s)   → 触发加载
-    SLOW_SCROLL,  // 慢速滚动 (500-1000 px/s)  → 触发加载
-    FAST_SCROLL,  // 快速滚动 (1000-3000 px/s) → 不加载
-    FLING         // 惯性滑动 (> 3000 px/s)    → 不加载
+    IDLE,
+    SLOW_SCROLL,
+    FAST_SCROLL,
+    FLING
 };
 
 class ThumbnailWidget : public QScrollArea
@@ -34,7 +34,6 @@ public:
     void highlightCurrentPage(int pageIndex);
     void setThumbnailSize(int width);
 
-    // 新增：设置 Manager 引用，用于检查是否应响应滚动
     void setThumbnailManager(ThumbnailManagerV2* manager);
 
     QSet<int> getUnloadedVisiblePages() const;
@@ -51,7 +50,7 @@ signals:
     void slowScrollDetected(const QSet<int>& visiblePages);
 
 public slots:
-    void onThumbnailLoaded(int pageIndex, const QImage& thumbnail);  // 移除 isHighRes 参数
+    void onThumbnailLoaded(int pageIndex, const QImage& thumbnail);
 
 protected:
     void scrollContentsBy(int dx, int dy) override;
@@ -87,7 +86,7 @@ private:
     QTimer* m_throttleTimer;
     QTimer* m_debounceTimer;
 
-    ThumbnailManagerV2* m_manager;  // 用于检查加载状态
+    ThumbnailManagerV2* m_manager;
 };
 
 class ThumbnailItem : public QWidget
@@ -98,7 +97,7 @@ public:
     explicit ThumbnailItem(int pageIndex, int width, QWidget* parent = nullptr);
 
     void setPlaceholder(const QString& text);
-    void setThumbnail(const QImage& image);  // 移除 isHighRes 参数
+    void setThumbnail(const QImage& image);
     void setError(const QString& error);
     void setHighlight(bool highlight);
 

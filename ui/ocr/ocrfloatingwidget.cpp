@@ -17,7 +17,6 @@ OCRFloatingWidget::OCRFloatingWidget(QWidget* parent)
     setAttribute(Qt::WA_TranslucentBackground);
     setMouseTracking(true);
 
-    // 安装事件过滤器，点击外部关闭
     qApp->installEventFilter(this);
 }
 
@@ -27,7 +26,6 @@ void OCRFloatingWidget::setupUI()
     mainLayout->setContentsMargins(12, 12, 12, 12);
     mainLayout->setSpacing(8);
 
-    // 图片标签
     m_imageLabel = new QLabel(this);
     m_imageLabel->setAlignment(Qt::AlignCenter);
     m_imageLabel->setStyleSheet(
@@ -42,7 +40,6 @@ void OCRFloatingWidget::setupUI()
     m_imageLabel->setScaledContents(false);
     mainLayout->addWidget(m_imageLabel);
 
-    // 状态标签(新增)
     m_statusLabel = new QLabel(this);
     m_statusLabel->setWordWrap(true);
     m_statusLabel->setAlignment(Qt::AlignCenter);
@@ -57,7 +54,6 @@ void OCRFloatingWidget::setupUI()
     m_statusLabel->hide();
     mainLayout->addWidget(m_statusLabel);
 
-    // 文字标签
     m_textLabel = new QLabel(this);
     m_textLabel->setWordWrap(true);
     m_textLabel->setMaximumWidth(300);
@@ -70,7 +66,6 @@ void OCRFloatingWidget::setupUI()
         );
     mainLayout->addWidget(m_textLabel);
 
-    // 置信度标签
     m_confidenceLabel = new QLabel(this);
     m_confidenceLabel->setStyleSheet(
         "QLabel {"
@@ -80,11 +75,10 @@ void OCRFloatingWidget::setupUI()
         );
     mainLayout->addWidget(m_confidenceLabel);
 
-    // 按钮行
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     buttonLayout->setSpacing(8);
 
-    m_lookupButton = new QPushButton(tr("查词"), this);
+    m_lookupButton = new QPushButton(tr("Lookup"), this);
     m_lookupButton->setCursor(Qt::PointingHandCursor);
     m_lookupButton->setStyleSheet(
         "QPushButton {"
@@ -112,7 +106,7 @@ void OCRFloatingWidget::setupUI()
             });
     buttonLayout->addWidget(m_lookupButton);
 
-    m_closeButton = new QPushButton(tr("关闭"), this);
+    m_closeButton = new QPushButton(tr("Close"), this);
     m_closeButton->setCursor(Qt::PointingHandCursor);
     m_closeButton->setStyleSheet(
         "QPushButton {"
@@ -142,7 +136,6 @@ void OCRFloatingWidget::showResult(const QString& text, float confidence, const 
     m_currentText = text;
     m_isRecognizing = false;
 
-    // 显示原始识别图片
     if (!sourceImage.isNull()) {
         QPixmap pixmap = QPixmap::fromImage(sourceImage);
         QSize labelSize = m_imageLabel->maximumSize();
@@ -155,10 +148,8 @@ void OCRFloatingWidget::showResult(const QString& text, float confidence, const 
         m_imageLabel->hide();
     }
 
-    // 隐藏状态标签
     m_statusLabel->hide();
 
-    // 显示结果
     m_textLabel->setText(text);
     m_textLabel->setStyleSheet(
         "QLabel {"
@@ -169,7 +160,7 @@ void OCRFloatingWidget::showResult(const QString& text, float confidence, const 
         );
     m_textLabel->show();
 
-    m_confidenceLabel->setText(tr("置信度: %1%").arg(qRound(confidence * 100)));
+    m_confidenceLabel->setText(tr("Confidence: %1%").arg(qRound(confidence * 100)));
     m_confidenceLabel->show();
 
     m_lookupButton->setEnabled(!text.isEmpty());
@@ -193,11 +184,9 @@ void OCRFloatingWidget::hideFloating()
 
 void OCRFloatingWidget::positionWidget(const QRect& regionRect)
 {
-    // 默认显示在识别区域下方
     int x = regionRect.x();
     int y = regionRect.bottom() + 10;
 
-    // 确保不超出屏幕
     QScreen* screen = QGuiApplication::primaryScreen();
     if (screen) {
         QRect screenGeometry = screen->availableGeometry();
@@ -209,7 +198,6 @@ void OCRFloatingWidget::positionWidget(const QRect& regionRect)
             x = screenGeometry.left();
         }
 
-        // 如果下方空间不足，显示在上方
         if (y + height() > screenGeometry.bottom()) {
             y = regionRect.top() - height() - 10;
         }
@@ -227,20 +215,17 @@ void OCRFloatingWidget::paintEvent(QPaintEvent* event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // 绘制圆角背景
     QPainterPath path;
     path.addRoundedRect(rect(), 8, 8);
 
-    // 阴影效果
     painter.setPen(Qt::NoPen);
     painter.setBrush(QColor(0, 0, 0, 40));
     painter.drawPath(path.translated(2, 2));
 
-    // 背景
     painter.setBrush(QColor(255, 255, 255, 250));
     painter.drawPath(path);
 
-    // 边框
+
     painter.setPen(QPen(QColor(200, 200, 200), 1));
     painter.setBrush(Qt::NoBrush);
     painter.drawPath(path);
@@ -250,7 +235,6 @@ void OCRFloatingWidget::paintEvent(QPaintEvent* event)
 
 bool OCRFloatingWidget::eventFilter(QObject* obj, QEvent* event)
 {
-    // 点击浮层外部时关闭
     if (event->type() == QEvent::MouseButtonPress && isVisible()) {
         QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
         if (!geometry().contains(mouseEvent->globalPosition().toPoint())) {
@@ -266,7 +250,6 @@ void OCRFloatingWidget::showRecognizing(const QImage& sourceImage, const QRect& 
     m_currentText.clear();
     m_isRecognizing = true;
 
-    // 显示截图
     if (!sourceImage.isNull()) {
         QPixmap pixmap = QPixmap::fromImage(sourceImage);
         QSize labelSize = m_imageLabel->maximumSize();
@@ -277,15 +260,12 @@ void OCRFloatingWidget::showRecognizing(const QImage& sourceImage, const QRect& 
         m_imageLabel->show();
     }
 
-    // 显示"识别中"状态
-    m_statusLabel->setText(tr("🔍 正在识别中..."));
+    m_statusLabel->setText(tr("🔍 Recognizing..."));
     m_statusLabel->show();
 
-    // 隐藏文本和置信度
     m_textLabel->hide();
     m_confidenceLabel->hide();
 
-    // 禁用查词按钮
     m_lookupButton->setEnabled(false);
 
     adjustSize();
@@ -304,12 +284,10 @@ void OCRFloatingWidget::updateResult(const QString& text, float confidence)
     m_isRecognizing = false;
     m_currentText = text;
 
-    // 隐藏状态标签
     m_statusLabel->hide();
 
     if (text.isEmpty()) {
-        // 识别失败
-        m_textLabel->setText(tr("未识别到文字"));
+        m_textLabel->setText(tr("No text recognized"));
         m_textLabel->setStyleSheet(
             "QLabel {"
             "  color: #999999;"
@@ -321,7 +299,6 @@ void OCRFloatingWidget::updateResult(const QString& text, float confidence)
         m_confidenceLabel->hide();
         m_lookupButton->setEnabled(false);
     } else {
-        // 识别成功
         m_textLabel->setText(text);
         m_textLabel->setStyleSheet(
             "QLabel {"
@@ -330,7 +307,7 @@ void OCRFloatingWidget::updateResult(const QString& text, float confidence)
             "  padding: 4px;"
             "}"
             );
-        m_confidenceLabel->setText(tr("置信度: %1%").arg(qRound(confidence * 100)));
+        m_confidenceLabel->setText(tr("Confidence: %1%").arg(qRound(confidence * 100)));
         m_confidenceLabel->show();
         m_lookupButton->setEnabled(true);
     }

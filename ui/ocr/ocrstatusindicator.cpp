@@ -41,66 +41,66 @@ void OCRStatusIndicator::setEngineRunning(bool running)
 QString OCRStatusIndicator::getStatusText() const
 {
     if (!m_engineRunning) {
-        return tr("启动OCR");
+        return tr("Start OCR");
     }
 
     switch (m_state) {
     case OCREngineState::Uninitialized:
-        return tr("未初始化");
+        return tr("Uninitialized");
     case OCREngineState::Loading:
-        return tr("加载中...");
+        return tr("Loading...");
     case OCREngineState::Ready:
-        return tr("OCR就绪");
+        return tr("OCR Ready");
     case OCREngineState::Error:
-        return tr("初始化失败");
+        return tr("Init Failed");
     default:
-        return tr("未知状态");
+        return tr("Unknown State");
     }
 }
 
 QString OCRStatusIndicator::getTooltipText() const
 {
     if (!m_engineRunning) {
-        return tr("点击启动OCR引擎\n"
-                  "启动后可在工具栏启用OCR取词功能");
+        return tr("Click to start OCR engine\n"
+                  "Once started, OCR lookup will be available in toolbar");
     }
 
     switch (m_state) {
     case OCREngineState::Loading:
-        return tr("OCR引擎加载中...\n"
-                  "请稍候，加载完成后可启用OCR取词\n"
-                  "双击停止引擎");
+        return tr("OCR engine loading...\n"
+                  "Please wait, OCR lookup will be available after loading\n"
+                  "Double-click to stop engine");
     case OCREngineState::Ready:
-        return tr("OCR引擎已就绪 ✓\n"
-                  "可在工具栏启用OCR取词功能\n"
-                  "双击停止引擎");
+        return tr("OCR engine ready ✓\n"
+                  "OCR lookup available in toolbar\n"
+                  "Double-click to stop engine");
     case OCREngineState::Error:
-        return tr("OCR引擎初始化失败\n"
-                  "请检查模型文件和配置\n"
-                  "双击重新启动");
+        return tr("OCR engine initialization failed\n"
+                  "Please check model files and configuration\n"
+                  "Double-click to restart");
     case OCREngineState::Uninitialized:
-        return tr("OCR引擎未初始化\n"
-                  "点击启动引擎");
+        return tr("OCR engine not initialized\n"
+                  "Click to start engine");
     default:
-        return tr("OCR引擎状态未知");
+        return tr("OCR engine state unknown");
     }
 }
 
 QColor OCRStatusIndicator::getLightColor() const
 {
     if (!m_engineRunning) {
-        return QColor(160, 160, 160);  // 灰色 - 未运行
+        return QColor(160, 160, 160);
     }
 
     switch (m_state) {
     case OCREngineState::Uninitialized:
-        return QColor(160, 160, 160);  // 灰色
+        return QColor(160, 160, 160);
     case OCREngineState::Loading:
-        return QColor(255, 193, 7);    // 黄色 - 加载中
+        return QColor(255, 193, 7);
     case OCREngineState::Ready:
-        return QColor(76, 175, 80);    // 绿色 - 就绪
+        return QColor(76, 175, 80);
     case OCREngineState::Error:
-        return QColor(244, 67, 54);    // 红色 - 错误
+        return QColor(244, 67, 54);
     default:
         return QColor(160, 160, 160);
     }
@@ -108,16 +108,12 @@ QColor OCRStatusIndicator::getLightColor() const
 
 QSize OCRStatusIndicator::sizeHint() const
 {
-    // 根据当前文本计算最佳宽度
     QString text = getStatusText();
     QFontMetrics fm(font());
     int textWidth = fm.horizontalAdvance(text);
 
-    // 指示灯 + 间距 + 文字 + 边距
-    // 8(左边距) + 14(指示灯) + 6(间距) + textWidth + 10(右边距)
     int totalWidth = 8 + 14 + 6 + textWidth + 10;
 
-    // 确保最小宽度
     totalWidth = qMax(totalWidth, 90);
 
     return QSize(totalWidth, 24);
@@ -130,49 +126,43 @@ void OCRStatusIndicator::paintEvent(QPaintEvent* event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // 绘制背景 - 根据状态改变背景色
     QColor bgColor;
     if (m_pressed) {
         bgColor = QColor(220, 220, 220);
     } else if (m_hovered) {
         if (m_engineRunning && m_state == OCREngineState::Ready) {
-            bgColor = QColor(232, 245, 233);  // 浅绿色
+            bgColor = QColor(232, 245, 233);
         } else {
             bgColor = QColor(235, 235, 235);
         }
     } else {
         if (m_engineRunning && m_state == OCREngineState::Ready) {
-            bgColor = QColor(240, 248, 240);  // 极浅绿色
+            bgColor = QColor(240, 248, 240);
         } else {
             bgColor = QColor(245, 245, 245);
         }
     }
 
-    // 绘制圆角背景
     painter.setPen(Qt::NoPen);
     painter.setBrush(bgColor);
     painter.drawRoundedRect(rect().adjusted(1, 1, -1, -1), 4, 4);
 
-    // 绘制边框
     if (m_hovered || m_pressed) {
         painter.setPen(QPen(QColor(200, 200, 200), 1));
         painter.setBrush(Qt::NoBrush);
         painter.drawRoundedRect(rect().adjusted(1, 1, -1, -1), 4, 4);
     }
 
-    // 绘制指示灯
     int indicatorSize = 14;
     int indicatorX = 8;
     int indicatorY = (height() - indicatorSize) / 2;
 
     QColor lightColor = getLightColor();
 
-    // 外圈阴影
     painter.setPen(Qt::NoPen);
     painter.setBrush(QColor(0, 0, 0, 30));
     painter.drawEllipse(indicatorX + 1, indicatorY + 1, indicatorSize, indicatorSize);
 
-    // 指示灯 - 渐变效果
     QRadialGradient gradient(indicatorX + indicatorSize/2, indicatorY + indicatorSize/2,
                              indicatorSize/2);
     gradient.setColorAt(0, lightColor.lighter(130));
@@ -181,11 +171,9 @@ void OCRStatusIndicator::paintEvent(QPaintEvent* event)
     painter.setBrush(gradient);
     painter.drawEllipse(indicatorX, indicatorY, indicatorSize, indicatorSize);
 
-    // 高光效果
     painter.setBrush(QColor(255, 255, 255, 120));
     painter.drawEllipse(indicatorX + 3, indicatorY + 3, indicatorSize/3, indicatorSize/3);
 
-    // 加载中动画效果（可选：添加旋转动画）
     if (m_engineRunning && m_state == OCREngineState::Loading) {
         painter.setPen(QPen(lightColor.darker(120), 2));
         painter.drawArc(indicatorX + 1, indicatorY + 1,
@@ -193,25 +181,23 @@ void OCRStatusIndicator::paintEvent(QPaintEvent* event)
                         0, 270 * 16);
     }
 
-    // 绘制文字
     QString statusText = getStatusText();
 
     QColor textColor;
     if (!m_engineRunning) {
-        textColor = QColor(100, 100, 100);  // 灰色文字
+        textColor = QColor(100, 100, 100);
     } else if (m_state == OCREngineState::Ready) {
-        textColor = QColor(46, 125, 50);    // 深绿色文字
+        textColor = QColor(46, 125, 50);
     } else if (m_state == OCREngineState::Error) {
-        textColor = QColor(198, 40, 40);    // 深红色文字
+        textColor = QColor(198, 40, 40);
     } else {
-        textColor = QColor(70, 70, 70);     // 深灰色文字
+        textColor = QColor(70, 70, 70);
     }
 
     painter.setPen(textColor);
     QFont font = painter.font();
     font.setPointSize(9);
 
-    // 就绪状态使用粗体
     if (m_engineRunning && m_state == OCREngineState::Ready) {
         font.setBold(true);
     }

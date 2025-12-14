@@ -4,11 +4,6 @@
 #include <QWidget>
 #include "ocrengine.h"
 
-/**
- * @brief OCR状态指示器 - 红黄绿灯
- *
- * 显示在状态栏，指示OCR功能状态
- */
 class OCRStatusIndicator : public QWidget
 {
     Q_OBJECT

@@ -12,16 +12,6 @@
 
 class PDFDocumentSession;
 
-/**
- * @brief 搜索工具栏组件
- *
- * 职责：
- * 1. 提供搜索 UI（输入框、按钮、选项）
- * 2. 与 Session 交互进行搜索
- * 3. 显示搜索进度和结果
- *
- * 注意：不再直接操作 PageWidget，所有导航通过 Session
- */
 class SearchWidget : public QWidget
 {
     Q_OBJECT

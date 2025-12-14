@@ -968,4 +968,275 @@ Error: %1</source>
         <translation>外部链接: %1</translation>
     </message>
 
-</context></TS>
+</context>
+<context>
+    <name>PDFDocumentTab</name>
+
+    <message>
+        <source>New Tab</source>
+        <translation>新标签页</translation>
+    </message>
+
+    <message>
+        <source>Search Unavailable</source>
+        <translation>搜索不可用</translation>
+    </message>
+
+    <message>
+        <source>Scanned file contains no text</source>
+        <translation>扫描文件不包含文本</translation>
+    </message>
+
+    <message>
+        <source>Extracting text...</source>
+        <translation>文本正在提取中...</translation>
+    </message>
+
+    <message>
+        <source>Extracting text...(%1%).\n\nYou can only search pages with extracted text.\n\nContinue searching?</source>
+        <translation>文本正在提取中...(%1%).\n\n你只能搜索提取好文本的页面\n\n继续搜索?</translation>
+    </message>
+
+    <message>
+        <source>Jump to page %1</source>
+        <translation>跳转到%1页</translation>
+    </message>
+
+    <message>
+        <source>Open %1</source>
+        <translation>打开%1</translation>
+    </message>
+
+    <message>
+        <source>Copy</source>
+        <translation>复制</translation>
+    </message>
+
+    <message>
+        <source>Select Word</source>
+        <translation>选择单词</translation>
+    </message>
+
+    <message>
+        <source>Select Line</source>
+        <translation>选择行</translation>
+    </message>
+
+    <message>
+        <source>Select All</source>
+        <translation>全选</translation>
+    </message>
+
+    <message>
+        <source>OCR engine not ready</source>
+        <translation>OCR引擎未就绪</translation>
+    </message>
+
+    <message>
+        <source>Recognition failed: %1</source>
+        <translation>识别失败: %1</translation>
+    </message>
+
+</context>
+
+<context>
+    <name>PDFPageWidget</name>
+
+    <message>
+        <source>No document loaded</source>
+        <translation>未加载文档</translation>
+    </message>
+
+    <message>
+        <source>Loading page %1...</source>
+        <translation>加载页面%1中...</translation>
+    </message>
+
+</context>
+<context>
+    <name>SearchWidget</name>
+
+    <message>
+        <source>Find:</source>
+        <translation>查找:</translation>
+    </message>
+
+    <message>
+        <source>Previous</source>
+        <translation>前一个</translation>
+    </message>
+
+    <message>
+        <source>Next</source>
+        <translation>下一个</translation>
+    </message>
+
+    <message>
+        <source>No matches</source>
+        <translation>无匹配</translation>
+    </message>
+
+    <message>
+        <source>Case sensitive</source>
+        <translation>大小写敏感</translation>
+    </message>
+
+    <message>
+        <source>Whole words</source>
+        <translation>整个单词</translation>
+    </message>
+
+    <message>
+        <source>Close (Esc)</source>
+        <translation>关闭 (Esc)</translation>
+    </message>
+
+    <message>
+        <source>Searching...</source>
+        <translation>搜索中...</translation>
+    </message>
+
+    <message>
+        <source>%1/%2</source>
+        <translation>%1/%2</translation>
+    </message>
+
+    <message>
+        <source>Searching... %1/%2 pages, %3 matches</source>
+        <translation>搜索中... 在%1/%2页面中, %3匹配</translation>
+    </message>
+</context>
+
+<context>
+    <name>ThumbnailWidget</name>
+
+    <message>
+        <source>Page %1</source>
+        <translation>第%1页</translation>
+    </message>
+
+</context>
+<context>
+    <name>ThumbnailItem</name>
+
+    <message>
+        <source>Page %1</source>
+        <translation>第%1页</translation>
+    </message>
+
+    <message>
+        <source>Load failed</source>
+        <translation>加载失败</translation>
+    </message>
+
+</context>
+<context>
+    <name>OCRFloatingWidget</name>
+
+    <message>
+        <source>Lookup</source>
+        <translation>查词</translation>
+    </message>
+
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
+    </message>
+
+    <message>
+        <source>Confidence: %1%</source>
+        <translation>置信度: %1%</translation>
+    </message>
+
+    <message>
+        <source>🔍 Recognizing...</source>
+        <translation>🔍 正在识别中...</translation>
+    </message>
+
+    <message>
+        <source>No text recognized</source>
+        <translation>未识别到文字</translation>
+    </message>
+
+</context>
+<context>
+    <name>OCRStatusIndicator</name>
+
+    <message>
+        <source>Start OCR</source>
+        <translation>启动OCR</translation>
+    </message>
+
+    <message>
+        <source>Uninitialized</source>
+        <translation>未初始化</translation>
+    </message>
+
+    <message>
+        <source>Loading...</source>
+        <translation>加载中...</translation>
+    </message>
+
+    <message>
+        <source>OCR Ready</source>
+        <translation>OCR就绪</translation>
+    </message>
+
+    <message>
+        <source>Init Failed</source>
+        <translation>初始化失败</translation>
+    </message>
+
+    <message>
+        <source>Unknown State</source>
+        <translation>未知状态</translation>
+    </message>
+
+    <message>
+        <source>Click to start OCR engine
+Once started, OCR lookup will be available in toolbar</source>
+        <translation>点击启动OCR引擎
+启动后可在工具栏启用OCR取词功能</translation>
+    </message>
+
+    <message>
+        <source>OCR engine loading...
+Please wait, OCR lookup will be available after loading
+Double-click to stop engine</source>
+        <translation>OCR引擎加载中...
+请稍候，加载完成后可启用OCR取词
+双击停止引擎</translation>
+    </message>
+
+    <message>
+        <source>OCR engine ready ✓
+OCR lookup available in toolbar
+Double-click to stop engine</source>
+        <translation>OCR引擎已就绪 ✓
+可在工具栏启用OCR取词功能
+双击停止引擎</translation>
+    </message>
+
+    <message>
+        <source>OCR engine initialization failed
+Please check model files and configuration
+Double-click to restart</source>
+        <translation>OCR引擎初始化失败
+请检查模型文件和配置
+双击重新启动</translation>
+    </message>
+
+    <message>
+        <source>OCR engine not initialized
+Click to start engine</source>
+        <translation>OCR引擎未初始化
+点击启动引擎</translation>
+    </message>
+
+    <message>
+        <source>OCR engine state unknown</source>
+        <translation>OCR引擎状态未知</translation>
+    </message>
+
+</context>
+</TS>
