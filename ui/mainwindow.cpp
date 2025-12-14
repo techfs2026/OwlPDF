@@ -572,7 +572,8 @@ void MainWindow::createActions()
     m_openAction->setToolTip(tr("Open File (Ctrl+O)"));
     connect(m_openAction, &QAction::triggered, this, &MainWindow::openFile);
 
-    m_closeAction = new QAction(tr("Close"), this);
+    m_closeAction = new QAction(QIcon(":icons/resources/icons/close-file.png"),
+                               tr("Close"), this);
     m_closeAction->setShortcut(QKeySequence::Close);
     connect(m_closeAction, &QAction::triggered, this, &MainWindow::closeCurrentTab);
 

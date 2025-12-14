@@ -1239,4 +1239,51 @@ Click to start engine</source>
     </message>
 
 </context>
+<context>
+    <name>PDFContentHandler</name>
+
+    <message>
+        <source>Renderer not initialized</source>
+        <translation>渲染器未初始化</translation>
+    </message>
+
+</context>
+<context>
+    <name>PDFInteractionHandler</name>
+
+    <message>
+        <source>Invalid link: %1</source>
+        <translation>无效链接: %1</translation>
+    </message>
+
+    <message>
+        <source>Failed to open link: %1</source>
+        <translation>链接打开失败: %1</translation>
+    </message>
+
+</context>
+<context>
+    <name>OCRManager</name>
+
+    <message>
+        <source>OCR engine not initialized</source>
+        <translation>OCR引擎未初始化</translation>
+    </message>
+
+    <message>
+        <source>OCR engine not ready</source>
+        <translation>OCR引擎未就绪</translation>
+    </message>
+
+    <message>
+        <source>Invalid image</source>
+        <translation>图像无效</translation>
+    </message>
+
+    <message>
+        <source>Engine not initialized</source>
+        <translation>引擎未初始化</translation>
+    </message>
+
+</context>
 </TS>

@@ -28,7 +28,6 @@ void PDFViewHandler::requestGoToPage(int pageIndex,
         return;
     }
 
-    // 双页模式：调整到双页起始位置
     if (adjustForDoublePageMode &&
         currentDisplayMode == PageDisplayMode::DoublePage) {
         pageIndex = getDoublePageStartIndex(pageIndex);
@@ -69,7 +68,6 @@ void PDFViewHandler::requestFirstPage(PageDisplayMode currentDisplayMode)
 {
     int firstPage = 0;
 
-    // 双页模式下第一页也是0
     emit pageNavigationCompleted(firstPage);
 }
 
@@ -81,7 +79,6 @@ void PDFViewHandler::requestLastPage(PageDisplayMode currentDisplayMode, int pag
 
     int lastPage = pageCount - 1;
 
-    // 双页模式：调整到起始位置
     if (currentDisplayMode == PageDisplayMode::DoublePage) {
         lastPage = getDoublePageStartIndex(lastPage);
     }
@@ -94,10 +91,8 @@ int PDFViewHandler::getPreviousPageIndex(PageDisplayMode displayMode,
                                          int currentPage) const
 {
     if (displayMode == PageDisplayMode::DoublePage && !continuousScroll) {
-        // 双页模式：跳2页
         return currentPage - 2;
     }
-    // 单页模式：跳1页
     return currentPage - 1;
 }
 
@@ -106,16 +101,13 @@ int PDFViewHandler::getNextPageIndex(PageDisplayMode displayMode,
                                      int currentPage) const
 {
     if (displayMode == PageDisplayMode::DoublePage && !continuousScroll) {
-        // 双页模式：跳2页
         return currentPage + 2;
     }
-    // 单页模式：跳1页
     return currentPage + 1;
 }
 
 int PDFViewHandler::getDoublePageStartIndex(int pageIndex) const
 {
-    // 双页模式：返回偶数页起始位置（0,2,4,6...）
     return (pageIndex / 2) * 2;
 }
 
@@ -127,8 +119,7 @@ void PDFViewHandler::requestSetZoom(double zoom)
 
 void PDFViewHandler::requestSetZoomMode(ZoomMode mode)
 {
-    // 模式变化，具体zoom值由Session根据viewport计算
-    emit zoomSettingCompleted(-1.0, mode); // -1表示需要重新计算
+    emit zoomSettingCompleted(-1.0, mode);
 }
 
 void PDFViewHandler::requestZoomIn(double currentZoom)
@@ -175,7 +166,6 @@ double PDFViewHandler::calculateFitPageZoom(const QSize& viewportSize,
         return DEFAULT_ZOOM;
     }
 
-    // 考虑旋转
     if (rotation == 90 || rotation == 270) {
         pageSize.transpose();
     }
@@ -209,12 +199,10 @@ double PDFViewHandler::calculateFitWidthZoom(const QSize& viewportSize,
         return DEFAULT_ZOOM;
     }
 
-    // 考虑旋转
     if (rotation == 90 || rotation == 270) {
         pageSize.transpose();
     }
 
-    // 双页模式需要考虑两页宽度
     if (displayMode == PageDisplayMode::DoublePage) {
         int nextPage = currentPage + 1;
         if (nextPage < pageCount) {
@@ -247,7 +235,7 @@ void PDFViewHandler::requestUpdateZoom(const QSize& viewportSize,
                                        int rotation)
 {
     if (zoomMode == ZoomMode::Custom) {
-        return; // Custom模式不自动更新
+        return;
     }
 
     double newZoom = calculateActualZoom(viewportSize, zoomMode, currentZoom,
@@ -265,7 +253,6 @@ void PDFViewHandler::requestSetDisplayMode(PageDisplayMode mode,
 {
     int adjustedPage = currentPage;
 
-    // 切换到双页模式时，自动调整页码
     if (mode == PageDisplayMode::DoublePage) {
         adjustedPage = getDoublePageStartIndex(currentPage);
     }
@@ -299,7 +286,6 @@ bool PDFViewHandler::calculatePagePositions(double zoom,
     for (int i = 0; i < pageCount; ++i) {
         QSizeF pageSize = m_renderer->pageSize(i);
 
-        // 考虑旋转
         if (rotation == 90 || rotation == 270) {
             pageSize.transpose();
         }
@@ -326,7 +312,6 @@ int PDFViewHandler::calculateCurrentPageFromScroll(int scrollY,
 
     int adjustedY = scrollY - margin;
 
-    // 找到当前显示的页面
     for (int i = pageYPositions.size() - 1; i >= 0; --i) {
         if (adjustedY >= pageYPositions[i]) {
             return i;
@@ -363,15 +348,12 @@ QSet<int> PDFViewHandler::getVisiblePages(const QRect& visibleRect,
         return visiblePages;
     }
 
-    // 扩展可见区域，预加载周围页面
     QRect extended = visibleRect.adjusted(0, -preloadMargin, 0, preloadMargin);
 
-    // 找出可见的页面
     for (int i = 0; i < pageYPositions.size(); ++i) {
         int pageTop = pageYPositions[i] + margin;
         int pageBottom = pageTop + pageHeights[i];
 
-        // 判断页面是否在扩展的可见区域内
         if (pageBottom >= extended.top() && pageTop <= extended.bottom()) {
             visiblePages.insert(i);
         }
@@ -382,13 +364,11 @@ QSet<int> PDFViewHandler::getVisiblePages(const QRect& visibleRect,
 
 void PDFViewHandler::requestSetRotation(int rotation)
 {
-    // 规范化旋转角度
     rotation = rotation % 360;
     if (rotation < 0) {
         rotation += 360;
     }
 
-    // 只允许90度的倍数
     rotation = (rotation / 90) * 90;
 
     emit rotationSettingCompleted(rotation);

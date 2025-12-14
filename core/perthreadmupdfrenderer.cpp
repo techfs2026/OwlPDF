@@ -80,7 +80,6 @@ bool PerThreadMuPDFRenderer::createContext()
         return true;
     }
 
-    // 创建新的 context (不使用锁，因为每个实例独立)
     m_context = fz_new_context(nullptr, nullptr, FZ_STORE_DEFAULT);
 
     if (!m_context) {
@@ -89,7 +88,6 @@ bool PerThreadMuPDFRenderer::createContext()
         return false;
     }
 
-    // 注册文档处理器
     fz_try(m_context) {
         fz_register_document_handlers(m_context);
     }
@@ -99,7 +97,6 @@ bool PerThreadMuPDFRenderer::createContext()
         setLastError(err);
         qCritical() << "PerThreadMuPDFRenderer:" << err;
 
-        // 创建失败，清理 context
         fz_drop_context(m_context);
         m_context = nullptr;
         return false;
@@ -114,7 +111,6 @@ void PerThreadMuPDFRenderer::destroyContext()
         return;
     }
 
-    // 销毁 context
     fz_drop_context(m_context);
     m_context = nullptr;
 }
@@ -385,30 +381,23 @@ bool PerThreadMuPDFRenderer::extractText(int pageIndex, PageTextData& outData, Q
     fz_page* page = nullptr;
 
     fz_try(m_context) {
-        // 加载页面
         page = fz_load_page(m_context, m_document, pageIndex);
 
-        // 获取原始边界
         fz_rect bound = fz_bound_page(m_context, page);
 
-        // 创建 stext_page
         stext = fz_new_stext_page(m_context, bound);
 
-        // 设置选项
         fz_stext_options opts;
         memset(&opts, 0, sizeof(opts));
         opts.flags = 0;
 
-        // 创建设备
         fz_device* dev = fz_new_stext_device(m_context, stext, &opts);
 
-        // 使用单位矩阵
         fz_run_page(m_context, page, dev, fz_identity, nullptr);
 
         fz_close_device(m_context, dev);
         fz_drop_device(m_context, dev);
 
-        // 提取文本
         for (fz_stext_block* block = stext->first_block; block; block = block->next) {
             if (block->type != FZ_STEXT_BLOCK_TEXT) continue;
 
@@ -490,7 +479,6 @@ bool PerThreadMuPDFRenderer::isTextPDF(int samplePages)
             fz_close_device(m_context, device);
             fz_drop_device(m_context, device);
 
-            // 检查是否有文本
             for (fz_stext_block* block = stext->first_block; block; block = block->next) {
                 if (block->type == FZ_STEXT_BLOCK_TEXT) {
                     for (fz_stext_line* line = block->u.t.first_line; line; line = line->next) {

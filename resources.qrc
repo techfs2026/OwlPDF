@@ -32,5 +32,6 @@
         <file>resources/windows.ico</file>
         <file>resources/icons/paper-effect.png</file>
         <file>resources/icons/ocr.png</file>
+        <file>resources/icons/close-file.png</file>
     </qresource>
 </RCC>

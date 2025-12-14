@@ -176,10 +176,12 @@ QTabBar::tab:hover:!selected {
 }
 
 QTabBar::close-button {
-    image: url(:/icons/close.png);
+    image: url(:/icons/resources/icons/close-file.png);
     subcontrol-position: right;
-    margin: 2px 4px 2px 2px;
-    padding: 3px;
+    margin: 0 4px 0 2px;
+    padding: 0;
+    width: 20px;
+    height: 20px;
     border-radius: 3px;
 }
 

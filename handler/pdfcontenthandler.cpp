@@ -26,7 +26,7 @@ bool PDFContentHandler::loadDocument(const QString& filePath, QString* errorMess
 {
     if (!m_renderer) {
         if (errorMessage) {
-            *errorMessage = tr("未初始化Renderer");
+            *errorMessage = tr("Renderer not initialized");
         }
         return false;
     }
@@ -142,7 +142,6 @@ void PDFContentHandler::loadThumbnails()
     int pageCount = m_renderer->pageCount();
     qInfo() << "PDFContentHandler: Starting thumbnail loading for" << pageCount << "pages";
 
-    // 通知UI初始化完成
     emit thumbnailsInitialized(pageCount);
 }
 
@@ -154,7 +153,6 @@ void PDFContentHandler::handleVisibleRangeChanged(const QSet<int>& visibleIndice
         return;
     }
 
-    // 仅大文档慢速滚动时响应
     m_thumbnailManager->handleSlowScroll(visibleIndices);
 }
 
@@ -164,7 +162,6 @@ void PDFContentHandler::startInitialThumbnailLoad(const QSet<int>& initialVisibl
         return;
     }
 
-    // 启动智能加载（自动选择策略）
     m_thumbnailManager->startLoading(initialVisible);
 }
 
@@ -174,7 +171,6 @@ void PDFContentHandler::syncLoadUnloadedPages(const QSet<int>& unloadedPages)
         return;
     }
 
-    // 转换为 QVector 并同步加载
     QVector<int> pagesToLoad = unloadedPages.values().toVector();
 
     qInfo() << "PDFContentHandler: Sync loading" << pagesToLoad.size()

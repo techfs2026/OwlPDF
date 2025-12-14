@@ -23,20 +23,17 @@ public:
     explicit PDFContentHandler(PerThreadMuPDFRenderer* renderer, QObject* parent = nullptr);
     ~PDFContentHandler();
 
-    // 文档加载
     bool loadDocument(const QString& filePath, QString* errorMessage = nullptr);
     void closeDocument();
     bool isDocumentLoaded() const;
     int pageCount() const;
 
-    // 大纲管理
     bool loadOutline();
     OutlineItem* outlineRoot() const;
     int outlineItemCount() const;
     bool hasOutline() const;
     void clearOutline();
 
-    // 缩略图管理
     void loadThumbnails();
     void handleVisibleRangeChanged(const QSet<int>& visibleIndices, int margin);
     void startInitialThumbnailLoad(const QSet<int>& initialVisible);
@@ -49,7 +46,6 @@ public:
     QString getThumbnailStatistics() const;
     int cachedThumbnailCount() const;
 
-    // 大纲编辑
     OutlineItem* addOutlineItem(OutlineItem* parent, const QString& title,
                                 int pageIndex, int insertIndex = -1);
     bool deleteOutlineItem(OutlineItem* item);
@@ -57,27 +53,22 @@ public:
     bool saveOutlineChanges(const QString& savePath);
     bool hasUnsavedOutlineChanges() const;
 
-    // 工具方法
     bool isTextPDF(int samplePages = 5) const;
     void reset();
 
-    // 获取子管理器
     OutlineManager* outlineManager() const { return m_outlineManager.get(); }
     ThumbnailManagerV2* thumbnailManager() const { return m_thumbnailManager.get(); }
     OutlineEditor* outlineEditor() const { return m_outlineEditor.get(); }
 
 signals:
-    // 文档事件
     void documentLoaded(const QString& filePath, int pageCount);
     void documentClosed();
     void documentError(const QString& error);
 
-    // 大纲事件
     void outlineLoaded(bool success, int itemCount);
     void outlineModified();
     void outlineSaveCompleted(bool success, const QString& errorMsg);
 
-    // 缩略图事件
     void thumbnailsInitialized(int pageCount);
     void thumbnailLoaded(int pageIndex, const QImage& thumbnail);
     void thumbnailLoadProgress(int current, int total);

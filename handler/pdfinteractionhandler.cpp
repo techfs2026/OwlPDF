@@ -102,7 +102,6 @@ void PDFInteractionHandler::clearSearchResults()
 {
     if (m_searchManager) {
         m_searchManager->clearResults();
-        // 清除后发出搜索完成信号，匹配数为0
         emit searchCompleted(QString(), 0);
     }
 }
@@ -173,22 +172,20 @@ bool PDFInteractionHandler::handleLinkClick(const PDFLink* link)
 
     emit linkClicked(link);
 
-    // 处理内部链接
     if (link->isInternal()) {
         emit internalLinkRequested(link->targetPage);
         return true;
     }
 
-    // 处理外部链接
     if (link->isExternal()) {
         QUrl url(link->uri);
         if (!url.isValid()) {
-            emit linkError(tr("无效链接: %1").arg(link->uri));
+            emit linkError(tr("Invalid link: %1").arg(link->uri));
             return false;
         }
 
         if (!QDesktopServices::openUrl(url)) {
-            emit linkError(tr("链接打开失败: %1").arg(link->uri));
+            emit linkError(tr("Failed to open link: %1").arg(link->uri));
             return false;
         }
 
@@ -248,7 +245,6 @@ void PDFInteractionHandler::clearTextSelection()
 {
     if (m_textSelector) {
         m_textSelector->clearSelection();
-        // 清除后发出状态变化信号
         emit textSelectionChanged(false, QString());
     }
 }
@@ -304,7 +300,6 @@ bool PDFInteractionHandler::isTextSelecting() const
 
 void PDFInteractionHandler::setupConnections()
 {
-    // 连接搜索管理器信号
     if (m_searchManager) {
         connect(m_searchManager.get(), &SearchManager::searchProgress,
                 this, &PDFInteractionHandler::searchProgressUpdated);
@@ -316,7 +311,6 @@ void PDFInteractionHandler::setupConnections()
                 this, &PDFInteractionHandler::searchError);
     }
 
-    // 连接文本选择器信号
     if (m_textSelector) {
         connect(m_textSelector.get(), &TextSelector::selectionChanged,
                 this, [this]() {

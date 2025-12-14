@@ -144,7 +144,6 @@ int PDFDocumentState::getRestoredScrollPosition(int margin) const
         return -1;
     }
 
-    // 使用新的positions计算绝对位置
     int pageTop = m_pageYPositions[m_viewportRestore.pageIndex] + margin;
     int pageHeight = m_pageHeights[m_viewportRestore.pageIndex];
 
