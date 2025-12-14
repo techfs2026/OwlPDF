@@ -41,16 +41,13 @@ protected:
 
             QRect rect = tabRect(i);
 
-            // 绘制背景
             if (opt.state & QStyle::State_Selected) {
                 painter.fillRect(rect, QColor(255, 255, 255));
-                // 左侧指示线
                 painter.fillRect(rect.left(), rect.top(), 2, rect.height(), QColor(33, 150, 243));
             } else if (opt.state & QStyle::State_MouseOver) {
                 painter.fillRect(rect, QColor(245, 245, 243));
             }
 
-            // 绘制文字（不旋转）
             painter.save();
             painter.setPen(opt.state & QStyle::State_Selected ? QColor(28, 28, 30) : QColor(107, 107, 105));
 
@@ -59,7 +56,6 @@ protected:
             font.setWeight(opt.state & QStyle::State_Selected ? QFont::DemiBold : QFont::Normal);
             painter.setFont(font);
 
-            // 直接绘制文字，使用换行符会自动换行
             painter.drawText(rect, Qt::AlignCenter, tabText(i));
             painter.restore();
         }
@@ -71,7 +67,6 @@ class CustomTabWidget : public QTabWidget
 public:
     CustomTabWidget(QWidget* parent = nullptr) : QTabWidget(parent)
     {
-        // 在构造函数中设置自定义 TabBar
         setTabBar(new NoRotateTabBar(this));
     }
 };
@@ -111,7 +106,6 @@ void NavigationPanel::loadDocument(int pageCount)
 
     qInfo() << "NavigationPanel: Loading document with" << pageCount << "pages";
 
-    // 通过Session加载大纲
     bool hasOutline = m_session->loadOutline();
     if (hasOutline) {
         qInfo() << "NavigationPanel: Outline available";
@@ -119,14 +113,12 @@ void NavigationPanel::loadDocument(int pageCount)
         qInfo() << "NavigationPanel: No outline available";
     }
 
-    // 通过Session加载缩略图
     m_session->loadThumbnails();
 
-    // 默认显示标签页
     if (hasOutline) {
-        m_tabWidget->setCurrentIndex(0); // 大纲
+        m_tabWidget->setCurrentIndex(0);
     } else {
-        m_tabWidget->setCurrentIndex(1); // 缩略图
+        m_tabWidget->setCurrentIndex(1);
     }
 }
 
@@ -149,7 +141,7 @@ void NavigationPanel::clear()
 void NavigationPanel::onTabChanged(int index) {
     updateCurrentPage(m_session->state()->currentPage());
 
-    if (index == 1 && m_thumbnailWidget) {  // 1 = 缩略图标签页
+    if (index == 1 && m_thumbnailWidget) {
         QTimer::singleShot(50, this, [this]() {
             if (m_thumbnailWidget) {
                 QSet<int> unloadedVisible = m_thumbnailWidget->getUnloadedVisiblePages();
@@ -187,13 +179,11 @@ void NavigationPanel::setupUI()
     m_tabWidget->setMinimumWidth(200);
     m_tabWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
 
-    // ========== 大纲标签页 ==========
     QWidget* outlineTab = new QWidget(this);
     QVBoxLayout* outlineLayout = new QVBoxLayout(outlineTab);
     outlineLayout->setContentsMargins(0, 0, 0, 0);
     outlineLayout->setSpacing(0);
 
-    // 大纲工具栏
     QWidget* outlineToolbar = new QWidget(this);
     outlineToolbar->setObjectName("outlineToolbar");
     outlineToolbar->setFixedHeight(44);
@@ -205,14 +195,14 @@ void NavigationPanel::setupUI()
 
     m_expandAllBtn = new QToolButton(this);
     m_expandAllBtn->setIcon(QIcon(":icons/resources/icons/expand.png"));
-    m_expandAllBtn->setToolTip(tr("展开全部"));
+    m_expandAllBtn->setToolTip(tr("Expand All"));
     m_expandAllBtn->setObjectName("outlineToolButton");
     m_expandAllBtn->setFixedSize(28, 28);
     m_expandAllBtn->setIconSize(QSize(14, 14));
 
     m_collapseAllBtn = new QToolButton(this);
     m_collapseAllBtn->setIcon(QIcon(":icons/resources/icons/fold.png"));
-    m_collapseAllBtn->setToolTip(tr("折叠全部"));
+    m_collapseAllBtn->setToolTip(tr("Collapse All"));
     m_collapseAllBtn->setObjectName("outlineToolButton");
     m_collapseAllBtn->setFixedSize(28, 28);
     m_collapseAllBtn->setIconSize(QSize(20, 20));
@@ -221,28 +211,24 @@ void NavigationPanel::setupUI()
     toolbarLayout->addWidget(m_expandAllBtn);
     toolbarLayout->addWidget(m_collapseAllBtn);
 
-    m_outlineWidget = new OutlineWidget(m_session->contentHandler(), this);
-    m_outlineWidget->setMinimumWidth(0);
-    m_outlineWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    m_outlineWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    m_outlineWidget->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-
     outlineLayout->addWidget(outlineToolbar);
-    outlineLayout->addWidget(m_outlineWidget, 1);
 
+    m_outlineWidget = new OutlineWidget(m_session->contentHandler(), this);
+    m_outlineWidget->setObjectName("outlineWidget");
+    m_outlineWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    outlineLayout->addWidget(m_outlineWidget, 1);
     outlineTab->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    // ========== 缩略图标签页 ==========
     QWidget* thumbnailTab = new QWidget(this);
     QVBoxLayout* thumbnailLayout = new QVBoxLayout(thumbnailTab);
     thumbnailLayout->setContentsMargins(0, 0, 0, 0);
     thumbnailLayout->setSpacing(0);
 
     m_thumbnailWidget = new ThumbnailWidget(this);
+    m_thumbnailWidget->setObjectName("thumbnailWidget");
     m_thumbnailWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    m_thumbnailWidget->setMinimumWidth(0);
 
-    // 缩略图状态栏
     QWidget* statusBar = new QWidget(this);
     statusBar->setObjectName("thumbnailStatusBar");
     statusBar->setFixedHeight(32);
@@ -272,8 +258,8 @@ void NavigationPanel::setupUI()
 
     thumbnailTab->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    m_tabWidget->addTab(outlineTab, tr("目\n录"));
-    m_tabWidget->addTab(thumbnailTab, tr("缩\n略\n图"));
+    m_tabWidget->addTab(outlineTab, tr("Outline"));
+    m_tabWidget->addTab(thumbnailTab, tr("Thumbnails"));
 
     m_tabWidget->setTabPosition(QTabWidget::West);
     m_tabWidget->setUsesScrollButtons(false);
@@ -289,7 +275,6 @@ void NavigationPanel::setupUI()
 
 void NavigationPanel::setupConnections()
 {
-    // ========== OutlineWidget信号 ==========
     connect(m_outlineWidget, &OutlineWidget::pageJumpRequested,
             this, &NavigationPanel::pageJumpRequested);
 
@@ -298,12 +283,12 @@ void NavigationPanel::setupConnections()
                 QUrl url(uri);
                 if (url.isValid()) {
                     if (!QDesktopServices::openUrl(url)) {
-                        QMessageBox::warning(this, tr("打开链接失败"),
-                                             tr("打开链接失败:\n%1").arg(uri));
+                        QMessageBox::warning(this, tr("Failed to Open Link"),
+                                             tr("Failed to open link:\n%1").arg(uri));
                     }
                 } else {
-                    QMessageBox::warning(this, tr("无效链接"),
-                                         tr("无效链接:\n%1").arg(uri));
+                    QMessageBox::warning(this, tr("Invalid Link"),
+                                         tr("Invalid link:\n%1").arg(uri));
                 }
                 emit externalLinkRequested(uri);
             });
@@ -318,7 +303,6 @@ void NavigationPanel::setupConnections()
     connect(m_collapseAllBtn, &QToolButton::clicked,
             m_outlineWidget, &OutlineWidget::collapseAll);
 
-    // ========== ThumbnailWidget信号 ==========
     if (m_session && m_session->contentHandler() &&
         m_session->contentHandler()->thumbnailManager()) {
         m_thumbnailWidget->setThumbnailManager(
@@ -328,7 +312,6 @@ void NavigationPanel::setupConnections()
     connect(m_thumbnailWidget, &ThumbnailWidget::pageJumpRequested,
             this, &NavigationPanel::pageJumpRequested);
 
-    // 监听ThumbnailWidget的可见区域变化，通知ContentHandler加载
     connect(m_thumbnailWidget, &ThumbnailWidget::visibleRangeChanged,
             this, [this](const QSet<int>& visibleIndices, int margin) {
                 if (m_session && m_session->contentHandler()) {
@@ -336,7 +319,6 @@ void NavigationPanel::setupConnections()
                 }
             });
 
-    // 连接慢速滚动信号（仅大文档生效）
     connect(m_thumbnailWidget, &ThumbnailWidget::slowScrollDetected,
             this, [this](const QSet<int>& visiblePages) {
                 if (m_session && m_session->contentHandler()) {
@@ -344,7 +326,6 @@ void NavigationPanel::setupConnections()
                 }
             });
 
-    // 保留滚动停止时的同步加载连接
     connect(m_thumbnailWidget, &ThumbnailWidget::syncLoadRequested,
             this, [this](const QSet<int>& unloadedVisible) {
                 if (m_session && m_session->contentHandler()) {
@@ -359,9 +340,7 @@ void NavigationPanel::setupConnections()
                 }
             });
 
-    // ========== Session信号连接 ==========
     if (m_session) {
-        // 大纲加载完成
         connect(m_session, &PDFDocumentSession::outlineLoaded,
                 this, [this](bool success, int itemCount) {
                     if (success && m_outlineWidget) {
@@ -370,20 +349,17 @@ void NavigationPanel::setupConnections()
                     }
                 });
 
-        // 缩略图初始化完成 - UI创建占位符
         connect(m_session->contentHandler(), &PDFContentHandler::thumbnailsInitialized,
                 this, [this](int pageCount) {
                     qInfo() << "NavigationPanel: Initializing" << pageCount << "thumbnail placeholders";
                     m_thumbnailWidget->initializeThumbnails(pageCount);
                 });
 
-        // 缩略图加载完成 - UI更新图片
         connect(m_session, &PDFDocumentSession::thumbnailLoaded,
                 this, [this](int pageIndex, const QImage& thumbnail) {
                     m_thumbnailWidget->onThumbnailLoaded(pageIndex, thumbnail);
                 });
 
-        // 编辑器保存完成信号
         OutlineEditor* editor = m_session->outlineEditor();
         if (editor) {
             connect(editor, &OutlineEditor::saveCompleted,
@@ -396,24 +372,20 @@ void NavigationPanel::setupConnections()
                     });
         }
 
-        // ========== ThumbnailManager进度信号 ==========
         if (m_session->contentHandler() && m_session->contentHandler()->thumbnailManager()) {
             ThumbnailManagerV2* manager = m_session->contentHandler()->thumbnailManager();
 
-            // 加载开始
             connect(manager, &ThumbnailManagerV2::loadingStarted,
                     this, [this](int totalPages, const QString& strategy) {
                         qInfo() << "Thumbnail loading started:" << strategy << "for" << totalPages << "pages";
-                        m_thumbnailStatusLabel->setText(tr("加载开始..."));
+                        m_thumbnailStatusLabel->setText(tr("Loading started..."));
                     });
 
-            // 状态变化
             connect(manager, &ThumbnailManagerV2::loadingStatusChanged,
                     this, [this](const QString& status) {
                         m_thumbnailStatusLabel->setText(status);
                     });
 
-            // 批次进度（中文档）
             connect(manager, &ThumbnailManagerV2::batchCompleted,
                     this, [this](int current, int total) {
                         m_thumbnailProgressBar->setVisible(true);
@@ -422,27 +394,24 @@ void NavigationPanel::setupConnections()
                         m_thumbnailProgressBar->setFormat(QString("%1/%2").arg(current).arg(total));
                     });
 
-            // 全部完成
             connect(manager, &ThumbnailManagerV2::allCompleted,
                     this, [this]() {
-                        m_thumbnailStatusLabel->setText(tr("加载完毕！"));
+                        m_thumbnailStatusLabel->setText(tr("Loading complete!"));
                         m_thumbnailProgressBar->setVisible(false);
 
-                        // 3秒后恢复默认状态
                         QTimer::singleShot(3000, this, [this]() {
                             if (m_thumbnailStatusLabel) {
-                                m_thumbnailStatusLabel->setText(tr("加载成功！"));
+                                m_thumbnailStatusLabel->setText(tr("Loaded successfully!"));
                             }
                         });
                     });
 
-            // 加载进度（用于同步加载阶段）
             connect(manager, &ThumbnailManagerV2::loadProgress,
                     this, [this](int current, int total) {
                         if (total > 0) {
                             int percentage = current * 100 / total;
                             m_thumbnailStatusLabel->setText(
-                                tr("加载中: %1/%2 (%3%)")
+                                tr("Loading: %1/%2 (%3%)")
                                     .arg(current)
                                     .arg(total)
                                     .arg(percentage)

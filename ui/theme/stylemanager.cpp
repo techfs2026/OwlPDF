@@ -185,7 +185,6 @@ QString StyleManager::getFullStyleSheet()
         "scrollbar",
         "menu",
         "button",
-        "common"
     };
 
     for (const QString& component : components) {

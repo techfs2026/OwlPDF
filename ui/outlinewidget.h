@@ -20,9 +20,6 @@ enum LocalDropIndicator {
     DI_Inside
 };
 
-/**
- * @brief 拖拽覆盖层组件 - PDF Expert 风格
- */
 class DragOverlayWidget : public QWidget {
 public:
     DragOverlayWidget(QWidget* parent = nullptr)
@@ -80,9 +77,7 @@ protected:
     }
 };
 
-/**
- * @brief 自定义代理，用于绘制展开/折叠图标和自定义布局
- */
+
 class OutlineItemDelegate : public QStyledItemDelegate
 {
     Q_OBJECT
@@ -100,7 +95,6 @@ public:
     {
         painter->save();
 
-        // 绘制背景（选中、悬停等状态）
         if (option.state & QStyle::State_Selected) {
             painter->fillRect(option.rect, m_darkMode ? QColor("#0A4B7F") : QColor("#E3F2FD"));
         } else if (option.state & QStyle::State_MouseOver) {
@@ -118,7 +112,6 @@ public:
             return;
         }
 
-        // 计算深度和缩进
         int indent = m_treeWidget->indentation();
         int depth = 0;
         QTreeWidgetItem* parent = item->parent();
@@ -129,11 +122,9 @@ public:
 
         int leftMargin = 8 + depth * indent;
 
-        // 如果有子项，绘制展开/折叠三角形
         if (item->childCount() > 0) {
             painter->setRenderHint(QPainter::Antialiasing);
 
-            // 三角形颜色 - 更明显
             QColor iconColor = m_darkMode ? QColor("#AEAEB2") : QColor("#8E8E93");
             if (option.state & QStyle::State_MouseOver) {
                 iconColor = m_darkMode ? QColor("#0A84FF") : QColor("#007AFF");
@@ -147,46 +138,39 @@ public:
 
             QPolygonF triangle;
             if (item->isExpanded()) {
-                // 向下的三角形 ▼ - 稍大一些
                 triangle << QPointF(triangleX, triangleY - 2)
                          << QPointF(triangleX + 10, triangleY - 2)
                          << QPointF(triangleX + 5, triangleY + 4);
             } else {
-                // 向右的三角形 ▶ - 稍大一些
                 triangle << QPointF(triangleX, triangleY - 5)
                          << QPointF(triangleX + 7, triangleY)
                          << QPointF(triangleX, triangleY + 5);
             }
 
             painter->drawPolygon(triangle);
-            leftMargin += 20; // 为三角形留出空间
+            leftMargin += 20;
         } else {
-            leftMargin += 20; // 保持对齐
+            leftMargin += 20;
         }
 
-        // 获取文本和页码
         QString fullText = item->text(0);
         QString title = fullText;
         QString pageNum;
 
-        // 分离标题和页码
         int separatorPos = fullText.indexOf("  •  ");
         if (separatorPos > 0) {
             title = fullText.left(separatorPos);
             pageNum = fullText.mid(separatorPos + 5);
         }
 
-        // 设置字体
         QFont font = item->font(0);
-        font.setPointSize(10); // 缩小字体
+        font.setPointSize(10);
         painter->setFont(font);
 
-        // 设置文字颜色
         QColor textColor;
         if (option.state & QStyle::State_Selected) {
             textColor = m_darkMode ? QColor("#0A84FF") : QColor("#007AFF");
         } else {
-            // 检查是否有页码链接
             QVariant pageVar = item->data(0, Qt::UserRole + 1);
             if (pageVar.isValid()) {
                 textColor = m_darkMode ? QColor("#0A84FF") : QColor("#007AFF");
@@ -196,23 +180,20 @@ public:
         }
         painter->setPen(textColor);
 
-        // 计算可用宽度
         int rightMargin = 8;
         int pageNumWidth = 0;
 
         if (!pageNum.isEmpty()) {
             QFontMetrics fm(font);
-            pageNumWidth = fm.horizontalAdvance(pageNum) + 16; // 页码宽度 + 间距
+            pageNumWidth = fm.horizontalAdvance(pageNum) + 16;
         }
 
-        // 绘制标题（左对齐）
         QRect titleRect = option.rect.adjusted(leftMargin, 0, -pageNumWidth - rightMargin, 0);
         painter->drawText(titleRect, Qt::AlignLeft | Qt::AlignVCenter, title);
 
-        // 绘制页码（右对齐，颜色稍浅）
         if (!pageNum.isEmpty()) {
             QColor pageColor = textColor;
-            pageColor.setAlpha(180); // 稍微透明
+            pageColor.setAlpha(180);
             painter->setPen(pageColor);
 
             QRect pageRect = option.rect.adjusted(option.rect.width() - pageNumWidth - rightMargin,
@@ -227,7 +208,7 @@ public:
                    const QModelIndex& index) const override
     {
         QSize size = QStyledItemDelegate::sizeHint(option, index);
-        if (size.height() < 28) { // 稍微减小行高
+        if (size.height() < 28) {
             size.setHeight(28);
         }
         return size;
@@ -238,9 +219,6 @@ private:
     bool m_darkMode;
 };
 
-/**
- * @brief PDF大纲树形视图组件 (PDF Expert风格)
- */
 class OutlineWidget : public QTreeWidget
 {
     Q_OBJECT

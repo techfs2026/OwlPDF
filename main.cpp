@@ -3,6 +3,8 @@
 
 #include <QApplication>
 #include <QMessageBox>
+#include <QTranslator>
+#include <QLocale>
 
 int main(int argc, char *argv[])
 {
@@ -13,6 +15,13 @@ int main(int argc, char *argv[])
     StyleManager::instance().initialize();
     StyleManager::instance().setTheme("light");
     StyleManager::instance().applyStyleToApplication(&app);
+
+    QTranslator translator;
+    QString locale = QLocale::system().name();
+
+    if (translator.load(":/translations/muqt_" + locale)) {
+        app.installTranslator(&translator);
+    }
 
     MainWindow mainWindow;
     mainWindow.show();

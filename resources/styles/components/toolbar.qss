@@ -3,7 +3,7 @@
 QToolBar {
     background-color: @surface-color;
     border: none;
-    spacing: 4px;
+    spacing: 2px;
     padding: 6px 8px;
     min-height: 48px;
 }
@@ -11,7 +11,7 @@ QToolBar {
 QToolBar::separator {
     background-color: @border-light;
     width: 1px;
-    margin: 10px 6px;
+    margin: 10px 4px;
 }
 
 /* 工具按钮 */
@@ -20,7 +20,8 @@ QToolBar QToolButton {
     border: 1px solid transparent;
     border-radius: 6px;
     color: @text-primary;
-    padding: 6px;
+    padding: 0px;
+    margin: 0px 1px;  /* 添加极小的左右边距，保持视觉统一 */
     min-width: 32px;
     min-height: 32px;
 }
@@ -82,6 +83,7 @@ QToolBar QSpinBox {
     min-height: 26px;
     min-width: 80px;
     max-width: 100px;
+    margin: 0px 2px;  /* 添加边距与按钮保持一致 */
 }
 
 QToolBar QSpinBox:hover {
@@ -105,6 +107,7 @@ QToolBar QComboBox {
     min-height: 26px;
     min-width: 70px;
     max-width: 90px;
+    margin: 0px 2px;  /* 添加边距与按钮保持一致 */
 }
 
 QToolBar QComboBox:hover {
@@ -132,7 +135,7 @@ QToolBar QComboBox::drop-down:hover {
 }
 
 QToolBar QComboBox::down-arrow {
-    image: url(:/icons/expand.png);
+    image: url(:/icons/resources/icons/expand.png);
     width: 10px;
     height: 10px;
 }
@@ -140,7 +143,8 @@ QToolBar QComboBox::down-arrow {
 /* 工具栏标签 */
 QToolBar QLabel {
     color: @text-secondary;
-    padding: 0px 6px;
+    padding: 0px 4px;
+    margin: 0px 2px;
     font-size: 12px;
 }
 
@@ -150,6 +154,7 @@ QToolBar #buttonGroup {
     border: 1px solid @border-light;
     border-radius: 6px;
     padding: 2px;
+    margin: 0px 2px;
 }
 
 QToolBar #buttonGroup QToolButton {

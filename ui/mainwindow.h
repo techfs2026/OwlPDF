@@ -30,23 +30,19 @@ protected:
     void closeEvent(QCloseEvent* event) override;
 
 private slots:
-    // 文件操作
     void openFile();
     void closeCurrentTab();
     void quit();
 
-    // 标签页管理
     void onTabChanged(int index);
     void onTabCloseRequested(int index);
 
-    // 页面导航
     void previousPage();
     void nextPage();
     void firstPage();
     void lastPage();
     void goToPage(int page);
 
-    // 缩放操作
     void zoomIn();
     void zoomOut();
     void actualSize();
@@ -54,21 +50,17 @@ private slots:
     void fitWidth();
     void onZoomComboChanged(const QString& text);
 
-    // 视图操作
     void togglePageMode(PageDisplayMode mode);
     void toggleContinuousScroll();
     void toggleNavigationPanel();
     void toggleLinksVisible();
 
-    // 搜索操作
     void showSearchBar();
     void findNext();
     void findPrevious();
 
-    // 文本操作
     void copySelectedText();
 
-    // 当前Tab事件响应
     void onCurrentTabPageChanged(int pageIndex);
     void onCurrentTabZoomChanged(double zoom);
     void onCurrentTabDisplayModeChanged(PageDisplayMode mode);
@@ -91,13 +83,11 @@ private:
     void createActions();
     void setupConnections();
 
-    // 状态管理
     void updateUIState();
     void updateWindowTitle();
     void updateStatusBar();
     void updateZoomCombox(double zoom);
 
-    // 标签页管理
     PDFDocumentTab* currentTab() const;
     PDFDocumentTab* createNewTab();
     void connectTabSignals(PDFDocumentTab* tab);
@@ -110,20 +100,16 @@ private:
     QString getEngineStateText(OCREngineState state) const;
 
 private:
-
-    // UI组件
     QTabWidget* m_tabWidget;
     QDockWidget* m_navigationDock;
     QToolBar* m_toolBar;
     QSpinBox* m_pageSpinBox;
     QComboBox* m_zoomComboBox;
 
-    // 状态栏
     QLabel* m_statusLabel;
     QLabel* m_pageLabel;
     QLabel* m_zoomLabel;
 
-    // 菜单Actions
     QAction* m_openAction;
     QAction* m_closeAction;
     QAction* m_quitAction;
@@ -151,17 +137,14 @@ private:
     QAction* m_nextPageAction;
     QAction* m_lastPageAction;
 
-    // 工具栏Actions（用于状态同步）
     QAction* m_navPanelAction;
 
     QAction* m_paperEffectAction;
 
-    // 防抖定时器
     QTimer m_resizeDebounceTimer;
 
-    // OCR相关
-    QAction* m_ocrHoverAction;           // 工具栏的OCR按钮
-    OCRStatusIndicator* m_ocrIndicator;  // 状态栏的指示器
+    QAction* m_ocrHoverAction;
+    OCRStatusIndicator* m_ocrIndicator;
     bool m_ocrInitialized;
 };
 

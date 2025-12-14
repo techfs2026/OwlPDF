@@ -16,12 +16,12 @@ set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/deploy")
 # Qt automatic MOC/RCC/UIC
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC OFF)
+set(CMAKE_AUTOUIC ON)
 
 # -----------------------------
 # Find Qt
 # -----------------------------
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Concurrent)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Concurrent LinguistTools)
 
 if(WIN32)
     set(APP_ICON_RESOURCE_WINDOWS "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
@@ -73,6 +73,11 @@ list(FILTER PROJECT_SOURCES EXCLUDE REGEX "${CMAKE_CURRENT_BINARY_DIR}")
 list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*_autogen.*")
 list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*/CMakeFiles/.*")
 
+set(TS_FILES
+    translations/muqt_zh_CN.ts
+    translations/muqt_en_US.ts
+)
+
 # -----------------------------
 # Create the executable target
 # -----------------------------
@@ -82,6 +87,11 @@ qt_add_executable(MuQt
     WIN32 MACOSX_BUNDLE
     ${PROJECT_SOURCES}
     ${APP_ICON_RESOURCE_WINDOWS}
+)
+
+qt_add_translations(MuQt
+    TS_FILES ${TS_FILES}
+    RESOURCE_PREFIX "/translations"
 )
 
 # -----------------------------

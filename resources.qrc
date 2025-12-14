@@ -2,7 +2,6 @@
     <qresource prefix="/styles">
         <file>resources/styles/themes/light.qss</file>
         <file>resources/styles/components/button.qss</file>
-        <file>resources/styles/components/common.qss</file>
         <file>resources/styles/components/mainwindow.qss</file>
         <file>resources/styles/components/menu.qss</file>
         <file>resources/styles/components/navigationpanel.qss</file>

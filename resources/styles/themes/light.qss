@@ -28,7 +28,7 @@ QMainWindow::separator {
 QToolTip {
     background-color: @text-primary;
     color: @surface-color;
-    border: 1px solid @border-medium;
+    border: none;
     border-radius: 6px;
     padding: 6px 10px;
     font-size: 12px;

@@ -45,7 +45,6 @@ private:
     QToolButton* m_expandAllBtn;
     QToolButton* m_collapseAllBtn;
 
-    // 缩略图状态提示
     QLabel* m_thumbnailStatusLabel;
     QProgressBar* m_thumbnailProgressBar;
 };

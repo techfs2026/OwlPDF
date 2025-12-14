@@ -29,7 +29,7 @@ OutlineWidget::OutlineWidget(PDFContentHandler* contentHandler, QWidget* parent)
 {
     setupUI();
 
-    // 启用拖拽
+
     setDragEnabled(true);
     setAcceptDrops(true);
     setDropIndicatorShown(false);
@@ -48,17 +48,17 @@ OutlineWidget::~OutlineWidget()
 
 void OutlineWidget::setupUI()
 {
-    // 设置列
+
     setColumnCount(1);
     setHeaderHidden(true);
 
-    // 设置样式和行为
+
     setAlternatingRowColors(false);
     setAnimated(true);
-    setIndentation(20);  // 确保缩进足够显示图标
+    setIndentation(20);
     setIconSize(QSize(16, 16));
     setMouseTracking(true);
-    setExpandsOnDoubleClick(true); // 保留双击展开作为备用
+    setExpandsOnDoubleClick(true);
     setUniformRowHeights(false);
     setSelectionMode(QAbstractItemView::SingleSelection);
     setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -71,7 +71,7 @@ void OutlineWidget::setupUI()
     m_overlay->resize(viewport()->size());
     m_overlay->show();
 
-    // 设置自定义代理 - 传递 this 指针
+
     m_itemDelegate = new OutlineItemDelegate(this, this);
     setItemDelegate(m_itemDelegate);
 }
@@ -83,7 +83,7 @@ void OutlineWidget::mousePressEvent(QMouseEvent* event)
         QRect rect = visualItemRect(item);
         int indent = indentation();
 
-        // 计算项目的深度
+
         int depth = 0;
         QTreeWidgetItem* parent = item->parent();
         while (parent) {
@@ -91,22 +91,22 @@ void OutlineWidget::mousePressEvent(QMouseEvent* event)
             parent = parent->parent();
         }
 
-        // 图标的 X 坐标范围（与代理中的绘制位置一致）
+
         int leftMargin = 8 + depth * indent;
         int iconX = leftMargin + 4;
-        int iconWidth = 20; // 点击区域宽度
+        int iconWidth = 20;
 
-        // 如果点击在图标区域，切换展开状态
+
         if (event->pos().x() >= iconX &&
             event->pos().x() <= iconX + iconWidth) {
             item->setExpanded(!item->isExpanded());
             event->accept();
-            viewport()->update(); // 强制重绘以更新三角形
+            viewport()->update();
             return;
         }
     }
 
-    // 否则调用基类处理（选中项目等）
+
     QTreeWidget::mousePressEvent(event);
 }
 
@@ -126,7 +126,7 @@ bool OutlineWidget::loadOutline()
         return false;
     }
 
-    // 通过 PDFContentHandler 获取大纲根节点
+
     OutlineItem* root = m_contentHandler->outlineRoot();
     if (!root) {
         qWarning() << "OutlineWidget::loadOutline: No root available";
@@ -135,13 +135,13 @@ bool OutlineWidget::loadOutline()
 
     if (root->childCount() == 0) {
         qInfo() << "OutlineWidget::loadOutline: Outline is empty (no items yet)";
-        return true;  // 返回 true，表示结构正常，只是没内容
+        return true;
     }
 
-    // 递归构建树
+
     buildTree(root, nullptr);
 
-    // 默认展开第一层
+
     expandToDepth(0);
 
     clearSelection();
@@ -164,14 +164,14 @@ void OutlineWidget::highlightCurrentPage(int pageIndex)
 {
     m_currentPageIndex = pageIndex;
 
-    // 清除之前的高亮
+
     if (m_currentHighlight) {
         QFont font = m_currentHighlight->font(0);
         font.setBold(false);
         m_currentHighlight->setFont(0, font);
     }
 
-    // 查找并高亮新项
+
     QTreeWidgetItem* item = findItemByPage(pageIndex);
     if (item) {
         QFont font = item->font(0);
@@ -230,35 +230,35 @@ QMenu* OutlineWidget::createContextMenu(QTreeWidgetItem* item)
     QMenu* menu = new QMenu(this);
 
     if (item) {
-        // 编辑选中的大纲项
-        QAction* editAction = menu->addAction(tr("✏️  编辑"));
+
+        QAction* editAction = menu->addAction(tr("✏️  Edit"));
         connect(editAction, &QAction::triggered,
                 this, &OutlineWidget::onEditOutline);
 
-        QAction* addChildAction = menu->addAction(tr("➕  添加子项"));
+        QAction* addChildAction = menu->addAction(tr("➕  Add Child"));
         connect(addChildAction, &QAction::triggered,
                 this, &OutlineWidget::onAddChildOutline);
 
-        QAction* addSiblingAction = menu->addAction(tr("➕  添加同级项"));
+        QAction* addSiblingAction = menu->addAction(tr("➕  Add Sibling"));
         connect(addSiblingAction, &QAction::triggered,
                 this, &OutlineWidget::onAddSiblingOutline);
 
         menu->addSeparator();
 
-        QAction* deleteAction = menu->addAction(tr("🗑️  删除"));
+        QAction* deleteAction = menu->addAction(tr("🗑️  Delete"));
         deleteAction->setShortcut(QKeySequence::Delete);
         connect(deleteAction, &QAction::triggered,
                 this, &OutlineWidget::onDeleteOutline);
     } else {
-        // 在根层级添加大纲
-        QAction* addAction = menu->addAction(tr("➕  添加目录项"));
+
+        QAction* addAction = menu->addAction(tr("➕  Add Outline Item"));
         connect(addAction, &QAction::triggered,
                 this, &OutlineWidget::onAddChildOutline);
     }
 
     menu->addSeparator();
 
-    QAction* saveAction = menu->addAction(tr("💾  保存到PDF"));
+    QAction* saveAction = menu->addAction(tr("💾  Save to PDF"));
     saveAction->setEnabled(m_outlineEditor && m_outlineEditor->hasUnsavedChanges());
     connect(saveAction, &QAction::triggered,
             this, &OutlineWidget::onSaveToDocument);
@@ -266,10 +266,10 @@ QMenu* OutlineWidget::createContextMenu(QTreeWidgetItem* item)
     if (topLevelItemCount() > 0) {
         menu->addSeparator();
 
-        QAction* deleteAllAction = menu->addAction(tr("🗑️  删除全部"));
-        deleteAllAction->setToolTip(tr("删除所有目录项"));
+        QAction* deleteAllAction = menu->addAction(tr("🗑️  Delete All"));
+        deleteAllAction->setToolTip(tr("Delete all outline items"));
 
-        // 使用红色警告样式
+
         QFont font = deleteAllAction->font();
         font.setBold(true);
         deleteAllAction->setFont(font);
@@ -289,7 +289,7 @@ void OutlineWidget::onItemClicked(QTreeWidgetItem* item, int column)
         return;
     }
 
-    // 获取页码
+
     QVariant pageVar = item->data(0, PageIndexRole);
     if (pageVar.isValid()) {
         int pageIndex = pageVar.toInt();
@@ -299,7 +299,7 @@ void OutlineWidget::onItemClicked(QTreeWidgetItem* item, int column)
         }
     }
 
-    // 获取外部链接
+
     QVariant uriVar = item->data(0, UriRole);
     if (uriVar.isValid()) {
         QString uri = uriVar.toString();
@@ -345,11 +345,11 @@ void OutlineWidget::onAddChildOutline()
             clearSelection();
             setCurrentItem(nullptr);
 
-            QMessageBox::information(this, tr("成功"),
-                                     tr("目录项已添加!\n记得保存到PDF文档。"));
+            QMessageBox::information(this, tr("Success"),
+                                     tr("Outline item added!\nRemember to save to PDF."));
         } else {
-            QMessageBox::warning(this, tr("失败"),
-                                 tr("添加目录项失败!"));
+            QMessageBox::warning(this, tr("Failed"),
+                                 tr("Failed to add outline item!"));
         }
     }
 }
@@ -394,11 +394,11 @@ void OutlineWidget::onAddSiblingOutline()
             parentItem, title, pageIndex);
 
         if (newItem) {
-            QMessageBox::information(this, tr("成功"),
-                                     tr("目录项已添加!\n记得保存到PDF文档。"));
+            QMessageBox::information(this, tr("Success"),
+                                     tr("Outline item added!\nRemember to save to PDF."));
         } else {
-            QMessageBox::warning(this, tr("失败"),
-                                 tr("添加目录项失败!"));
+            QMessageBox::warning(this, tr("Failed"),
+                                 tr("Failed to add outline item!"));
         }
     }
 }
@@ -411,7 +411,7 @@ void OutlineWidget::onEditOutline()
     QList<QTreeWidgetItem*> selectedItems = this->selectedItems();
 
     if (selectedItems.isEmpty()) {
-        QMessageBox::warning(this, tr("提示"), tr("请先选择要编辑的目录项!"));
+        QMessageBox::warning(this, tr("Hint"), tr("Please select an outline item to edit first!"));
         return;
     }
 
@@ -447,8 +447,8 @@ void OutlineWidget::onEditOutline()
         }
 
         if (titleChanged || pageChanged) {
-            QMessageBox::information(this, tr("成功"),
-                                     tr("目录项已修改!\n记得保存到PDF文档。"));
+            QMessageBox::information(this, tr("Success"),
+                                     tr("Outline item modified!\nRemember to save to PDF."));
         }
     }
 }
@@ -462,7 +462,7 @@ void OutlineWidget::onDeleteOutline()
     QList<QTreeWidgetItem*> selectedItems = this->selectedItems();
 
     if (selectedItems.isEmpty()) {
-        QMessageBox::warning(this, tr("提示"), tr("请先选择要删除的目录项!"));
+        QMessageBox::warning(this, tr("Hint"), tr("Please select an outline item to delete first!"));
         return;
     }
 
@@ -479,22 +479,22 @@ void OutlineWidget::onDeleteOutline()
     QString title = outlineItem->title();
     int childCount = outlineItem->childCount();
 
-    QString message = tr("确定要删除目录项 \"%1\" 吗?").arg(title);
+    QString message = tr("Are you sure you want to delete outline item \"%1\"?").arg(title);
     if (childCount > 0) {
-        message += tr("\n\n此目录项包含 %1 个子项,将一起删除!").arg(childCount);
+        message += tr("\n\nThis item contains %1 sub-items, which will also be deleted!").arg(childCount);
     }
 
     QMessageBox::StandardButton reply = QMessageBox::question(
-        this, tr("确认删除"), message,
+        this, tr("Confirm Delete"), message,
         QMessageBox::Yes | QMessageBox::No);
 
     if (reply == QMessageBox::Yes) {
         if (m_outlineEditor->deleteOutline(outlineItem)) {
-            QMessageBox::information(this, tr("成功"),
-                                     tr("目录项已删除!\n记得保存到PDF文档。"));
+            QMessageBox::information(this, tr("Success"),
+                                     tr("Outline item deleted!\nRemember to save to PDF."));
         } else {
-            QMessageBox::warning(this, tr("失败"),
-                                 tr("删除目录项失败!"));
+            QMessageBox::warning(this, tr("Failed"),
+                                 tr("Failed to delete outline item!"));
         }
     }
 }
@@ -502,47 +502,47 @@ void OutlineWidget::onDeleteOutline()
 void OutlineWidget::onDeleteAllOutlines()
 {
     if (!m_outlineEditor) {
-        QMessageBox::warning(this, tr("错误"),
-                             tr("目录编辑器未初始化！"));
+        QMessageBox::warning(this, tr("Error"),
+                             tr("Outline editor not initialized!"));
         return;
     }
 
-    // 检查是否有目录项
+
     if (topLevelItemCount() == 0) {
         return;
     }
 
-    // 显示确认对话框
+
     QMessageBox msgBox(this);
-    msgBox.setWindowTitle(tr("确认删除"));
-    msgBox.setText(tr("确定要删除所有目录项吗？"));
-    msgBox.setInformativeText(tr("此操作将删除 %1 个目录项及其所有子项，且无法撤销！")
+    msgBox.setWindowTitle(tr("Confirm Delete"));
+    msgBox.setText(tr("Are you sure you want to delete all outline items?"));
+    msgBox.setInformativeText(tr("This will delete %1 outline items and all their sub-items, and cannot be undone!")
                                   .arg(m_contentHandler->outlineItemCount()));
     msgBox.setIcon(QMessageBox::Warning);
     msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
     msgBox.setDefaultButton(QMessageBox::No);
 
-    // 设置按钮文本
-    msgBox.button(QMessageBox::Yes)->setText(tr("删除"));
-    msgBox.button(QMessageBox::No)->setText(tr("取消"));
+
+    msgBox.button(QMessageBox::Yes)->setText(tr("Delete"));
+    msgBox.button(QMessageBox::No)->setText(tr("Cancel"));
 
     if (msgBox.exec() == QMessageBox::Yes) {
-        // 执行删除操作
+
         bool success = m_outlineEditor->deleteAllOutlines();
 
         if (success) {
-            // 清空树视图
+
             clear();
             m_currentHighlight = nullptr;
 
             qInfo() << "OutlineWidget: All outlines deleted successfully";
 
-            // 可选：显示成功提示
-            // QMessageBox::information(this, tr("完成"),
-            //     tr("已删除所有目录项"));
+
+
+
         } else {
-            QMessageBox::critical(this, tr("错误"),
-                                  tr("删除所有目录项失败！\n请检查目录是否被锁定或其他错误。"));
+            QMessageBox::critical(this, tr("Error"),
+                                  tr("Failed to delete all outline items!\nPlease check if locked or other errors."));
         }
     }
 }
@@ -554,31 +554,30 @@ void OutlineWidget::onSaveToDocument()
     }
 
     if (!m_outlineEditor->hasUnsavedChanges()) {
-        QMessageBox::information(this, tr("提示"),
-                                 tr("没有未保存的修改!"));
+        QMessageBox::information(this, tr("Hint"),
+                                 tr("No unsaved changes!"));
         return;
     }
 
     QMessageBox::StandardButton reply = QMessageBox::question(
-        this, tr("保存确认"),
-        tr("确定要将目录修改保存到PDF文档吗?\n\n"
-           "建议在保存前备份原文件!"),
+        this, tr("Confirm Save"),
+        tr("Save outline changes to PDF?\n\nRecommend backing up the file first!"),
         QMessageBox::Yes | QMessageBox::No);
 
     if (reply == QMessageBox::Yes) {
         bool success = m_outlineEditor->saveToDocument();
 
         if (success) {
-            QMessageBox::information(this, tr("成功"),
-                                     tr("目录已成功保存到PDF文档!"));
+            QMessageBox::information(this, tr("Success"),
+                                     tr("Outline saved to PDF successfully!"));
 
-            // 保存后重新加载大纲（通过 PDFContentHandler）
+
             if (m_contentHandler) {
                 m_contentHandler->loadOutline();
             }
         } else {
-            QMessageBox::critical(this, tr("失败"),
-                                  tr("保存失败!请检查文件权限和磁盘空间。"));
+            QMessageBox::critical(this, tr("Failed"),
+                                  tr("Save failed! Please check file permissions and disk space."));
         }
     }
 }
@@ -615,10 +614,10 @@ QTreeWidgetItem* OutlineWidget::createTreeItem(OutlineItem* outlineItem)
 
     QString title = outlineItem->title();
     if (title.isEmpty()) {
-        title = tr("[无标题]");
+        title = tr("[Untitled]");
     }
 
-    // 页码以更优雅的方式显示 - 保持原格式，让代理来分离和右对齐
+
     if (outlineItem->pageIndex() >= 0) {
         QString pageNum = QString::number(outlineItem->pageIndex() + 1);
         title = QString("%1  •  %2").arg(title, pageNum);
@@ -626,21 +625,21 @@ QTreeWidgetItem* OutlineWidget::createTreeItem(OutlineItem* outlineItem)
 
     item->setText(0, title);
 
-    // 字体设置 - 缩小字号
+
     QFont font = item->font(0);
     font.setPointSize(10);
     item->setFont(0, font);
 
-    item->setSizeHint(0, QSize(0, 28)); // 减小行高
+    item->setSizeHint(0, QSize(0, 28));
 
-    // 设置页码数据
+
     if (outlineItem->pageIndex() >= 0) {
         item->setData(0, PageIndexRole, outlineItem->pageIndex());
-        QString tooltip = tr("第 %1 页").arg(outlineItem->pageIndex() + 1);
+        QString tooltip = tr("Page %1").arg(outlineItem->pageIndex() + 1);
         item->setToolTip(0, tooltip);
     }
 
-    // 外部链接样式
+
     if (outlineItem->isExternalLink()) {
         item->setData(0, UriRole, outlineItem->uri());
 
@@ -648,7 +647,7 @@ QTreeWidgetItem* OutlineWidget::createTreeItem(OutlineItem* outlineItem)
         linkFont.setUnderline(true);
         item->setFont(0, linkFont);
 
-        QString tooltip = tr("外部链接: %1").arg(outlineItem->uri());
+        QString tooltip = tr("External link: %1").arg(outlineItem->uri());
         item->setToolTip(0, tooltip);
     }
 
@@ -705,7 +704,7 @@ void OutlineWidget::setOutlineItem(QTreeWidgetItem* treeItem, OutlineItem* outli
 
 void OutlineWidget::refreshTree()
 {
-    // 保存展开状态
+
     QSet<int> expandedPages;
     QTreeWidgetItemIterator it(this);
     while (*it) {
@@ -718,10 +717,10 @@ void OutlineWidget::refreshTree()
         ++it;
     }
 
-    // 重新加载
+
     loadOutline();
 
-    // 恢复展开状态
+
     QTreeWidgetItemIterator it2(this);
     while (*it2) {
         QVariant pageVar = (*it2)->data(0, PageIndexRole);
@@ -817,7 +816,7 @@ void OutlineWidget::dragMoveEvent(QDragMoveEvent* event)
     QPoint pos = event->pos();
     QTreeWidgetItem* item = itemAt(pos);
 
-    // 自动展开 hover
+
     if (item != m_lastHoverItem) {
         m_lastHoverItem = item;
         m_hoverTimer.restart();
@@ -828,13 +827,13 @@ void OutlineWidget::dragMoveEvent(QDragMoveEvent* event)
         m_hoverTimer.invalidate();
     }
 
-    // 计算 drop indicator
+
     m_dropTargetItem = item;
     m_dropIndicator = DI_None;
 
     OutlineItem* targetOutline = item ? getOutlineItem(item) : nullptr;
 
-    // 空白区域
+
     if (!item) {
         OutlineItem* root = m_contentHandler->outlineRoot();
 
@@ -864,7 +863,7 @@ void OutlineWidget::dragMoveEvent(QDragMoveEvent* event)
     else
         m_dropIndicator = DI_Inside;
 
-    // 计算 new parent / insertIndex
+
     OutlineItem* newParent = nullptr;
     int insertIndex = -1;
 
@@ -882,7 +881,7 @@ void OutlineWidget::dragMoveEvent(QDragMoveEvent* event)
         insertIndex = (m_dropIndicator == DI_Above) ? targetIndex : targetIndex + 1;
     }
 
-    // 更新 overlay
+
     m_overlay->line.valid = false;
     m_overlay->ghost.valid = false;
 
@@ -953,7 +952,7 @@ void OutlineWidget::dropEvent(QDropEvent* event)
         return;
     }
 
-    // 决定 newParent 与插入索引
+
     QTreeWidgetItem* targetItem = m_dropTargetItem;
     OutlineItem* targetOutline = targetItem ? getOutlineItem(targetItem) : nullptr;
 
@@ -1000,12 +999,12 @@ void OutlineWidget::dropEvent(QDropEvent* event)
         return;
     }
 
-    // 防止移动到自身或子项
+
     OutlineItem* p = newParent;
     while (p) {
         if (p == draggedOutline) {
-            QMessageBox::warning(this, tr("无效操作"),
-                                 tr("不能将目录项移动到自己或自己的子项下!"));
+            QMessageBox::warning(this, tr("Invalid Operation"),
+                                 tr("Cannot move outline item to itself or its children!"));
             event->ignore();
             m_draggedItem = nullptr;
             m_dropTargetItem = nullptr;
@@ -1016,7 +1015,7 @@ void OutlineWidget::dropEvent(QDropEvent* event)
         p = p->parent();
     }
 
-    // 调整索引
+
     OutlineItem* oldParent = draggedOutline->parent();
     int oldIndex = -1;
     if (oldParent) {
@@ -1035,7 +1034,7 @@ void OutlineWidget::dropEvent(QDropEvent* event)
         }
     }
 
-    // 移动操作
+
     bool ok = false;
     ok = m_outlineEditor->moveOutline(draggedOutline, newParent, insertIndex);
 
@@ -1048,10 +1047,10 @@ void OutlineWidget::dropEvent(QDropEvent* event)
         event->acceptProposedAction();
     } else {
         event->ignore();
-        QMessageBox::warning(this, tr("失败"), tr("移动目录项失败!"));
+        QMessageBox::warning(this, tr("Failed"), tr("Failed to move outline item!"));
     }
 
-    // 清理状态
+
     m_draggedItem = nullptr;
     m_dropTargetItem = nullptr;
     m_dropIndicator = DI_None;
