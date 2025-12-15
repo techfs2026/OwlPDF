@@ -858,9 +858,11 @@ Error: %1</source>
         <translation>移动目录项失败！</translation>
     </message>
 
-<message>
-        <source>Outline item added!\nRemember to save to PDF.</source>
-        <translation>目录项已添加!\n记得保存到PDF文档。</translation>
+    <message>
+        <source>Outline item added!
+Remember to save to PDF.</source>
+        <translation>目录项已添加!
+记得保存到PDF文档。</translation>
     </message>
 
     <message>
@@ -869,8 +871,10 @@ Error: %1</source>
     </message>
 
     <message>
-        <source>Outline item modified!\nRemember to save to PDF.</source>
-        <translation>目录项已修改!\n记得保存到PDF文档。</translation>
+        <source>Outline item modified!
+Remember to save to PDF.</source>
+        <translation>目录项已修改!
+记得保存到PDF文档。</translation>
     </message>
 
     <message>
@@ -884,13 +888,19 @@ Error: %1</source>
     </message>
 
     <message>
-        <source>\n\nThis item contains %1 sub-items, which will also be deleted!</source>
-        <translation>\n\n此目录项包含 %1 个子项,将一起删除!</translation>
+        <source>
+
+This item contains %1 sub-items, which will also be deleted!</source>
+        <translation>
+
+此目录项包含 %1 个子项,将一起删除!</translation>
     </message>
 
     <message>
-        <source>Outline item deleted!\nRemember to save to PDF.</source>
-        <translation>目录项已删除!\n记得保存到PDF文档。</translation>
+        <source>Outline item deleted!
+Remember to save to PDF.</source>
+        <translation>目录项已删除!
+记得保存到PDF文档。</translation>
     </message>
 
     <message>
@@ -929,8 +939,10 @@ Error: %1</source>
     </message>
 
     <message>
-        <source>Failed to delete all outline items!\nPlease check if locked or other errors.</source>
-        <translation>删除所有目录项失败！\n请检查目录是否被锁定或其他错误。</translation>
+        <source>Failed to delete all outline items!
+Please check if locked or other errors.</source>
+        <translation>删除所有目录项失败！
+请检查目录是否被锁定或其他错误。</translation>
     </message>
 
     <message>
@@ -939,8 +951,12 @@ Error: %1</source>
     </message>
 
     <message>
-        <source>Save outline changes to PDF?\n\nRecommend backing up the file first!</source>
-        <translation>确定要将目录修改保存到PDF文档吗?\n\n建议在保存前备份原文件!</translation>
+        <source>Save outline changes to PDF?
+
+Recommend backing up the file first!</source>
+        <translation>确定要将目录修改保存到PDF文档吗?
+
+建议在保存前备份原文件!</translation>
     </message>
 
     <message>
@@ -993,8 +1009,16 @@ Error: %1</source>
     </message>
 
     <message>
-        <source>Extracting text...(%1%).\n\nYou can only search pages with extracted text.\n\nContinue searching?</source>
-        <translation>文本正在提取中...(%1%).\n\n你只能搜索提取好文本的页面\n\n继续搜索?</translation>
+        <source>Extracting text...(%1%).
+
+You can only search pages with extracted text.
+
+Continue searching?</source>
+        <translation>文本正在提取中...(%1%).
+
+你只能搜索提取好文本的页面
+
+继续搜索?</translation>
     </message>
 
     <message>
@@ -1366,6 +1390,59 @@ Click to start engine</source>
     <message>
         <source>Scroll to trigger paged loading</source>
         <translation>滚动以触发分页加载</translation>
+    </message>
+
+</context>
+<context>
+    <name>ThumbnailCache</name>
+
+    <message>
+        <source>Thumbnail Cache: %1 pages (%.2 MB)</source>
+        <translation>缩略图缓存: %1 页 (%.2 MB)</translation>
+    </message>
+
+</context>
+<context>
+    <name>OutlineEditor</name>
+
+    <message>
+        <source>Root node is null</source>
+        <translation>根节点为空</translation>
+    </message>
+
+    <message>
+        <source>No document loaded</source>
+        <translation>未加载文档</translation>
+    </message>
+
+    <message>
+        <source>Empty title found</source>
+        <translation>发现空标题</translation>
+    </message>
+
+    <message>
+        <source>Page index out of range: %1</source>
+        <translation>页码超出范围: %1</translation>
+    </message>
+
+    <message>
+        <source>No outline data</source>
+        <translation>无大纲数据</translation>
+    </message>
+
+    <message>
+        <source>Invalid MuPDF context or document</source>
+        <translation>无效的 MuPDF 上下文或文档</translation>
+    </message>
+
+    <message>
+        <source>Document is not a PDF</source>
+        <translation>文档不是 PDF</translation>
+    </message>
+
+    <message>
+        <source>No file path specified</source>
+        <translation>未指定文件路径</translation>
     </message>
 
 </context>

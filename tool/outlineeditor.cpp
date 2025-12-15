@@ -1,4 +1,3 @@
-// outlineeditor.cpp
 #include "outlineeditor.h"
 #include "outlineitem.h"
 #include "perthreadmupdfrenderer.h"
@@ -11,7 +10,7 @@
 #include <QDebug>
 #include <QMetaObject>
 #include <QThread>
-#include <functional>
+#include <QCoreApplication>
 
 OutlineEditor::OutlineEditor(PerThreadMuPDFRenderer* renderer, QObject* parent)
     : QObject(parent)
@@ -65,9 +64,7 @@ OutlineItem* OutlineEditor::addOutline(OutlineItem* parentItem,
 
     OutlineItem* newItem = new OutlineItem(title, pageIndex);
 
-    // 如果需要插入到某个位置，先简单处理（OutlineItem 目前无批量操作）
     if (insertIndex >= 0 && insertIndex < parent->childCount()) {
-        // 简化：目前 OutlineItem 没有 insert API，先 append
         parent->addChild(newItem);
     } else {
         parent->addChild(newItem);
@@ -94,7 +91,6 @@ bool OutlineEditor::deleteOutline(OutlineItem* item)
         return false;
     }
 
-    // 若 OutlineItem 提供 removeChild，调用它；否则做兼容处理
     bool removed = parent->removeChild(item);
     if (!removed) {
         qWarning() << "OutlineEditor: Failed to remove item from parent";
@@ -116,7 +112,6 @@ bool OutlineEditor::deleteAllOutlines()
         return false;
     }
 
-    // 检查是否有子项
     if (m_root->childCount() == 0) {
         qInfo() << "OutlineEditor::deleteAllOutlines: Already empty";
         return true;
@@ -125,17 +120,13 @@ bool OutlineEditor::deleteAllOutlines()
     qInfo() << "OutlineEditor::deleteAllOutlines: Deleting"
             << m_root->childCount() << "root items";
 
-    // 删除所有根级子项（会递归删除所有子孙项）
     while (m_root->childCount() > 0) {
         OutlineItem* child = m_root->child(0);
         m_root->removeChild(child);
-        delete child;  // OutlineItem的析构函数会递归删除所有子孙
+        delete child;
     }
 
-    // 标记为已修改
     m_modified = true;
-
-    // 发送修改信号，触发UI刷新
     emit outlineModified();
 
     qInfo() << "OutlineEditor::deleteAllOutlines: All outlines deleted";
@@ -170,7 +161,6 @@ bool OutlineEditor::updatePageIndex(OutlineItem* item, int newPageIndex)
         return false;
     }
 
-    // 验证页码有效性
     if (newPageIndex < -1) {
         qWarning() << "OutlineEditor: Invalid page index:" << newPageIndex;
         return false;
@@ -183,15 +173,12 @@ bool OutlineEditor::updatePageIndex(OutlineItem* item, int newPageIndex)
 
     int oldPageIndex = item->pageIndex();
 
-    // 如果页码没有变化，直接返回
     if (oldPageIndex == newPageIndex) {
         return true;
     }
 
-    // 更新页码
     item->setPageIndex(newPageIndex);
 
-    // 设置修改标记并发出信号
     m_modified = true;
     emit outlineModified();
 
@@ -213,10 +200,8 @@ bool OutlineEditor::moveOutline(OutlineItem* item,
         return false;
     }
 
-    // 目标父节点
     OutlineItem* targetParent = newParent ? newParent : m_root;
 
-    // ===== 1. 防止移动到自己的子节点 =====
     OutlineItem* p = targetParent;
     while (p) {
         if (p == item) {
@@ -226,16 +211,14 @@ bool OutlineEditor::moveOutline(OutlineItem* item,
         p = p->parent();
     }
 
-    // ===== 2. 从旧父节点移除（必须真实移除 child） =====
     OutlineItem* oldParent = item->parent();
     if (!oldParent) {
         qWarning() << "OutlineEditor: Item has no parent";
         return false;
     }
 
-    oldParent->removeChild(item);   // ← 真正移除 child
+    oldParent->removeChild(item);
 
-    // ===== 3. 在 newParent 中按 newIndex 插入 =====
     if (newIndex < 0 || newIndex > targetParent->childCount())
         newIndex = targetParent->childCount();
 
@@ -248,129 +231,110 @@ bool OutlineEditor::moveOutline(OutlineItem* item,
     return true;
 }
 
-
-// ---------------------------
-// Internal helpers (file-local)
-// ---------------------------
-
 namespace {
-// Create a document-owned dict (indirect object). Uses pdf_add_new_dict if available.
 inline pdf_obj* create_doc_dict(fz_context* ctx, pdf_document* doc, int initial = 4)
 {
-    // pdf_add_new_dict is common in MuPDF; if not available in your build,
-    // you will need to replace with appropriate equivalent.
-    return pdf_add_new_dict(ctx, doc, initial);
-}
-
-inline pdf_obj* create_doc_array(fz_context* ctx, pdf_document* doc, int initial = 4)
-{
-    return pdf_add_new_array(ctx, doc, initial);
-}
-
-// Validate OutlineItem tree for obvious issues (empty title, invalid page index)
-bool validate_tree(OutlineItem* node, PerThreadMuPDFRenderer* renderer, QString* reason = nullptr)
-{
-    if (!node) return true;
-    for (int i = 0; i < node->childCount(); ++i) {
-        OutlineItem* c = node->child(i);
-        if (!c) {
-            if (reason) *reason = QStringLiteral("Null child pointer");
-            return false;
-        }
-        if (c->title().trimmed().isEmpty()) {
-            if (reason) *reason = QStringLiteral("Empty title");
-            return false;
-        }
-        if (c->pageIndex() < -1) {
-            if (reason) *reason = QStringLiteral("Invalid pageIndex");
-            return false;
-        }
-        if (renderer && c->pageIndex() >= 0 && c->pageIndex() >= renderer->pageCount()) {
-            if (reason) *reason = QStringLiteral("pageIndex out of range");
-            return false;
-        }
-        if (!validate_tree(c, renderer, reason)) return false;
+    pdf_obj* dict = nullptr;
+    fz_try(ctx) {
+        dict = pdf_add_object(ctx, doc, pdf_new_dict(ctx, doc, initial));
     }
-    return true;
-}
-
-// Build a document-owned outline item recursively.
-// Returns a pdf_obj* that is an indirect (document-owned) object.
-// Caller must drop the returned local reference when appropriate (we do so in callers).
-pdf_obj* buildPdfOutlineRecursive(fz_context* ctx, pdf_document* pdfDoc,
-                                  PerThreadMuPDFRenderer* renderer, OutlineItem* item)
-{
-    if (!item || !item->isValid()) return nullptr;
-
-    pdf_obj* item_obj = create_doc_dict(ctx, pdfDoc, 8);
-    if (!item_obj) {
-        qWarning() << "buildPdfOutlineRecursive: failed to create item dict";
+    fz_catch(ctx) {
+        qWarning() << "create_doc_dict: error creating dict:" << fz_caught_message(ctx);
         return nullptr;
     }
+    return dict;
+}
 
-    fz_try(ctx) {
-        // Title
-        QByteArray titleBytes = item->title().toUtf8();
-        pdf_dict_put_text_string(ctx, item_obj, PDF_NAME(Title), titleBytes.constData());
+bool validate_tree(OutlineItem* root, PerThreadMuPDFRenderer* renderer, QString* reason)
+{
+    if (!root) {
+        if (reason) *reason = QCoreApplication::translate("OutlineEditor", "Root node is null");
+        return false;
+    }
+    if (!renderer || !renderer->isDocumentLoaded()) {
+        if (reason) *reason = QCoreApplication::translate("OutlineEditor", "No document loaded");
+        return false;
+    }
 
-        // Dest: page target (if any)
-        if (item->pageIndex() >= 0) {
-            if (renderer && item->pageIndex() >= renderer->pageCount()) {
-                qWarning() << "buildPdfOutlineRecursive: pageIndex out of range" << item->pageIndex();
-            } else {
-                pdf_obj* page_ref = pdf_lookup_page_obj(ctx, pdfDoc, item->pageIndex());
-                if (page_ref) {
-                    pdf_obj* dest = create_doc_array(ctx, pdfDoc, 5);
-                    if (!dest) {
-                        qWarning() << "buildPdfOutlineRecursive: failed to create dest array";
-                    } else {
-                        fz_try(ctx) {
-                            pdf_array_push(ctx, dest, page_ref);
-                            pdf_array_push(ctx, dest, PDF_NAME(XYZ));
-                            pdf_array_push(ctx, dest, PDF_NULL);
-                            pdf_array_push(ctx, dest, PDF_NULL);
-                            pdf_array_push(ctx, dest, PDF_NULL);
-                            pdf_dict_put(ctx, item_obj, PDF_NAME(Dest), dest);
-                        }
-                        fz_always(ctx) {
-                            pdf_drop_obj(ctx, dest); // drop local ref; doc owns it
-                        }
-                        fz_catch(ctx) {
-                            fz_rethrow(ctx);
-                        }
-                    }
-                } else {
-                    qWarning() << "buildPdfOutlineRecursive: page_ref null for index" << item->pageIndex();
-                }
+    int pageCount = renderer->pageCount();
+    QList<OutlineItem*> stack;
+    stack.append(root);
+
+    while (!stack.isEmpty()) {
+        OutlineItem* item = stack.takeLast();
+        if (!item) continue;
+
+        if (item != root) {
+            if (item->title().trimmed().isEmpty()) {
+                if (reason) *reason = QCoreApplication::translate("OutlineEditor", "Empty title found");
+                return false;
+            }
+            int pg = item->pageIndex();
+            if (pg < -1 || pg >= pageCount) {
+                if (reason) *reason = QCoreApplication::translate("OutlineEditor", "Page index out of range: %1").arg(pg);
+                return false;
             }
         }
 
-        // Children
-        QList<pdf_obj*> children;
-        for (int i = 0; i < item->childCount(); ++i) {
-            OutlineItem* ch = item->child(i);
-            if (!ch || !ch->isValid()) continue;
+        for (int i = item->childCount() - 1; i >= 0; --i) {
+            OutlineItem* child = item->child(i);
+            if (child) stack.append(child);
+        }
+    }
 
-            pdf_obj* child_obj = buildPdfOutlineRecursive(ctx, pdfDoc, renderer, ch);
-            if (!child_obj) continue;
+    return true;
+}
 
-            // link parent
-            pdf_dict_put(ctx, child_obj, PDF_NAME(Parent), item_obj);
-            children.append(child_obj);
+pdf_obj* buildPdfOutlineRecursive(fz_context* ctx, pdf_document* doc,
+                                  PerThreadMuPDFRenderer* renderer, OutlineItem* item)
+{
+    if (!ctx || !doc || !item || !renderer) return nullptr;
+
+    pdf_obj* item_obj = nullptr;
+    fz_try(ctx) {
+        item_obj = create_doc_dict(ctx, doc, 8);
+        if (!item_obj) fz_throw(ctx, FZ_ERROR_GENERIC, "Failed to create item dict");
+
+        pdf_dict_put(ctx, item_obj, PDF_NAME(Title), pdf_new_text_string(ctx, item->title().toUtf8().constData()));
+
+        int pg = item->pageIndex();
+        if (pg >= 0 && pg < renderer->pageCount()) {
+            pdf_obj* pageObj = pdf_lookup_page_obj(ctx, doc, pg);
+            if (pageObj) {
+                pdf_obj* dest = pdf_new_array(ctx, doc, 5);
+                pdf_array_push(ctx, dest, pageObj);
+                pdf_array_push(ctx, dest, PDF_NAME(XYZ));
+                pdf_array_push_real(ctx, dest, 0);
+                pdf_array_push_real(ctx, dest, 0);
+                pdf_array_push_real(ctx, dest, 0);
+
+                pdf_dict_put(ctx, item_obj, PDF_NAME(Dest), dest);
+                pdf_drop_obj(ctx, dest);
+            }
         }
 
-        // If children exist, set First/Last/Count and Prev/Next
+        QList<pdf_obj*> children;
+        for (int i = 0; i < item->childCount(); ++i) {
+            OutlineItem* child = item->child(i);
+            if (!child || !child->isValid()) continue;
+
+            pdf_obj* co = buildPdfOutlineRecursive(ctx, doc, renderer, child);
+            if (!co) continue;
+
+            pdf_dict_put(ctx, co, PDF_NAME(Parent), item_obj);
+            children.append(co);
+        }
+
         if (!children.isEmpty()) {
             pdf_dict_put(ctx, item_obj, PDF_NAME(First), children.first());
             pdf_dict_put(ctx, item_obj, PDF_NAME(Last), children.last());
             pdf_dict_put_int(ctx, item_obj, PDF_NAME(Count), children.size());
 
             for (int i = 0; i < children.size(); ++i) {
-                if (i > 0) pdf_dict_put(ctx, children[i], PDF_NAME(Prev), children[i-1]);
-                if (i < children.size() - 1) pdf_dict_put(ctx, children[i], PDF_NAME(Next), children[i+1]);
+                if (i > 0) pdf_dict_put(ctx, children[i], PDF_NAME(Prev), children[i - 1]);
+                if (i < children.size() - 1) pdf_dict_put(ctx, children[i], PDF_NAME(Next), children[i + 1]);
             }
 
-            // drop local refs to children (document owns them)
             for (pdf_obj* co : children) pdf_drop_obj(ctx, co);
         }
     }
@@ -382,32 +346,23 @@ pdf_obj* buildPdfOutlineRecursive(fz_context* ctx, pdf_document* pdfDoc,
 
     return item_obj;
 }
-} // namespace
+}
 
-// The public saveToDocument - mid-level refactor: single entry point, robustly implemented.
-// This method ensures:
-//  - validation of outline data,
-//  - creation of document-owned outlines and items,
-//  - correct Parent/First/Last/Prev/Next linking,
-//  - safe use of pdf_add_new_* and proper pdf_drop_obj management,
-//  - incremental save with error capture.
 bool OutlineEditor::saveToDocument(const QString& filePath)
 {
-    // Quick preconditions
     if (!m_renderer || !m_renderer->isDocumentLoaded()) {
-        QString msg = "No document loaded";
+        QString msg = QCoreApplication::translate("OutlineEditor", "No document loaded");
         qWarning() << "OutlineEditor:" << msg;
         emit saveCompleted(false, msg);
         return false;
     }
     if (!m_root) {
-        QString msg = "No outline data";
+        QString msg = QCoreApplication::translate("OutlineEditor", "No outline data");
         qWarning() << "OutlineEditor:" << msg;
         emit saveCompleted(false, msg);
         return false;
     }
 
-    // Validate data tree
     QString reason;
     if (!validate_tree(m_root, m_renderer, &reason)) {
         qWarning() << "OutlineEditor: invalid outline tree:" << reason;
@@ -415,11 +370,10 @@ bool OutlineEditor::saveToDocument(const QString& filePath)
         return false;
     }
 
-    // Access MuPDF context & document
     fz_context* ctx = static_cast<fz_context*>(m_renderer->context());
     fz_document* fzdoc = static_cast<fz_document*>(m_renderer->document());
     if (!ctx || !fzdoc) {
-        QString msg = "Invalid MuPDF context or document";
+        QString msg = QCoreApplication::translate("OutlineEditor", "Invalid MuPDF context or document");
         qWarning() << "OutlineEditor:" << msg;
         emit saveCompleted(false, msg);
         return false;
@@ -427,7 +381,7 @@ bool OutlineEditor::saveToDocument(const QString& filePath)
 
     pdf_document* pdfDoc = pdf_document_from_fz_document(ctx, fzdoc);
     if (!pdfDoc) {
-        QString msg = "Document is not a PDF";
+        QString msg = QCoreApplication::translate("OutlineEditor", "Document is not a PDF");
         qWarning() << "OutlineEditor:" << msg;
         emit saveCompleted(false, msg);
         return false;
@@ -435,22 +389,19 @@ bool OutlineEditor::saveToDocument(const QString& filePath)
 
     QString savePath = filePath.isEmpty() ? m_renderer->documentPath() : filePath;
     if (savePath.isEmpty()) {
-        QString msg = "No file path specified";
+        QString msg = QCoreApplication::translate("OutlineEditor", "No file path specified");
         qWarning() << "OutlineEditor:" << msg;
         emit saveCompleted(false, msg);
         return false;
     }
 
-    // Backup
     QString backupPath = createBackup(savePath);
     if (!backupPath.isEmpty()) qInfo() << "OutlineEditor: Backup created at:" << backupPath;
 
     bool success = false;
     QString errorMsg;
 
-    // All MuPDF operations must be inside try/catch
     fz_try(ctx) {
-        // Resolve catalog (Root) and validate
         pdf_obj* trailer = pdf_trailer(ctx, pdfDoc);
         pdf_obj* catalog_ref = pdf_dict_get(ctx, trailer, PDF_NAME(Root));
         pdf_obj* catalog = nullptr;
@@ -460,12 +411,9 @@ bool OutlineEditor::saveToDocument(const QString& filePath)
             fz_throw(ctx, FZ_ERROR_GENERIC, "Invalid PDF catalog");
         }
 
-        // Remove existing Outlines
         pdf_dict_del(ctx, catalog, PDF_NAME(Outlines));
 
-        // Only build outlines if root has children
         if (m_root->childCount() > 0) {
-            // Create outlines dict as document-owned indirect object
             pdf_obj* outlines = create_doc_dict(ctx, pdfDoc, 4);
             if (!outlines) fz_throw(ctx, FZ_ERROR_GENERIC, "Failed to create outlines dict");
 
@@ -483,12 +431,10 @@ bool OutlineEditor::saveToDocument(const QString& filePath)
                         continue;
                     }
 
-                    // link Parent -> outlines
                     pdf_dict_put(ctx, item_obj, PDF_NAME(Parent), outlines);
                     topItems.append(item_obj);
                 }
 
-                // Link first/last/count and prev/next
                 if (!topItems.isEmpty()) {
                     pdf_dict_put(ctx, outlines, PDF_NAME(First), topItems.first());
                     pdf_dict_put(ctx, outlines, PDF_NAME(Last),  topItems.last());
@@ -499,15 +445,12 @@ bool OutlineEditor::saveToDocument(const QString& filePath)
                         if (i < topItems.size() - 1) pdf_dict_put(ctx, topItems[i], PDF_NAME(Next), topItems[i+1]);
                     }
 
-                    // drop local refs to topItems (document/catalog owns them now)
                     for (pdf_obj* obj : topItems) pdf_drop_obj(ctx, obj);
                 }
 
-                // Attach outlines to catalog (catalog keeps a reference)
                 pdf_dict_put(ctx, catalog, PDF_NAME(Outlines), outlines);
             }
             fz_always(ctx) {
-                // Drop local ref; catalog/document retains ref
                 pdf_drop_obj(ctx, outlines);
             }
             fz_catch(ctx) {
@@ -515,7 +458,6 @@ bool OutlineEditor::saveToDocument(const QString& filePath)
             }
         }
 
-        // Save (incremental)
         pdf_write_options opts = pdf_default_write_options;
         opts.do_incremental = 1;
         opts.do_garbage = 0;
@@ -538,15 +480,12 @@ bool OutlineEditor::saveToDocument(const QString& filePath)
     return success;
 }
 
-// Backwards-compatible wrapper: reuse existing signature for external callers.
-// This uses the same internal helper to produce a document-owned item.
 void* OutlineEditor::createPdfOutline(void* ctx_ptr, void* doc_ptr, OutlineItem* item)
 {
     if (!ctx_ptr || !doc_ptr || !item) return nullptr;
     fz_context* ctx = static_cast<fz_context*>(ctx_ptr);
     pdf_document* doc = static_cast<pdf_document*>(doc_ptr);
 
-    // call the recursive builder - it returns a pdf_obj* (document-owned)
     pdf_obj* obj = buildPdfOutlineRecursive(ctx, doc, m_renderer, item);
     return static_cast<void*>(obj);
 }
@@ -554,7 +493,6 @@ void* OutlineEditor::createPdfOutline(void* ctx_ptr, void* doc_ptr, OutlineItem*
 void* OutlineEditor::buildPdfOutlineTree(void* ctx_ptr, void* doc_ptr,
                                          OutlineItem* item, void* parent_ptr)
 {
-    // Kept for compatibility; call createPdfOutline wrapper
     return createPdfOutline(ctx_ptr, doc_ptr, item);
 }
 
@@ -606,7 +544,6 @@ bool OutlineEditor::removeFromParent(OutlineItem* item)
         return true;
     }
 
-    // Fallback: clear parent pointer (best-effort)
     item->setParent(nullptr);
     return true;
 }

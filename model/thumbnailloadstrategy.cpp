@@ -2,8 +2,6 @@
 #include <QDebug>
 #include <algorithm>
 
-// ========== SmallDocStrategy ==========
-
 SmallDocStrategy::SmallDocStrategy(int pageCount, QObject* parent)
     : ThumbnailLoadStrategy(pageCount, parent)
 {
@@ -14,7 +12,6 @@ QVector<int> SmallDocStrategy::getInitialLoadPages(const QSet<int>& visiblePages
 {
     Q_UNUSED(visiblePages);
 
-    // 小文档直接全量同步加载
     QVector<int> allPages;
     allPages.reserve(m_pageCount);
     for (int i = 0; i < m_pageCount; ++i) {
@@ -27,18 +24,14 @@ QVector<int> SmallDocStrategy::getInitialLoadPages(const QSet<int>& visiblePages
 
 QVector<QVector<int>> SmallDocStrategy::getBackgroundBatches() const
 {
-    // 小文档不需要后台批次
     return {};
 }
 
 QVector<int> SmallDocStrategy::handleVisibleChange(const QSet<int>& visiblePages) const
 {
     Q_UNUSED(visiblePages);
-    // 小文档已全部加载，无需处理
     return {};
 }
-
-// ========== MediumDocStrategy ==========
 
 MediumDocStrategy::MediumDocStrategy(int pageCount, QObject* parent)
     : ThumbnailLoadStrategy(pageCount, parent)
@@ -53,7 +46,6 @@ QVector<int> MediumDocStrategy::getInitialLoadPages(const QSet<int>& visiblePage
         return {};
     }
 
-    // 计算可见区域的扩展范围
     int minPage = *std::min_element(visiblePages.begin(), visiblePages.end());
     int maxPage = *std::max_element(visiblePages.begin(), visiblePages.end());
 
@@ -77,7 +69,6 @@ QVector<QVector<int>> MediumDocStrategy::getBackgroundBatches() const
 {
     QVector<QVector<int>> batches;
 
-    // 将剩余页面分批
     int batchCount = (m_pageCount + BATCH_SIZE - 1) / BATCH_SIZE;
     batches.reserve(batchCount);
 
@@ -102,13 +93,9 @@ QVector<QVector<int>> MediumDocStrategy::getBackgroundBatches() const
 
 QVector<int> MediumDocStrategy::handleVisibleChange(const QSet<int>& visiblePages) const
 {
-    // 中文档使用批次加载，不需要实时响应可见区变化
-    // 只在初始加载时响应
     Q_UNUSED(visiblePages);
     return {};
 }
-
-// ========== LargeDocStrategy ==========
 
 LargeDocStrategy::LargeDocStrategy(int pageCount, QObject* parent)
     : ThumbnailLoadStrategy(pageCount, parent)
@@ -124,7 +111,6 @@ QVector<int> LargeDocStrategy::getInitialLoadPages(const QSet<int>& visiblePages
 
 QVector<QVector<int>> LargeDocStrategy::getBackgroundBatches() const
 {
-    // 大文档不使用批次加载
     return {};
 }
 
@@ -134,7 +120,6 @@ QVector<int> LargeDocStrategy::handleVisibleChange(const QSet<int>& visiblePages
         return {};
     }
 
-    // 计算窗口范围
     int minPage = *std::min_element(visiblePages.begin(), visiblePages.end());
     int maxPage = *std::max_element(visiblePages.begin(), visiblePages.end());
 
@@ -156,8 +141,6 @@ QVector<int> LargeDocStrategy::handleVisibleChange(const QSet<int>& visiblePages
 
     return toLoad;
 }
-
-// ========== StrategyFactory ==========
 
 ThumbnailLoadStrategy* StrategyFactory::createStrategy(int pageCount, QObject* parent)
 {

@@ -57,7 +57,7 @@ void TextSelector::startSelection(int pageIndex, const QPointF& pagePos, double 
 
     case SelectionMode::Block:
         findBlockBoundary(pageData, charPos, &start, &end);
-        start = end;  // 从块尾开始
+        start = end;
         break;
 
     case SelectionMode::Character:
@@ -68,7 +68,6 @@ void TextSelector::startSelection(int pageIndex, const QPointF& pagePos, double 
 
     setSelectionRange(pageIndex, start, end, mode);
 
-    // 设置锚点
     m_anchorPos = start;
     m_hasAnchor = true;
 }
@@ -79,7 +78,6 @@ void TextSelector::updateSelection(int pageIndex, const QPointF& pagePos, double
         return;
     }
 
-    // 暂时只支持同一页内选择
     if (pageIndex != m_startPageIndex) {
         return;
     }
@@ -97,11 +95,9 @@ void TextSelector::updateSelection(int pageIndex, const QPointF& pagePos, double
     CharPosition start, end;
 
     if (m_selection.mode == SelectionMode::Word) {
-        // 单词模式：找到当前位置的单词边界
         CharPosition wordStart, wordEnd;
         findWordBoundary(pageData, currentPos, &wordStart, &wordEnd);
 
-        // 与初始单词比较，扩展选择
         if (currentPos < m_startCharPos) {
             start = wordStart;
             end = m_wordEnd;
@@ -111,7 +107,6 @@ void TextSelector::updateSelection(int pageIndex, const QPointF& pagePos, double
         }
     }
     else if (m_selection.mode == SelectionMode::Line) {
-        // 行模式：找到当前位置的行边界
         CharPosition lineStart, lineEnd;
         findLineBoundary(pageData, currentPos, &lineStart, &lineEnd);
 
@@ -124,7 +119,6 @@ void TextSelector::updateSelection(int pageIndex, const QPointF& pagePos, double
         }
     }
     else {
-        // 字符模式
         start = m_startCharPos;
         end = currentPos;
     }
@@ -135,7 +129,6 @@ void TextSelector::updateSelection(int pageIndex, const QPointF& pagePos, double
 void TextSelector::extendSelection(int pageIndex, const QPointF& pagePos, double zoom)
 {
     if (!m_hasAnchor) {
-        // 如果没有锚点，创建新选择
         startSelection(pageIndex, pagePos, zoom, SelectionMode::Character);
         return;
     }
@@ -178,7 +171,6 @@ void TextSelector::selectWord(int pageIndex, const QPointF& pagePos, double zoom
 
     setSelectionRange(pageIndex, start, end, SelectionMode::Word);
 
-    // 设置锚点为单词开始
     m_anchorPos = start;
     m_hasAnchor = true;
 }
@@ -244,7 +236,6 @@ void TextSelector::selectAll(int pageIndex)
         return;
     }
 
-    // 找到第一个和最后一个字符
     CharPosition start(0, 0, 0);
 
     const TextBlock& lastBlock = pageData.blocks.last();
@@ -268,62 +259,53 @@ void TextSelector::endSelection()
 void TextSelector::clearSelection()
 {
     m_selection.clear();
-    m_isSelecting = false;
     m_hasAnchor = false;
+    m_isSelecting = false;
     emit selectionChanged();
 }
 
 void TextSelector::copyToClipboard()
 {
-    if (!hasSelection()) {
+    if (!m_selection.isValid()) {
         return;
     }
 
     QClipboard* clipboard = QApplication::clipboard();
-    clipboard->setText(m_selection.selectedText);
-
-    qDebug() << "Copied to clipboard:" << m_selection.selectedText.length() << "characters";
+    if (clipboard) {
+        clipboard->setText(m_selection.selectedText);
+    }
 }
 
 CharPosition TextSelector::hitTestCharacter(const PageTextData& pageData,
                                             const QPointF& pos,
                                             double zoom)
 {
-    // 将屏幕坐标转换为页面坐标（去除缩放）
-    QPointF pageCoord(pos.x() / zoom, pos.y() / zoom);
+    if (!pageData.isValid() || pageData.blocks.isEmpty()) {
+        return CharPosition();
+    }
 
-    double minDistance = std::numeric_limits<double>::max();
+    QPointF pageCoord = pos / zoom;
+
     CharPosition result;
+    double minDistance = 1e9;
 
     for (int b = 0; b < pageData.blocks.size(); ++b) {
         const TextBlock& block = pageData.blocks[b];
 
         for (int l = 0; l < block.lines.size(); ++l) {
             const TextLine& line = block.lines[l];
-
             if (line.chars.isEmpty()) continue;
 
-            // 检查是否在行的垂直范围内（扩大容差到50%）
             double lineTop = line.bbox.top();
             double lineBottom = line.bbox.bottom();
-            double verticalMargin = line.bbox.height() * 0.5;
 
-            // 如果不在行的垂直范围内，跳过
-            if (pageCoord.y() < lineTop - verticalMargin ||
-                pageCoord.y() > lineBottom + verticalMargin) {
-                continue;
-            }
-
-            // 在行的水平范围内查找最近的字符
             for (int c = 0; c < line.chars.size(); ++c) {
                 const TextChar& ch = line.chars[c];
 
-                // 如果点在字符bbox内，直接返回
                 if (ch.bbox.contains(pageCoord)) {
                     return CharPosition(b, l, c);
                 }
 
-                // 计算到字符中心的距离
                 QPointF charCenter = ch.bbox.center();
                 double distance = QLineF(pageCoord, charCenter).length();
 
@@ -333,7 +315,6 @@ CharPosition TextSelector::hitTestCharacter(const PageTextData& pageData,
                 }
             }
 
-            // 如果点在行内但超过最后一个字符，选择最后一个字符
             if (pageCoord.y() >= lineTop && pageCoord.y() <= lineBottom) {
                 if (pageCoord.x() > line.chars.last().bbox.right()) {
                     int lastCharIdx = line.chars.size() - 1;
@@ -343,7 +324,6 @@ CharPosition TextSelector::hitTestCharacter(const PageTextData& pageData,
                         result = CharPosition(b, l, lastCharIdx);
                     }
                 }
-                // 如果点在第一个字符之前，选择第一个字符
                 else if (pageCoord.x() < line.chars.first().bbox.left()) {
                     double distance = line.chars.first().bbox.left() - pageCoord.x();
                     if (distance < minDistance) {
@@ -361,11 +341,11 @@ CharPosition TextSelector::hitTestCharacter(const PageTextData& pageData,
 static inline bool isCJK(QChar ch)
 {
     uint u = ch.unicode();
-    return (u >= 0x4E00 && u <= 0x9FFF) ||    // CJK Unified Ideographs
-           (u >= 0x3400 && u <= 0x4DBF) ||    // CJK Extension A
-           (u >= 0xF900 && u <= 0xFAFF) ||    // CJK Compatibility Ideographs
-           (u >= 0x3040 && u <= 0x30FF) ||    // Japanese Hiragana/Katakana
-           (u >= 0xAC00 && u <= 0xD7AF);      // Korean Hangul
+    return (u >= 0x4E00 && u <= 0x9FFF) ||
+           (u >= 0x3400 && u <= 0x4DBF) ||
+           (u >= 0xF900 && u <= 0xFAFF) ||
+           (u >= 0x3040 && u <= 0x30FF) ||
+           (u >= 0xAC00 && u <= 0xD7AF);
 }
 
 void TextSelector::findWordBoundary(
@@ -377,14 +357,12 @@ void TextSelector::findWordBoundary(
     const TextLine& line = pageData.blocks[pos.blockIndex].lines[pos.lineIndex];
     QChar c = line.chars[pos.charIndex].character;
 
-    // ★★★ 如果是中文/日文/韩文：单字为“词” ★★★
     if (isCJK(c)) {
         *start = pos;
         *end = pos;
         return;
     }
 
-    // 原英文处理逻辑
     int startIdx = pos.charIndex;
     while (startIdx > 0) {
         QChar prev = line.chars[startIdx - 1].character;
@@ -441,10 +419,8 @@ void TextSelector::findBlockBoundary(const PageTextData& pageData,
         return;
     }
 
-    // 块的开始：第一行第一个字符
     *start = CharPosition(pos.blockIndex, 0, 0);
 
-    // 块的结束：最后一行最后一个字符
     const TextLine& lastLine = block.lines.last();
     *end = CharPosition(pos.blockIndex, block.lines.size() - 1,
                         lastLine.chars.size() - 1);
@@ -452,7 +428,6 @@ void TextSelector::findBlockBoundary(const PageTextData& pageData,
 
 bool TextSelector::isWordSeparator(QChar ch) const
 {
-    // 空格、标点、换行等都是单词分隔符
     return ch.isSpace() || ch.isPunct() ||
            ch == '\n' || ch == '\r' || ch == '\t' ||
            ch.category() == QChar::Separator_Space ||
@@ -468,7 +443,6 @@ void TextSelector::setSelectionRange(int pageIndex,
     m_selection.pageIndex = pageIndex;
     m_selection.mode = mode;
 
-    // 确保start在end之前
     if (end < start) {
         m_selection.startBlockIndex = end.blockIndex;
         m_selection.startLineIndex = end.lineIndex;
@@ -531,13 +505,11 @@ QString TextSelector::extractSelectedText(const PageTextData& pageData)
                 text.append(line.chars[c].character);
             }
 
-            // 行尾添加换行符（除了最后一个字符）
             if (b != endBlock || l != endLine) {
                 text.append('\n');
             }
         }
 
-        // 块之间添加额外换行
         if (b != endBlock) {
             text.append('\n');
         }
@@ -575,7 +547,6 @@ QVector<QRectF> TextSelector::calculateHighlightRects(const PageTextData& pageDa
                 continue;
             }
 
-            // 合并同一行的字符bbox
             QRectF lineRect = line.chars[firstChar].bbox;
             for (int c = firstChar + 1; c <= lastChar && c < line.chars.size(); ++c) {
                 lineRect = lineRect.united(line.chars[c].bbox);
@@ -586,4 +557,14 @@ QVector<QRectF> TextSelector::calculateHighlightRects(const PageTextData& pageDa
     }
 
     return rects;
+}
+
+int TextSelector::getCharGlobalIndex(const PageTextData& pageData, const CharPosition& pos) const
+{
+    return 0;
+}
+
+CharPosition TextSelector::getCharPositionFromIndex(const PageTextData& pageData, int index) const
+{
+    return CharPosition();
 }

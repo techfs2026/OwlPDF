@@ -1,6 +1,7 @@
 #include "thumbnailcache.h"
 #include <QReadLocker>
 #include <QWriteLocker>
+#include <QCoreApplication>
 
 ThumbnailCache::ThumbnailCache()
 {
@@ -42,10 +43,9 @@ QString ThumbnailCache::getStatistics() const
 {
     int cachedCount = count();
 
-    // 估算内存占用（平均 50KB/页）
     qint64 memoryKB = cachedCount * 50;
 
-    return QString("Thumbnail Cache: %1 pages (%.2 MB)")
+    return QCoreApplication::translate("ThumbnailCache", "Thumbnail Cache: %1 pages (%.2 MB)")
         .arg(cachedCount)
         .arg(memoryKB / 1024.0, 0, 'f', 2);
 }

@@ -5,18 +5,12 @@
 #include <QVector>
 #include <QSet>
 
-/**
- * @brief 缩略图加载策略类型
- */
 enum class LoadStrategyType {
     SMALL_DOC,
     MEDIUM_DOC,
     LARGE_DOC
 };
 
-/**
- * @brief 缩略图加载策略基类
- */
 class ThumbnailLoadStrategy : public QObject
 {
     Q_OBJECT
@@ -29,29 +23,16 @@ public:
 
     virtual LoadStrategyType type() const = 0;
 
-    /**
-     * @brief 获取初始加载页面列表
-     */
     virtual QVector<int> getInitialLoadPages(const QSet<int>& visiblePages) const = 0;
 
-    /**
-     * @brief 获取后续批次（用于异步加载）
-     * @return 每个批次的页面列表
-     */
     virtual QVector<QVector<int>> getBackgroundBatches() const = 0;
 
-    /**
-     * @brief 处理可见区域变化（用于大文档）
-     */
     virtual QVector<int> handleVisibleChange(const QSet<int>& visiblePages) const = 0;
 
 protected:
     int m_pageCount;
 };
 
-/**
- * @brief 小文档策略（<=50页）：同步全量加载
- */
 class SmallDocStrategy : public ThumbnailLoadStrategy
 {
     Q_OBJECT
@@ -65,9 +46,6 @@ public:
     QVector<int> handleVisibleChange(const QSet<int>& visiblePages) const override;
 };
 
-/**
- * @brief 中文档策略（51-400页）：同步可见区+异步智能分批
- */
 class MediumDocStrategy : public ThumbnailLoadStrategy
 {
     Q_OBJECT
@@ -85,9 +63,6 @@ private:
     static constexpr int INITIAL_MARGIN = 15;
 };
 
-/**
- * @brief 大文档策略（>400页）：按需分页加载
- */
 class LargeDocStrategy : public ThumbnailLoadStrategy
 {
     Q_OBJECT
@@ -101,13 +76,10 @@ public:
     QVector<int> handleVisibleChange(const QSet<int>& visiblePages) const override;
 
 private:
-    static constexpr int PAGE_WINDOW = 8;  // 可见区前后各8页
-    mutable QSet<int> m_loadedPages;  // 已加载的页面
+    static constexpr int PAGE_WINDOW = 8;
+    mutable QSet<int> m_loadedPages;
 };
 
-/**
- * @brief 策略工厂
- */
 class StrategyFactory
 {
 public:
