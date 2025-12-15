@@ -380,9 +380,17 @@ void PDFPageWidget::drawSearchHighlights(QPainter& painter, int pageIndex, int p
 
     const PDFDocumentState* state = m_session->state();
     int currentMatchIndex = state->searchCurrentMatchIndex();
+    int totalMatches = state->searchTotalMatches();
 
-    for (const SearchResult& result : results) {
-        bool isCurrent = false;
+    int globalIndex = 0;
+    for (int pg = 0; pg < pageIndex; pg++) {
+        QVector<SearchResult> prevResults = handler->getPageSearchResults(pg);
+        globalIndex += prevResults.size();
+    }
+
+    for (int i = 0; i < results.size(); ++i) {
+        const SearchResult& result = results[i];
+        bool isCurrent = (globalIndex + i == currentMatchIndex);
 
         for (const QRectF& quad : result.quads) {
             QRectF scaledQuad(quad.x() * zoom, quad.y() * zoom, quad.width() * zoom, quad.height() * zoom);

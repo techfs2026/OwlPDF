@@ -47,7 +47,7 @@ PDFDocumentSession::~PDFDocumentSession()
 bool PDFDocumentSession::loadDocument(const QString& filePath, QString* errorMessage)
 {
     if (filePath.isEmpty()) {
-        if (errorMessage) *errorMessage = tr("空路径");
+        if (errorMessage) *errorMessage = tr("Empty file path");
         return false;
     }
 
@@ -289,7 +289,6 @@ bool PDFDocumentSession::hasThumbnail(int pageIndex) const
                false;
 }
 
-
 QString PDFDocumentSession::getThumbnailStatistics() const
 {
     return m_contentHandler ?
@@ -472,20 +471,19 @@ QString PDFDocumentSession::getTextCacheStatistics() const
     return m_textCache ? m_textCache->getStatistics() : QString();
 }
 
-void PDFDocumentSession::saveViewportState(int scrollY) {
+void PDFDocumentSession::saveViewportState(int scrollY)
+{
     m_state->saveViewportState(scrollY);
 }
 
-void PDFDocumentSession::clearViewportRestore() {
+void PDFDocumentSession::clearViewportRestore()
+{
     m_state->clearViewportRestore();
 }
 
-
 void PDFDocumentSession::setupConnections()
 {
-
     if (m_viewHandler) {
-        // 页面导航完成 -> 更新State
         connect(m_viewHandler.get(), &PDFViewHandler::pageNavigationCompleted,
                 this, [this](int newPageIndex) {
                     m_state->setCurrentPage(newPageIndex);
@@ -498,23 +496,18 @@ void PDFDocumentSession::setupConnections()
                     emit currentPageChanged(newPageIndex);
                 });
 
-        // 缩放设置完成 -> 更新State
         connect(m_viewHandler.get(), &PDFViewHandler::zoomSettingCompleted,
                 this, [this](double newZoom, ZoomMode newMode) {
                     m_state->setCurrentZoomMode(newMode);
 
-                    // 如果zoom为-1，表示需要重新计算
                     if (newZoom < 0) {
-                        // 触发重新计算（由UI调用updateZoom）
                         emit zoomSettingCompleted(newZoom, newMode);
                         return;
                     }
 
                     if (m_state->isContinuousScroll() &&
                         qAbs(m_state->currentZoom() - newZoom) > 0.001) {
-
-                        // 需要从UI获取当前scrollY
-                        emit requestCurrentScrollPosition();  // 新信号
+                        emit requestCurrentScrollPosition();
                     }
 
                     m_state->setCurrentZoom(newZoom);
@@ -524,10 +517,8 @@ void PDFDocumentSession::setupConnections()
                     emit currentZoomChanged(newZoom);
                 });
 
-        // 显示模式设置完成 -> 更新State
         connect(m_viewHandler.get(), &PDFViewHandler::displayModeSettingCompleted,
                 this, [this](PageDisplayMode newMode, int adjustedPage) {
-                    // 双页模式自动关闭连续滚动
                     if (newMode == PageDisplayMode::DoublePage && m_state->isContinuousScroll()) {
                         m_state->setContinuousScroll(false);
                         emit continuousScrollChanged(false);
@@ -535,7 +526,6 @@ void PDFDocumentSession::setupConnections()
 
                     m_state->setCurrentDisplayMode(newMode);
 
-                    // 双页模式下可能调整了页码
                     if (adjustedPage != m_state->currentPage()) {
                         m_state->setCurrentPage(adjustedPage);
                     }
@@ -543,7 +533,6 @@ void PDFDocumentSession::setupConnections()
                     emit currentDisplayModeChanged(newMode);
                 });
 
-        // 连续滚动设置完成 -> 更新State
         connect(m_viewHandler.get(), &PDFViewHandler::continuousScrollSettingCompleted,
                 this, [this](bool continuous) {
                     m_state->setContinuousScroll(continuous);
@@ -551,19 +540,15 @@ void PDFDocumentSession::setupConnections()
                 });
 
         connect(m_viewHandler.get(), &PDFViewHandler::pagePositionsCalculated,
-                this, [this](const QVector<int>& positions,const QVector<int>& heights) {
+                this, [this](const QVector<int>& positions, const QVector<int>& heights) {
                     m_state->setPagePositions(positions, heights);
                     emit pagePositionsChanged(positions, heights);
                 });
 
-
-
-        // 旋转设置完成 -> 更新State
         connect(m_viewHandler.get(), &PDFViewHandler::rotationSettingCompleted,
                 this, [this](int newRotation) {
                     m_state->setCurrentRotation(newRotation);
 
-                    // 旋转变化需要重新计算页面位置
                     if (m_state->isContinuousScroll()) {
                         calculatePagePositions();
                     }
@@ -573,21 +558,16 @@ void PDFDocumentSession::setupConnections()
                     emit currentRotationChanged(newRotation);
                 });
 
-        // 页面位置计算完成 -> 更新State（已在calculatePagePositions中处理）
-
-        // 滚动位置请求 -> 直接转发
         connect(m_viewHandler.get(), &PDFViewHandler::scrollToPositionRequested,
                 this, &PDFDocumentSession::scrollToPositionRequested);
     }
 
     if (m_contentHandler) {
-        // 文档事件直接转发（非状态变化）
         connect(m_contentHandler.get(), &PDFContentHandler::documentLoaded,
-                this, [this](const QString& filePath, int pageCount){
-                    // 更新State
+                this, [this](const QString& filePath, int pageCount) {
                     bool isTextPDF = m_contentHandler->isTextPDF(5);
                     m_state->setDocumentLoaded(true, filePath, pageCount, isTextPDF);
-                    m_state->setCurrentPage(0); // 重置到第一页
+                    m_state->setCurrentPage(0);
 
                     qInfo() << "PDFDocumentSession: Document loaded -"
                             << QFileInfo(filePath).fileName()
@@ -595,6 +575,7 @@ void PDFDocumentSession::setupConnections()
 
                     emit documentLoaded(filePath, pageCount);
                 });
+
         connect(m_contentHandler.get(), &PDFContentHandler::documentError,
                 this, &PDFDocumentSession::documentError);
 
@@ -609,7 +590,6 @@ void PDFDocumentSession::setupConnections()
     }
 
     if (m_interactionHandler) {
-        // 搜索事件
         connect(m_interactionHandler.get(), &PDFInteractionHandler::searchProgressUpdated,
                 this, &PDFDocumentSession::searchProgressUpdated);
 
@@ -630,7 +610,6 @@ void PDFDocumentSession::setupConnections()
                     m_state->setSearchState(false, totalMatches, currentIndex);
                 });
 
-        // 链接事件
         connect(m_interactionHandler.get(), &PDFInteractionHandler::linksVisibilityChanged,
                 this, [this](bool visible) {
                     m_state->setLinksVisible(visible);
@@ -645,7 +624,6 @@ void PDFDocumentSession::setupConnections()
         connect(m_interactionHandler.get(), &PDFInteractionHandler::externalLinkRequested,
                 this, &PDFDocumentSession::externalLinkRequested);
 
-        // 文本选择事件
         connect(m_interactionHandler.get(), &PDFInteractionHandler::textSelectionChanged,
                 this, [this](bool hasSelection, const QString& selectedText) {
                     Q_UNUSED(selectedText);
@@ -673,7 +651,6 @@ void PDFDocumentSession::updateCacheAfterStateChange()
         return;
     }
 
-    // 更新页面缓存的当前状态
     m_pageCache->setCurrentPage(
         m_state->currentPage(),
         m_state->currentZoom(),
@@ -686,7 +663,6 @@ void PDFDocumentSession::setPaperEffectEnabled(bool enabled)
     if (m_renderer) {
         m_renderer->setPaperEffectEnabled(enabled);
 
-        // 清空缓存以便重新渲染
         if (m_pageCache) {
             m_pageCache->clear();
         }

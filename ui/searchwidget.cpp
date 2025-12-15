@@ -45,6 +45,7 @@ void SearchWidget::setupUI()
     m_searchCombo->setMaxCount(20);
     m_searchCombo->setInsertPolicy(QComboBox::InsertAtTop);
     m_searchCombo->setDuplicatesEnabled(false);
+    m_searchCombo->setCompleter(nullptr);
     mainLayout->addWidget(m_searchCombo);
 
     m_previousButton = new QPushButton(tr("Previous"), this);
