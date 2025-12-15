@@ -216,7 +216,7 @@ private:
     int m_ocrDebounceDelay = 300;      // 防抖延迟（毫秒）
     int m_ocrHoverRegionSize = 200;    // 悬停区域大小（像素）
 
-    QString m_jiebaDictDir = QCoreApplication::applicationDirPath() + "/dict";
+    QString m_jiebaDictDir = QCoreApplication::applicationDirPath() + "/ocr/dict";
 };
 
 #endif // APPCONFIG_H

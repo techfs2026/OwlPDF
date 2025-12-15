@@ -67,12 +67,10 @@ void ThumbnailBatchTask::run()
             break;
         }
 
-        // 检查是否已缓存
         if (m_cache->has(pageIndex)) {
             continue;
         }
 
-        // 计算缩放比例（使用高DPI渲染宽度）
         QSizeF pageSize = m_renderer->pageSize(pageIndex);
         if (pageSize.isEmpty()) {
             qWarning() << "ThumbnailBatchTask: Invalid page size for page" << pageIndex;
@@ -81,7 +79,6 @@ void ThumbnailBatchTask::run()
 
         double zoom = m_thumbnailWidth / pageSize.width();
 
-        // 渲染页面
         RenderResult thumbnailRes = m_renderer->renderPage(pageIndex, zoom, m_rotation, RenderScene::Thumbnail);
 
         QImage thumbnail = thumbnailRes.image;
@@ -91,13 +88,10 @@ void ThumbnailBatchTask::run()
             continue;
         }
 
-        // 设置设备像素比
         thumbnail.setDevicePixelRatio(m_devicePixelRatio);
 
-        // 保存到缓存
         m_cache->set(pageIndex, thumbnail);
 
-        // 通知UI
         if (m_manager) {
             QMetaObject::invokeMethod(m_manager, "thumbnailLoaded",
                                       Qt::QueuedConnection,

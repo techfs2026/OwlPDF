@@ -11,7 +11,7 @@ ThumbnailManagerV2::ThumbnailManagerV2(PerThreadMuPDFRenderer* renderer, QObject
     , m_renderer(renderer)
     , m_cache(std::make_unique<ThumbnailCache>())
     , m_threadPool(std::make_unique<QThreadPool>())
-    , m_thumbnailWidth(180)  // 提高默认宽度：120 → 180
+    , m_thumbnailWidth(180)
     , m_rotation(0)
     , m_nextBatchIndex(0)
     , m_runningTasks(0)
@@ -22,7 +22,6 @@ ThumbnailManagerV2::ThumbnailManagerV2(PerThreadMuPDFRenderer* renderer, QObject
     m_threadPool->setMaxThreadCount(threadCount);
     m_threadPool->setExpiryTimeout(30000);
 
-    // 检测设备像素比
     detectDevicePixelRatio();
 
     qInfo() << "ThumbnailManagerV2: Initialized with"
@@ -56,7 +55,6 @@ QImage ThumbnailManagerV2::getThumbnail(int pageIndex) const
     QImage image = m_cache->get(pageIndex);
 
     if (!image.isNull() && m_devicePixelRatio > 1.0) {
-        // 设置设备像素比，让 Qt 自动处理高 DPI 显示
         image.setDevicePixelRatio(m_devicePixelRatio);
     }
 
@@ -86,13 +84,13 @@ void ThumbnailManagerV2::startLoading(const QSet<int>& initialVisible)
     QString strategyName;
     switch (m_strategy->type()) {
     case LoadStrategyType::SMALL_DOC:
-        strategyName = "Small Document (Full Sync)";
+        strategyName = tr("Small Document (Full Sync)");
         break;
     case LoadStrategyType::MEDIUM_DOC:
-        strategyName = "Medium Document (Visible Sync + Background Async)";
+        strategyName = tr("Medium Document (Visible Sync + Background Async)");
         break;
     case LoadStrategyType::LARGE_DOC:
-        strategyName = "Large Document (On-Demand Sync Only)";
+        strategyName = tr("Large Document (On-Demand Sync Only)");
         break;
     }
 
@@ -109,24 +107,24 @@ void ThumbnailManagerV2::startLoading(const QSet<int>& initialVisible)
 
     if (m_strategy->type() == LoadStrategyType::SMALL_DOC) {
         m_isLoadingInProgress = true;
-        emit loadingStatusChanged(tr("加载中..."));
+        emit loadingStatusChanged(tr("Loading..."));
         renderPagesSync(initialPages);
-        emit loadingStatusChanged(tr("加载完毕！"));
+        emit loadingStatusChanged(tr("Load completed!"));
         m_isLoadingInProgress = false;
         emit allCompleted();
 
     } else if (m_strategy->type() == LoadStrategyType::MEDIUM_DOC) {
         m_isLoadingInProgress = true;
-        emit loadingStatusChanged(tr("加载可见区..."));
+        emit loadingStatusChanged(tr("Loading visible area..."));
         renderPagesSync(initialPages);
-        emit loadingStatusChanged(tr("后台加载中..."));
+        emit loadingStatusChanged(tr("Background loading..."));
         setupBackgroundBatches();
 
     } else {
         m_isLoadingInProgress = false;
-        emit loadingStatusChanged(tr("加载中..."));
+        emit loadingStatusChanged(tr("Loading..."));
         renderPagesSync(initialPages);
-        emit loadingStatusChanged(tr("滚动以触发分页加载"));
+        emit loadingStatusChanged(tr("Scroll to trigger paged loading"));
     }
 }
 
@@ -193,10 +191,9 @@ void ThumbnailManagerV2::cancelAllTasks()
     m_nextBatchIndex = 0;
     m_runningTasks = 0;
 
-    // 等待所有任务完成（自动删除）
     if (m_threadPool) {
-        m_threadPool->clear();        // 清除还没开始的任务
-        m_threadPool->waitForDone();  // 等待所有正在运行的任务完成
+        m_threadPool->clear();
+        m_threadPool->waitForDone();
     }
 }
 
@@ -227,12 +224,10 @@ bool ThumbnailManagerV2::shouldRespondToScroll() const
 
 void ThumbnailManagerV2::detectDevicePixelRatio()
 {
-    // 获取主屏幕的设备像素比
     QScreen* screen = QGuiApplication::primaryScreen();
     if (screen) {
         m_devicePixelRatio = screen->devicePixelRatio();
 
-        // 限制最大倍数，避免过大的图片
         if (m_devicePixelRatio > 3.0) {
             qInfo() << "ThumbnailManagerV2: Device pixel ratio" << m_devicePixelRatio
                     << "is very high, capping at 3.0";
@@ -245,7 +240,6 @@ void ThumbnailManagerV2::detectDevicePixelRatio()
 
 int ThumbnailManagerV2::getRenderWidth() const
 {
-    // 按设备像素比渲染高分辨率图片
     return static_cast<int>(m_thumbnailWidth * m_devicePixelRatio);
 }
 
@@ -260,7 +254,7 @@ void ThumbnailManagerV2::renderPagesSync(const QVector<int>& pages)
 
     int rendered = 0;
     int total = pages.size();
-    int renderWidth = getRenderWidth();  // 使用高DPI渲染宽度
+    int renderWidth = getRenderWidth();
 
     for (int pageIndex : pages) {
         if (m_cache->has(pageIndex)) {
@@ -272,14 +266,12 @@ void ThumbnailManagerV2::renderPagesSync(const QVector<int>& pages)
             continue;
         }
 
-        // 按高DPI宽度计算缩放比例
         double zoom = renderWidth / pageSize.width();
 
         RenderResult result = m_renderer->renderPage(
             pageIndex, zoom, m_rotation, RenderScene::Thumbnail);
 
         if (result.success && !result.image.isNull()) {
-            // 设置图片的设备像素比
             QImage image = result.image;
             image.setDevicePixelRatio(m_devicePixelRatio);
 
@@ -323,9 +315,9 @@ void ThumbnailManagerV2::renderPagesAsync(const QVector<int>& pages, RenderPrior
         this,
         toRender,
         priority,
-        getRenderWidth(),  // 使用高DPI渲染宽度
+        getRenderWidth(),
         m_rotation,
-        m_devicePixelRatio,  // 传递设备像素比
+        m_devicePixelRatio,
         nullptr);
 
     m_threadPool->start(task, static_cast<int>(priority));
@@ -339,7 +331,6 @@ void ThumbnailManagerV2::setupBackgroundBatches()
 
     int maxConcurrency = m_threadPool->maxThreadCount();
 
-    // 启动前 maxConcurrency 个批次
     for (int i = 0; i < maxConcurrency; i++) {
         processNextBatch();
     }
@@ -348,7 +339,6 @@ void ThumbnailManagerV2::setupBackgroundBatches()
 void ThumbnailManagerV2::processNextBatch()
 {
     if (m_nextBatchIndex >= m_backgroundBatches.size()) {
-        // 没有更多批次了，如果也没有任务在跑 → 全部完成
         if (m_runningTasks == 0) {
             emit allCompleted();
         }
@@ -363,7 +353,7 @@ void ThumbnailManagerV2::processNextBatch()
         QMetaObject::invokeMethod(this, [this]() {
             emit batchCompleted(m_nextBatchIndex, m_backgroundBatches.size());
             m_runningTasks--;
-            processNextBatch(); // 启动下一个
+            processNextBatch();
         });
     };
 

@@ -1286,4 +1286,87 @@ Click to start engine</source>
     </message>
 
 </context>
+<context>
+    <name>SearchWorker</name>
+
+    <message>
+        <source>No document loaded</source>
+        <translation>未加载文档</translation>
+    </message>
+
+    <message>
+        <source>Exception during searchPage</source>
+        <translation>搜索页面时发生异常</translation>
+    </message>
+
+</context>
+<context>
+    <name>TextCacheManager</name>
+
+    <message>
+        <source>No renderer assigned</source>
+        <translation>未分配渲染器</translation>
+    </message>
+
+    <message>
+        <source>Failed to get document path</source>
+        <translation>获取文档路径失败</translation>
+    </message>
+
+    <message>
+        <source>Empty document path</source>
+        <translation>文档路径为空</translation>
+    </message>
+
+    <message>
+        <source>Invalid page count</source>
+        <translation>无效的页面数量</translation>
+    </message>
+
+</context>
+
+<context>
+    <name>ThumbnailManagerV2</name>
+
+    <message>
+        <source>Small Document (Full Sync)</source>
+        <translation>小文档（全量同步）</translation>
+    </message>
+
+    <message>
+        <source>Medium Document (Visible Sync + Background Async)</source>
+        <translation>中文档（可见区同步 + 后台异步）</translation>
+    </message>
+
+    <message>
+        <source>Large Document (On-Demand Sync Only)</source>
+        <translation>大文档（按需同步）</translation>
+    </message>
+
+    <message>
+        <source>Loading...</source>
+        <translation>加载中...</translation>
+    </message>
+
+    <message>
+        <source>Load completed!</source>
+        <translation>加载完毕!</translation>
+    </message>
+
+    <message>
+        <source>Loading visible area...</source>
+        <translation>加载可见区...</translation>
+    </message>
+
+    <message>
+        <source>Background loading...</source>
+        <translation>后台加载中...</translation>
+    </message>
+
+    <message>
+        <source>Scroll to trigger paged loading</source>
+        <translation>滚动以触发分页加载</translation>
+    </message>
+
+</context>
 </TS>

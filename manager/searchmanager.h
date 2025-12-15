@@ -25,10 +25,6 @@ struct TextBlock;
 struct TextLine;
 struct TextChar;
 
-
-
-// ========== 搜索工作线程 ==========
-
 class SearchWorker : public QObject
 {
     Q_OBJECT
@@ -57,8 +53,6 @@ private:
     std::atomic_bool m_cancelRequested;
 };
 
-// ========== 搜索管理器 ==========
-
 class SearchManager : public QObject
 {
     Q_OBJECT
@@ -69,28 +63,23 @@ public:
                            QObject* parent = nullptr);
     ~SearchManager();
 
-    // 搜索控制
     void startSearch(const QString& query,
                      const SearchOptions& options = SearchOptions(),
                      int startPage = 0);
     void cancelSearch();
     bool isSearching() const;
 
-    // 结果访问
     QVector<SearchResult> getAllResults() const;
     QVector<SearchResult> getPageResults(int pageIndex) const;
     int totalMatches() const;
 
-    // 当前匹配导航
     int currentMatchIndex() const;
     void setCurrentMatchIndex(int index);
     SearchResult nextMatch();
     SearchResult previousMatch();
 
-    // 结果管理
     void clearResults();
 
-    // 搜索历史
     void addToHistory(const QString& query);
     QStringList getHistory(int maxCount = 10) const;
     void clearHistory();
@@ -104,12 +93,10 @@ signals:
 private:
     friend class SearchWorker;
 
-    // 搜索单页（从缓存的文本数据）
     QVector<SearchResult> searchPage(int pageIndex,
                                      const QString& query,
                                      const SearchOptions& options);
 
-    // 辅助方法：从文本数据中提取上下文
     QString getContextFromTextData(const PageTextData& textData,
                                    const TextBlock& currentBlock,
                                    const TextLine& currentLine,
@@ -119,22 +106,18 @@ private:
     PerThreadMuPDFRenderer* m_renderer;
     TextCacheManager* m_textCacheManager;
 
-    // 搜索结果
     QVector<SearchResult> m_results;
     int m_currentMatchIndex;
 
-    // 当前搜索
     QString m_currentQuery;
     SearchOptions m_currentOptions;
 
-    // 搜索状态
-    mutable QMutex m_mutex; // 保护 m_results, m_currentMatchIndex, m_searchHistory 等共享数据
+    mutable QMutex m_mutex;
     std::atomic_bool m_isSearching;
     std::atomic_bool m_cancelRequested;
     QPointer<QThread> m_workerThread;
-    QPointer<SearchWorker> m_worker; // 当前 worker（如果有）
+    QPointer<SearchWorker> m_worker;
 
-    // 搜索历史
     QStringList m_searchHistory;
     static constexpr int MAX_HISTORY = 20;
 };

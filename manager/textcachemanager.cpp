@@ -9,9 +9,6 @@
 #include <QVector>
 #include <memory>
 
-// ========================================
-// PageExtractTask - 批处理文本提取任务
-// ========================================
 class PageExtractTask : public QRunnable
 {
 public:
@@ -33,15 +30,12 @@ public:
             return;
         }
 
-        // 检查取消
         if (m_manager->m_cancelRequested.loadAcquire()) {
             qDebug() << "PageExtractTask: Cancelled before start, pages:" << m_pageIndices;
             reportAllFailed();
             return;
         }
 
-        // 创建独立的渲染器实例（线程安全）
-        // 一个 task 共享一个 renderer 实例，避免重复打开文档
         qDebug() << "PageExtractTask: Creating renderer for batch, pages:" << m_pageIndices.size()
                  << "first:" << m_pageIndices.first() << "last:" << m_pageIndices.last();
 
@@ -57,12 +51,10 @@ public:
         int totalPages = m_renderer->pageCount();
         qDebug() << "PageExtractTask: Document loaded successfully, total pages:" << totalPages;
 
-        // 批量提取文本
         int successCount = 0;
         int failCount = 0;
 
         for (int pageIndex : m_pageIndices) {
-            // 每页处理前都检查取消
             if (m_manager->m_cancelRequested.loadAcquire()) {
                 qDebug() << "PageExtractTask: Cancelled at page" << pageIndex;
                 reportDone(pageIndex, PageTextData(), false);
@@ -70,7 +62,6 @@ public:
                 continue;
             }
 
-            // 验证页面索引
             if (pageIndex < 0 || pageIndex >= totalPages) {
                 qWarning() << "PageExtractTask: Invalid page index" << pageIndex
                            << "total pages:" << totalPages;
@@ -79,16 +70,14 @@ public:
                 continue;
             }
 
-            // 提取文本
             PageTextData pageData;
 
             m_renderer->extractText(pageIndex, pageData);
 
-            // 区分空白页和真正的错误
             QString error = m_renderer->getLastError();
             bool hasError = !error.isEmpty();
             bool isBlankPage = pageData.blocks.isEmpty() && !hasError;
-            bool success = !hasError; // 只要没有错误就算成功（空白页也是成功）
+            bool success = !hasError;
 
             if (hasError) {
                 qWarning() << "PageExtractTask: Failed to extract text from page" << pageIndex
@@ -134,9 +123,6 @@ private:
     std::unique_ptr<PerThreadMuPDFRenderer> m_renderer;
 };
 
-// ========================================
-// TextCacheManager 实现
-// ========================================
 TextCacheManager::TextCacheManager(PerThreadMuPDFRenderer* renderer, QObject* parent)
     : QObject(parent)
     , m_renderer(renderer)
@@ -159,25 +145,23 @@ TextCacheManager::~TextCacheManager()
 void TextCacheManager::startPreload()
 {
     if (!m_renderer) {
-        emit preloadError(QStringLiteral("No renderer assigned"));
+        emit preloadError(tr("No renderer assigned"));
         return;
     }
 
-    // 获取文档路径
     QString pdfPath;
     try {
         pdfPath = m_renderer->documentPath();
     } catch (...) {
-        emit preloadError(QStringLiteral("Failed to get document path"));
+        emit preloadError(tr("Failed to get document path"));
         return;
     }
 
     if (pdfPath.isEmpty()) {
-        emit preloadError(QStringLiteral("Empty document path"));
+        emit preloadError(tr("Empty document path"));
         return;
     }
 
-    // 如果已有预加载在运行，先取消
     if (m_isPreloading.loadAcquire()) {
         cancelPreload();
         for (int i = 0; i < 30 && m_isPreloading.loadAcquire(); ++i) {
@@ -188,34 +172,28 @@ void TextCacheManager::startPreload()
 
     int pageCount = m_renderer->pageCount();
     if (pageCount <= 0) {
-        emit preloadError(QStringLiteral("Invalid page count"));
+        emit preloadError(tr("Invalid page count"));
         return;
     }
 
-    // 设置并发状态
     m_isPreloading.storeRelease(1);
     m_cancelRequested.storeRelease(0);
     m_preloadedPages.storeRelease(0);
     m_remainingTasks.storeRelease(pageCount);
 
-    // 配置线程池（使用一半的CPU核心）
     int threadCount = qMax(4, QThread::idealThreadCount() / 2);
     m_threadPool.setMaxThreadCount(threadCount);
 
-    // 计算每个批次的大小
-    // 批次大小 = ceil(页数 / 线程数)，确保页面均匀分布
     int batchSize = qMax(1, (pageCount + threadCount - 1) / threadCount);
 
     qDebug() << "TextCacheManager: Starting preload for" << pageCount << "pages"
              << "with" << threadCount << "threads"
              << "batch size:" << batchSize;
 
-    // 收集需要处理的页面（跳过已缓存的）
     QVector<int> pagesToProcess;
     for (int i = 0; i < pageCount; ++i) {
         QMutexLocker locker(&m_mutex);
         if (m_cache.contains(i)) {
-            // 已在缓存中，直接计数
             m_preloadedPages.ref();
             m_remainingTasks.fetchAndSubRelaxed(1);
             emit preloadProgress(m_preloadedPages.loadAcquire(), pageCount);
@@ -224,10 +202,8 @@ void TextCacheManager::startPreload()
         }
     }
 
-    // 按批次提交任务
     int tasksSubmitted = 0;
     for (int i = 0; i < pagesToProcess.size(); i += batchSize) {
-        // 创建当前批次的页面列表
         QVector<int> batch;
         for (int j = 0; j < batchSize && (i + j) < pagesToProcess.size(); ++j) {
             batch.append(pagesToProcess[i + j]);
@@ -243,7 +219,6 @@ void TextCacheManager::startPreload()
     qDebug() << "TextCacheManager: Submitted" << tasksSubmitted << "tasks"
              << "for" << pagesToProcess.size() << "pages";
 
-    // Edge case: 所有页都已在缓存中
     if (m_remainingTasks.loadAcquire() <= 0) {
         m_isPreloading.storeRelease(0);
         emit preloadCompleted();
@@ -285,7 +260,6 @@ void TextCacheManager::addPageTextData(int pageIndex, const PageTextData& data)
 {
     QMutexLocker locker(&m_mutex);
 
-    // 如果超过最大缓存大小，移除最旧的条目
     if (m_maxCacheSize > 0 && m_cache.size() >= m_maxCacheSize) {
         if (!m_cache.isEmpty()) {
             auto it = m_cache.begin();
@@ -342,12 +316,10 @@ QString TextCacheManager::getStatistics() const
 
 void TextCacheManager::handleTaskDone(int pageIndex, PageTextData pageData, bool ok)
 {
-    // 无论成功与否，都要递减剩余任务计数
     int remaining = m_remainingTasks.fetchAndSubRelaxed(1) - 1;
     Q_UNUSED(remaining);
 
     if (ok) {
-        // 成功提取，写入缓存
         {
             QMutexLocker locker(&m_mutex);
             if (m_maxCacheSize > 0 && m_cache.size() >= m_maxCacheSize) {
@@ -362,12 +334,10 @@ void TextCacheManager::handleTaskDone(int pageIndex, PageTextData pageData, bool
         m_preloadedPages.ref();
     }
 
-    // 发送进度信号
     int loaded = m_preloadedPages.loadAcquire();
     int total = loaded + qMax(0, m_remainingTasks.loadAcquire());
     emit preloadProgress(loaded, total);
 
-    // 检查是否所有任务都完成
     if (m_remainingTasks.loadAcquire() <= 0) {
         if (m_cancelRequested.loadAcquire()) {
             m_isPreloading.storeRelease(0);

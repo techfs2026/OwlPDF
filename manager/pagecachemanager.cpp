@@ -1,7 +1,6 @@
 #include "pagecachemanager.h"
 #include <QMutexLocker>
 #include <QDebug>
-#include <algorithm>
 
 PageCacheManager::PageCacheManager(int maxSize, CacheStrategy strategy)
     : m_maxSize(maxSize)
@@ -23,19 +22,16 @@ bool PageCacheManager::addPage(int pageIndex, double zoom, int rotation, const Q
 
     PageCacheKey key(pageIndex, zoom, rotation);
 
-    // 如果已存在，更新
     if (m_cache.contains(key)) {
         m_cache[key] = image;
         updateAccessTime(key);
         return true;
     }
 
-    // 如果缓存已满，执行淘汰
     if (m_cache.size() >= m_maxSize) {
         evict();
     }
 
-    // 添加新页面
     m_cache.insert(key, image);
     updateAccessTime(key);
 
@@ -53,7 +49,6 @@ QImage PageCacheManager::getPage(int pageIndex, double zoom, int rotation)
         return QImage();
     }
 
-    // 更新访问时间
     updateAccessTime(key);
     m_hitCount++;
 
@@ -98,16 +93,12 @@ void PageCacheManager::clearByZoomRotation(double zoom, int rotation)
         bool shouldRemove = false;
 
         if (zoom >= 0 && rotation >= 0) {
-            // 同时匹配缩放和旋转
             shouldRemove = (qAbs(key.zoom - zoom) < 0.001 && key.rotation == rotation);
         } else if (zoom >= 0) {
-            // 只匹配缩放
             shouldRemove = (qAbs(key.zoom - zoom) < 0.001);
         } else if (rotation >= 0) {
-            // 只匹配旋转
             shouldRemove = (key.rotation == rotation);
         } else {
-            // 清空所有
             shouldRemove = true;
         }
 
@@ -132,7 +123,6 @@ void PageCacheManager::setMaxSize(int maxSize)
 
     m_maxSize = maxSize;
 
-    // 如果新大小小于当前缓存，执行淘汰
     while (m_cache.size() > m_maxSize) {
         evict();
     }
@@ -199,8 +189,6 @@ QString PageCacheManager::getStatistics() const
 
 void PageCacheManager::evict()
 {
-    // 注意：调用此方法前必须已经获取互斥锁
-
     if (m_cache.isEmpty()) {
         return;
     }
@@ -213,8 +201,6 @@ void PageCacheManager::evict()
 
 PageCacheKey PageCacheManager::selectKeyToEvict()
 {
-    // 注意：调用此方法前必须已经获取互斥锁
-
     QList<PageCacheKey> cachedKeys = m_cache.keys();
 
     if (cachedKeys.isEmpty()) {
@@ -225,7 +211,6 @@ PageCacheKey PageCacheManager::selectKeyToEvict()
 
     switch (m_strategy) {
     case CacheStrategy::LRU: {
-        // 选择访问时间最早的页面
         qint64 oldestTime = m_accessTime.value(selectedKey, 0);
 
         for (const PageCacheKey& key : cachedKeys) {
@@ -239,7 +224,6 @@ PageCacheKey PageCacheManager::selectKeyToEvict()
     }
 
     case CacheStrategy::MRU: {
-        // 选择访问时间最近的页面（不常用）
         qint64 newestTime = m_accessTime.value(selectedKey, 0);
 
         for (const PageCacheKey& key : cachedKeys) {
@@ -253,13 +237,9 @@ PageCacheKey PageCacheManager::selectKeyToEvict()
     }
 
     case CacheStrategy::NearCurrent: {
-        // 优先保留当前页附近的页面
-
-        // 首先，不淘汰可见页面且缩放/旋转匹配的
         QList<PageCacheKey> evictCandidates;
 
         for (const PageCacheKey& key : cachedKeys) {
-            // 如果不是可见页面，或者缩放/旋转不匹配，加入候选
             bool isVisibleAndMatch = m_visiblePages.contains(key.pageIndex) &&
                                      qAbs(key.zoom - m_currentKey.zoom) < 0.001 &&
                                      key.rotation == m_currentKey.rotation;
@@ -269,22 +249,18 @@ PageCacheKey PageCacheManager::selectKeyToEvict()
             }
         }
 
-        // 如果有候选项，从中选择
         if (!evictCandidates.isEmpty()) {
             cachedKeys = evictCandidates;
             selectedKey = cachedKeys.first();
         }
 
-        // 选择距离当前页最远，且缩放/旋转差异最大的
         double maxScore = 0;
 
         for (const PageCacheKey& key : cachedKeys) {
-            // 计算综合距离分数
             int pageDistance = qAbs(key.pageIndex - m_currentKey.pageIndex);
             double zoomDistance = qAbs(key.zoom - m_currentKey.zoom);
             int rotationDistance = (key.rotation != m_currentKey.rotation) ? 1 : 0;
 
-            // 综合分数：页面距离权重最高，然后是缩放差异
             double score = pageDistance * 100.0 + zoomDistance * 50.0 + rotationDistance * 25.0;
 
             if (score > maxScore) {
@@ -301,6 +277,5 @@ PageCacheKey PageCacheManager::selectKeyToEvict()
 
 void PageCacheManager::updateAccessTime(const PageCacheKey& key)
 {
-    // 注意：调用此方法前必须已经获取互斥锁
     m_accessTime[key] = ++m_timeCounter;
 }

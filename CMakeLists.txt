@@ -220,8 +220,8 @@ endif()
 # -----------------------------
 # Copy jieba dict to output directory
 # -----------------------------
-set(JIEBA_DICT_SRC "${CMAKE_SOURCE_DIR}/dict")
-set(JIEBA_DICT_DST "$<TARGET_FILE_DIR:MuQt>/dict")
+set(JIEBA_DICT_SRC "${CMAKE_SOURCE_DIR}/ocr/dict")
+set(JIEBA_DICT_DST "$<TARGET_FILE_DIR:MuQt>/ocr/dict")
 
 if(EXISTS "${JIEBA_DICT_SRC}")
     add_custom_command(TARGET MuQt POST_BUILD
