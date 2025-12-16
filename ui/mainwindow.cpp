@@ -6,7 +6,13 @@
 #include "chinesetokenizer.h"
 #include "appconfig.h"
 
+#ifdef Q_OS_WIN
+#include "fileassociationmanager.h"
+#include "firstrundialog.h"
+#endif
+
 #include <QMenuBar>
+#include <QMimeData>
 #include <QToolBar>
 #include <QStatusBar>
 #include <QFileDialog>
@@ -53,6 +59,26 @@ MainWindow::MainWindow(QWidget* parent)
     addDockWidget(Qt::LeftDockWidgetArea, m_navigationDock);
     m_navigationDock->setVisible(false);
 
+    m_welcomeLabel = new QLabel(this);
+    m_welcomeLabel->setAlignment(Qt::AlignCenter);
+    m_welcomeLabel->setWordWrap(true);
+    m_welcomeLabel->setObjectName("welcomeLabel");
+    m_welcomeLabel->raise();
+
+    QString welcomeText = tr(
+        "<div style='text-align: center; color: #666;'>"
+        "<p style='font-size: 18px; font-weight: bold; margin-bottom: 20px;'>📄 No PDF File Opened</p>"
+        "<p style='font-size: 14px; line-height: 1.8;'>"
+        "• Drag and drop PDF files here<br>"
+        "• Press <b>Ctrl+O</b> to open file dialog<br>"
+        "• Use <b>File</b> menu to browse documents<br>"
+        "• Press <b>F11</b> to toggle toolbar"
+        "</p>"
+        "</div>"
+        );
+    m_welcomeLabel->setText(welcomeText);
+    m_welcomeLabel->setVisible(true);
+
     createActions();
     createMenuBar();
     createToolBar();
@@ -63,6 +89,10 @@ MainWindow::MainWindow(QWidget* parent)
 
     m_resizeDebounceTimer.setSingleShot(true);
     m_resizeDebounceTimer.setInterval(AppConfig::instance().resizeDebounceDelay());
+
+    m_navigationDock->installEventFilter(this);
+
+    setAcceptDrops(true);
 
     if (!DictionaryConnector::instance().isGoldenDictAvailable()) {
         qWarning() << "GoldenDict not found, lookup feature will not work";
@@ -710,6 +740,10 @@ void MainWindow::createActions()
     m_ocrHoverAction->setEnabled(false);
     connect(m_ocrHoverAction, &QAction::triggered,
             this, &MainWindow::toggleOCRHover);
+
+    m_toggleToolBarAction = new QAction(tr("Toggle Toolbar"), this);
+    m_toggleToolBarAction->setShortcut(tr("F11"));
+    connect(m_toggleToolBarAction, &QAction::triggered, this, &MainWindow::toggleToolBar);
 }
 
 void MainWindow::createMenuBar()
@@ -744,6 +778,15 @@ void MainWindow::createMenuBar()
     viewMenu->addAction(m_showLinksAction);
     viewMenu->addSeparator();
     viewMenu->addAction(m_ocrHoverAction);
+    viewMenu->addSeparator();
+    viewMenu->addAction(m_toggleToolBarAction);
+
+#ifdef Q_OS_WIN
+    QMenu* toolsMenu = menuBar()->addMenu(tr("&Tools"));
+    QAction* manageAssociationAction = new QAction(tr("File Association Settings..."), this);
+    connect(manageAssociationAction, &QAction::triggered, this, &MainWindow::onManageFileAssociation);
+    toolsMenu->addAction(manageAssociationAction);
+#endif
 }
 
 void MainWindow::createToolBar()
@@ -899,6 +942,10 @@ void MainWindow::updateUIState()
     PageDisplayMode displayMode = hasDocument ? tab->displayMode() : PageDisplayMode::SinglePage;
     ZoomMode zoomMode = hasDocument ? tab->zoomMode() : ZoomMode::FitWidth;
     bool canEnhance = hasDocument && !tab->isTextPDF();
+
+    if (m_welcomeLabel) {
+        m_welcomeLabel->setVisible(!hasDocument && m_tabWidget->count() <= 1);
+    }
 
     m_closeAction->setEnabled(hasDocument);
 
@@ -1073,7 +1120,22 @@ void MainWindow::updateStatusBar()
 void MainWindow::resizeEvent(QResizeEvent* event)
 {
     QMainWindow::resizeEvent(event);
+
+    if (m_welcomeLabel) {
+        QRect centralRect = centralWidget()->geometry();
+        m_welcomeLabel->setGeometry(centralRect);
+    }
+
     m_resizeDebounceTimer.start();
+}
+
+
+bool MainWindow::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == m_navigationDock && event->type() == QEvent::Resize) {
+        m_resizeDebounceTimer.start();
+    }
+    return QMainWindow::eventFilter(watched, event);
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)
@@ -1103,6 +1165,95 @@ void MainWindow::closeEvent(QCloseEvent* event)
     }
 
     QMainWindow::closeEvent(event);
+}
+
+void MainWindow::dragEnterEvent(QDragEnterEvent* event)
+{
+    if (event->mimeData()->hasUrls()) {
+        bool hasPdf = false;
+        for (const QUrl& url : event->mimeData()->urls()) {
+            QString filePath = url.toLocalFile();
+            if (filePath.endsWith(".pdf", Qt::CaseInsensitive)) {
+                hasPdf = true;
+                break;
+            }
+        }
+
+        if (hasPdf) {
+            event->acceptProposedAction();
+            return;
+        }
+    }
+
+    event->ignore();
+}
+
+void MainWindow::dropEvent(QDropEvent* event)
+{
+    const QMimeData* mimeData = event->mimeData();
+
+    if (!mimeData->hasUrls()) {
+        event->ignore();
+        return;
+    }
+
+    QList<QUrl> urls = mimeData->urls();
+    int successCount = 0;
+    int failCount = 0;
+
+    for (const QUrl& url : urls) {
+        QString filePath = url.toLocalFile();
+
+        if (!filePath.endsWith(".pdf", Qt::CaseInsensitive)) {
+            continue;
+        }
+
+        QFileInfo fileInfo(filePath);
+        if (!fileInfo.exists()) {
+            failCount++;
+            qWarning() << "File does not exist:" << filePath;
+            continue;
+        }
+
+        PDFDocumentTab* tab = currentTab();
+        if (!tab || tab->isDocumentLoaded()) {
+            tab = createNewTab();
+        }
+
+        QString errorMsg;
+        if (tab->loadDocument(filePath, &errorMsg)) {
+            successCount++;
+
+            int index = m_tabWidget->indexOf(tab);
+            if (index >= 0) {
+                updateTabTitle(index);
+            }
+
+            AppConfig::instance().setLastFilePath(filePath);
+        } else {
+            failCount++;
+            qWarning() << "Failed to load:" << filePath << "Error:" << errorMsg;
+
+            if (m_tabWidget->count() > 1) {
+                int index = m_tabWidget->indexOf(tab);
+                closeTab(index);
+            }
+        }
+    }
+
+    if (successCount > 0) {
+        QString message;
+        if (failCount > 0) {
+            message = tr("Opened %1 file(s), failed %2").arg(successCount).arg(failCount);
+        } else {
+            message = tr("Successfully opened %n file(s)", "", successCount);
+        }
+        statusBar()->showMessage(message, 3000);
+    } else if (failCount > 0) {
+        statusBar()->showMessage(tr("Failed to open files"), 3000);
+    }
+
+    event->acceptProposedAction();
 }
 
 void MainWindow::togglePaperEffect()
@@ -1325,4 +1476,142 @@ void MainWindow::onOCRHoverEnabledChanged(bool enabled)
     }
 
     qInfo() << "OCR hover state changed to:" << enabled;
+}
+
+#ifdef Q_OS_WIN
+
+void MainWindow::checkAndShowFirstRunDialog()
+{
+    if (!AppConfig::instance().hasAskedFileAssociation()) {
+        FirstRunDialog dialog(this);
+
+        if (dialog.exec() == QDialog::Accepted) {
+            bool shouldRegister = dialog.shouldRegisterFileAssociation();
+            bool dontAskAgain = dialog.shouldNotAskAgain();
+
+            if (dontAskAgain) {
+                AppConfig::instance().setHasAskedFileAssociation(true);
+                AppConfig::instance().setFileAssociationUserChoice(shouldRegister);
+            }
+
+            if (shouldRegister) {
+                handleFileAssociation(true);
+            }
+        }
+    }
+}
+
+void MainWindow::handleFileAssociation(bool shouldRegister)
+{
+    QStringList extensions = getSupportedExtensions();
+    QString fileTypeName = getFileTypeName();
+
+    bool success = false;
+
+    if (shouldRegister) {
+        success = FileAssociationManager::instance().registerMultipleTypes(
+            extensions,
+            fileTypeName,
+            tr("PDF Document")
+            );
+
+        if (success) {
+            statusBar()->showMessage(tr("File association has been set"), 3000);
+        } else {
+            QMessageBox::warning(this, tr("Warning"),
+                                 tr("Failed to set file association. Please check permissions."));
+        }
+    } else {
+        success = FileAssociationManager::instance().unregisterMultipleTypes(
+            extensions,
+            fileTypeName
+            );
+
+        if (success) {
+            statusBar()->showMessage(tr("File association has been removed"), 3000);
+        }
+    }
+}
+
+void MainWindow::onManageFileAssociation()
+{
+    QStringList extensions = getSupportedExtensions();
+    QString fileTypeName = getFileTypeName();
+
+    bool isRegistered = FileAssociationManager::instance().isAnyRegistered(extensions, fileTypeName);
+
+    QString message;
+    if (isRegistered) {
+        message = tr("Currently associated file types: %1\n\nDo you want to remove file association?")
+        .arg(extensions.join(", "));
+    } else {
+        message = tr("Do you want to associate file types: %1\n\n"
+                     "After association, you can open files by double-clicking.")
+                      .arg(extensions.join(", "));
+    }
+
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this,
+        tr("File Association Settings"),
+        message,
+        QMessageBox::Yes | QMessageBox::No
+        );
+
+    if (reply == QMessageBox::Yes) {
+        handleFileAssociation(!isRegistered);
+    }
+}
+
+QStringList MainWindow::getSupportedExtensions() const
+{
+    return QStringList() << "pdf";
+}
+
+QString MainWindow::getFileTypeName() const
+{
+    return "MuQt.PDFDocument";
+}
+
+#endif
+
+void MainWindow::openFileFromCommandLine(const QString& filePath)
+{
+    QFileInfo fileInfo(filePath);
+    if (!fileInfo.exists()) {
+        QMessageBox::warning(this, tr("Error"),
+                             tr("File does not exist: %1").arg(filePath));
+        return;
+    }
+
+    PDFDocumentTab* tab = currentTab();
+
+    if (!tab || tab->isDocumentLoaded()) {
+        tab = createNewTab();
+    }
+
+    if (tab && tab->loadDocument(filePath)) {
+        int index = m_tabWidget->indexOf(tab);
+        m_tabWidget->setTabText(index, fileInfo.fileName());
+        m_tabWidget->setTabToolTip(index, filePath);
+
+        AppConfig::instance().setLastFilePath(filePath);
+
+        statusBar()->showMessage(tr("Opened: %1").arg(filePath), 3000);
+    }
+}
+
+
+
+void MainWindow::toggleToolBar()
+{
+    if (m_toolBar) {
+        bool isVisible = m_toolBar->isVisible();
+        m_toolBar->setVisible(!isVisible);
+
+        if (!isVisible) {
+            statusBar()->showMessage(tr("Toolbar shown (Press F11 to hide)"), 2000);
+        } else {
+            statusBar()->showMessage(tr("Toolbar hidden (Press F11 to show)"), 2000);
+        }
+    }
 }

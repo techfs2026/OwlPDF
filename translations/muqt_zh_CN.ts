@@ -536,6 +536,110 @@ OCR取词功能将同时被关闭。</translation>
         <translation>OCR引擎初始化失败</translation>
     </message>
 
+    <message>
+        <source>&amp;Tools</source>
+        <translation>工具(&amp;T)</translation>
+    </message>
+
+    <message>
+        <source>File Association Settings...</source>
+        <translation>文件关联设置...</translation>
+    </message>
+
+    <message>
+        <source>PDF Document</source>
+        <translation>PDF 文档</translation>
+    </message>
+
+    <message>
+        <source>File association has been set</source>
+        <translation>文件关联已设置</translation>
+    </message>
+
+    <message>
+        <source>Warning</source>
+        <translation>警告</translation>
+    </message>
+
+    <message>
+        <source>Failed to set file association. Please check permissions.</source>
+        <translation>设置文件关联失败，请检查权限。</translation>
+    </message>
+
+    <message>
+        <source>File association has been removed</source>
+        <translation>文件关联已移除</translation>
+    </message>
+
+    <message>
+        <source>Currently associated file types: %1
+
+    Do you want to remove file association?</source>
+        <translation>当前已关联的文件类型：%1
+
+    是否要移除文件关联？</translation>
+    </message>
+
+    <message>
+        <source>Do you want to associate file types: %1
+
+    After association, you can open files by double-clicking.</source>
+        <translation>是否要关联文件类型：%1
+
+    关联后可以通过双击直接打开文件。</translation>
+    </message>
+
+    <message>
+        <source>File Association Settings</source>
+        <translation>文件关联设置</translation>
+    </message>
+
+    <message>
+        <source>File does not exist: %1</source>
+        <translation>文件不存在：%1</translation>
+    </message>
+
+    <message>
+        <source>Opened: %1</source>
+        <translation>已打开：%1</translation>
+    </message>
+    <message numerus="yes">
+        <source>Successfully opened %n file(s)</source>
+        <translation>
+            <numerusform>成功打开 %n 个文件</numerusform>
+        </translation>
+    </message>
+
+    <message>
+        <source>Opened %1 file(s), failed %2</source>
+        <translation>打开 %1 个文件，失败 %2 个</translation>
+    </message>
+
+    <message>
+        <source>Failed to open files</source>
+        <translation>打开文件失败</translation>
+    </message>
+
+    <message>
+        <source>&lt;div style='text-align: center; color: #666;'&gt;&lt;p style='font-size: 18px; font-weight: bold; margin-bottom: 20px;'&gt;📄 No PDF File Opened&lt;/p&gt;&lt;p style='font-size: 14px; line-height: 1.8;'&gt;• Drag and drop PDF files here&lt;br&gt;• Press &lt;b&gt;Ctrl+O&lt;/b&gt; to open file dialog&lt;br&gt;• Use &lt;b&gt;File&lt;/b&gt; menu to browse documents&lt;br&gt;• Press &lt;b&gt;F11&lt;/b&gt; to toggle toolbar&lt;/p&gt;&lt;/div&gt;</source>
+        <translation>&lt;div style='text-align: center; color: #666;'&gt;&lt;p style='font-size: 18px; font-weight: bold; margin-bottom: 20px;'&gt;📄 未打开 PDF 文件&lt;/p&gt;&lt;p style='font-size: 14px; line-height: 1.8;'&gt;• 拖拽 PDF 文件到此处&lt;br&gt;• 按 &lt;b&gt;Ctrl+O&lt;/b&gt; 打开文件对话框&lt;br&gt;• 使用&lt;b&gt;文件&lt;/b&gt;菜单浏览文档&lt;br&gt;• 按 &lt;b&gt;F11&lt;/b&gt; 切换工具栏显示&lt;/p&gt;&lt;/div&gt;</translation>
+    </message>
+
+    <message>
+        <source>Toggle Toolbar</source>
+        <translation>切换工具栏</translation>
+    </message>
+
+    <message>
+        <source>Toolbar shown (Press F11 to hide)</source>
+        <translation>工具栏已显示（按 F11 隐藏）</translation>
+    </message>
+
+    <message>
+        <source>Toolbar hidden (Press F11 to show)</source>
+        <translation>工具栏已隐藏（按 F11 显示）</translation>
+    </message>
+
 </context>
 
 <context>
@@ -1445,5 +1549,44 @@ Click to start engine</source>
         <translation>未指定文件路径</translation>
     </message>
 
+</context>
+<context>
+    <name>FirstRunDialog</name>
+
+    <message>
+        <source>Welcome</source>
+        <translation>欢迎</translation>
+    </message>
+
+    <message>
+        <source>Thank you for using MuQt!</source>
+        <translation>感谢使用 MuQt!</translation>
+    </message>
+
+    <message>
+        <source>For a better user experience, we can associate PDF files with this application.
+This allows you to open PDF files directly by double-clicking them.
+
+You can change this setting at any time from the Tools menu.</source>
+        <translation>为了获得更好的使用体验，我们可以将 PDF 文件关联到本应用程序。
+这样您就可以通过双击直接打开 PDF 文件。
+
+您可以随时在工具菜单中更改此设置。</translation>
+    </message>
+
+    <message>
+        <source>Associate PDF files (Recommended)</source>
+        <translation>关联 PDF 文件（推荐）</translation>
+    </message>
+
+    <message>
+        <source>Don't ask again</source>
+        <translation>不再询问</translation>
+    </message>
+
+    <message>
+        <source>OK</source>
+        <translation>确定</translation>
+    </message>
 </context>
 </TS>

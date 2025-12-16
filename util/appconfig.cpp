@@ -23,18 +23,11 @@ AppConfig& AppConfig::instance()
 
 void AppConfig::loadDefaults()
 {
-    // 缓存配置默认值
     m_maxCacheSize = 10;
     m_preloadMargin = 500;
-
-    // 性能配置默认值
     m_resizeDebounceDelay = 150;
-
-    // UI配置默认值
     m_backgroundColor = QColor(64, 64, 64);
     m_defaultWindowSize = QSize(1300, 800);
-
-    // 用户偏好默认值
     m_rememberLastFile = true;
     m_debugMode = false;
 }
@@ -42,21 +35,14 @@ void AppConfig::loadDefaults()
 void AppConfig::load()
 {
     return;
-    // 加载缓存配置
     m_maxCacheSize = m_settings.value("Cache/MaxSize", m_maxCacheSize).toInt();
     m_preloadMargin = m_settings.value("Cache/PreloadMargin", m_preloadMargin).toInt();
-
-    // 加载性能配置
     m_resizeDebounceDelay = m_settings.value("Performance/ResizeDebounceDelay",
                                              m_resizeDebounceDelay).toInt();
-
-    // 加载UI配置
     m_backgroundColor = m_settings.value("UI/BackgroundColor",
                                          m_backgroundColor).value<QColor>();
     m_defaultWindowSize = m_settings.value("UI/DefaultWindowSize",
                                            m_defaultWindowSize).toSize();
-
-    // 加载用户偏好
     m_rememberLastFile = m_settings.value("Preferences/RememberLastFile",
                                           m_rememberLastFile).toBool();
     m_debugMode = m_settings.value("Debug/Enabled", m_debugMode).toBool();
@@ -65,21 +51,13 @@ void AppConfig::load()
 void AppConfig::save()
 {
     return;
-    // 保存缓存配置
     m_settings.setValue("Cache/MaxSize", m_maxCacheSize);
     m_settings.setValue("Cache/PreloadMargin", m_preloadMargin);
-
-    // 保存性能配置
     m_settings.setValue("Performance/ResizeDebounceDelay", m_resizeDebounceDelay);
-
-    // 保存UI配置
     m_settings.setValue("UI/BackgroundColor", m_backgroundColor);
     m_settings.setValue("UI/DefaultWindowSize", m_defaultWindowSize);
-
-    // 保存用户偏好
     m_settings.setValue("Preferences/RememberLastFile", m_rememberLastFile);
     m_settings.setValue("Debug/Enabled", m_debugMode);
-
     m_settings.sync();
 }
 
@@ -138,7 +116,7 @@ void AppConfig::setLastFilePath(const QString& path)
 
 int AppConfig::lastZoomMode() const
 {
-    return m_settings.value("LastSession/ZoomMode", 2).toInt(); // 默认FitWidth
+    return m_settings.value("LastSession/ZoomMode", 2).toInt();
 }
 
 void AppConfig::setLastZoomMode(int mode)
@@ -148,7 +126,7 @@ void AppConfig::setLastZoomMode(int mode)
 
 int AppConfig::lastDisplayMode() const
 {
-    return m_settings.value("LastSession/DisplayMode", 0).toInt(); // 默认SinglePage
+    return m_settings.value("LastSession/DisplayMode", 0).toInt();
 }
 
 void AppConfig::setLastDisplayMode(int mode)
@@ -171,10 +149,34 @@ void AppConfig::setDebugMode(bool enabled)
     m_debugMode = enabled;
 }
 
-bool AppConfig::lastNavigation() const {
+bool AppConfig::lastNavigation() const
+{
     return m_settings.value("LastSession/ShowNavigation", false).toBool();
 }
 
-void AppConfig::setNavigation(bool enabled) {
+void AppConfig::setNavigation(bool enabled)
+{
     m_settings.setValue("LastSession/ShowNavigation", enabled);
+}
+
+bool AppConfig::hasAskedFileAssociation() const
+{
+    return m_settings.value("FileAssociation/HasAsked", false).toBool();
+}
+
+void AppConfig::setHasAskedFileAssociation(bool asked)
+{
+    m_settings.setValue("FileAssociation/HasAsked", asked);
+    m_settings.sync();
+}
+
+bool AppConfig::fileAssociationUserChoice() const
+{
+    return m_settings.value("FileAssociation/UserChoice", false).toBool();
+}
+
+void AppConfig::setFileAssociationUserChoice(bool choice)
+{
+    m_settings.setValue("FileAssociation/UserChoice", choice);
+    m_settings.sync();
 }

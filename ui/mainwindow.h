@@ -28,6 +28,10 @@ public:
 protected:
     void resizeEvent(QResizeEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
+
+    void dragEnterEvent(QDragEnterEvent* event) override;
+    void dropEvent(QDropEvent* event) override;
 
 private slots:
     void openFile();
@@ -76,6 +80,11 @@ private slots:
     void onOCRHoverEnabledChanged(bool enabled);
     void triggerOCRAtCurrentPosition();
 
+    void toggleToolBar();
+
+public slots:
+    void openFileFromCommandLine(const QString& filePath);
+
 private:
     void createMenuBar();
     void createToolBar();
@@ -98,6 +107,17 @@ private:
     void initOCREngine();
     void shutdownOCREngine();
     QString getEngineStateText(OCREngineState state) const;
+
+#ifdef Q_OS_WIN
+private slots:
+    void onManageFileAssociation();
+public:
+    void checkAndShowFirstRunDialog();
+private:
+    void handleFileAssociation(bool shouldRegister);
+    QStringList getSupportedExtensions() const;
+    QString getFileTypeName() const;
+#endif
 
 private:
     QTabWidget* m_tabWidget;
@@ -146,6 +166,9 @@ private:
     QAction* m_ocrHoverAction;
     OCRStatusIndicator* m_ocrIndicator;
     bool m_ocrInitialized;
+
+    QLabel* m_welcomeLabel;
+    QAction* m_toggleToolBarAction;
 };
 
 #endif // MAINWINDOW_H
