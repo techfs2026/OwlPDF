@@ -33,9 +33,9 @@ bool RapidOCR::initializeInternal(const QString& modelDir)
     config_.modelDir = modelDir;
 
     // 检查模型文件
-    QString detModelPath = modelDir + "/ch_PP-OCRv5_server_det.onnx";
-    QString clsModelPath = modelDir + "/ch_ppocr_mobile_v2.0_cls_infer.onnx";
-    QString recModelPath = modelDir + "/ch_PP-OCRv5_rec_server_infer.onnx";
+    QString detModelPath = modelDir + "/ch_PP-OCRv5_det_server.onnx";
+    QString clsModelPath = modelDir + "/ch_PP-LCNet_x1_0_textline_ori_cls_server.onnx";
+    QString recModelPath = modelDir + "/ch_PP-OCRv5_rec_server.onnx";
     QString keysPath = modelDir + "/ppocrv5_dict.txt";
 
     QStringList missingFiles;

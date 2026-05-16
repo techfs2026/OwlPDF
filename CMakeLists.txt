@@ -4,35 +4,97 @@ project(MuQt LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_PREFIX_PATH "D:/Qt6/6.8.3/msvc2022_64")
-set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/deploy")
-
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Concurrent LinguistTools)
+# ============================================================
+# 平台相关路径配置
+# ============================================================
+
+if(WIN32)
+    # ---------- Windows ----------
+    set(CMAKE_PREFIX_PATH "D:/Qt6/6.8.3/msvc2022_64")
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/deploy")
+
+    set(MUPDF_DIR         "D:/Ext-Lib/mupdf-win-x64")
+    set(OPENCV_DIR        "D:/Ext-Lib/opencv-win-x64")
+    set(ONNXRUNTIME_DIR   "D:/Ext-Lib/onnxruntime-win-x64")
+
+    set(MUPDF_INCLUDE_DIR      "${MUPDF_DIR}/include")
+    set(MUPDF_LIB_DEBUG        "${MUPDF_DIR}/lib/Debug")
+    set(MUPDF_LIB_RELEASE      "${MUPDF_DIR}/lib/Release")
+
+    set(OPENCV_INCLUDE_DIR     "${OPENCV_DIR}/include")
+    set(OPENCV_LIB_DEBUG       "${OPENCV_DIR}/lib/Debug")
+    set(OPENCV_LIB_RELEASE     "${OPENCV_DIR}/lib/Release")
+    set(OPENCV_BIN_DEBUG       "${OPENCV_DIR}/bin/Debug")
+    set(OPENCV_BIN_RELEASE     "${OPENCV_DIR}/bin/Release")
+
+    set(ONNXRUNTIME_INCLUDE_DIR "${ONNXRUNTIME_DIR}/include")
+    set(ONNXRUNTIME_LIB_DIR     "${ONNXRUNTIME_DIR}/lib")
+    set(ONNXRUNTIME_BIN_DIR     "${ONNXRUNTIME_DIR}/lib")
+
+elseif(APPLE)
+    # ---------- macOS ----------
+    # 自动检测 Homebrew 前缀（Apple Silicon=/opt/homebrew，Intel=/usr/local）
+    execute_process(
+        COMMAND brew --prefix
+        OUTPUT_VARIABLE HOMEBREW_PREFIX
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(NOT HOMEBREW_PREFIX)
+        set(HOMEBREW_PREFIX "/opt/homebrew")  # Apple Silicon 默认
+    endif()
+
+    # Qt6
+    set(CMAKE_PREFIX_PATH "/Users/fs2026/Qt/6.11.1/macos")
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/deploy")
+
+    set(MUPDF_DIR         "${HOMEBREW_PREFIX}/opt/mupdf")
+    set(MUPDF_INCLUDE_DIR "${MUPDF_DIR}/include")
+    set(MUPDF_LIB_DIR     "${MUPDF_DIR}/lib")
+
+    # OpenCV：brew install opencv
+    set(OPENCV_DIR        "${HOMEBREW_PREFIX}/opt/opencv")
+    set(OPENCV_INCLUDE_DIR "${OPENCV_DIR}/include/opencv4")
+    set(OPENCV_LIB_DIR    "${OPENCV_DIR}/lib")
+
+    # ONNX Runtime：从github下载 macOS 预编译包后解压到此路径
+    set(ONNXRUNTIME_DIR   "${CMAKE_SOURCE_DIR}/CommonLib/onnxruntime-osx-arm64-1.26.0")
+    set(ONNXRUNTIME_INCLUDE_DIR "${ONNXRUNTIME_DIR}/include")
+    set(ONNXRUNTIME_LIB_DIR     "${ONNXRUNTIME_DIR}/lib")
+endif()
+
+# ============================================================
+# Qt6
+# ============================================================
+
+if(WIN32)
+    find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Concurrent LinguistTools)
+elseif(APPLE)
+    find_package(Qt6 6.11 REQUIRED COMPONENTS Core Widgets Concurrent LinguistTools)
+endif()
+
+# ============================================================
+# 应用图标（平台专属资源）
+# ============================================================
 
 if(WIN32)
     set(APP_ICON_RESOURCE_WINDOWS "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
+elseif(APPLE)
+    # macOS 图标：将 app.icns 放在项目根目录下
+    set(MACOSX_BUNDLE_ICON_FILE "app.icns")
+    set(APP_ICON_MACOS "${CMAKE_CURRENT_SOURCE_DIR}/app.icns")
+    set_source_files_properties(${APP_ICON_MACOS} PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources"
+    )
 endif()
 
-set(MUPDF_DIR "D:/Ext-Lib/mupdf-win-x64")
-set(MUPDF_INCLUDE_DIR "${MUPDF_DIR}/include")
-set(MUPDF_LIB_DEBUG   "${MUPDF_DIR}/lib/Debug")
-set(MUPDF_LIB_RELEASE "${MUPDF_DIR}/lib/Release")
-
-set(OPENCV_DIR "D:/Ext-Lib/opencv-win-x64")
-set(OPENCV_INCLUDE_DIR "${OPENCV_DIR}/include")
-set(OPENCV_LIB_DEBUG   "${OPENCV_DIR}/lib/Debug")
-set(OPENCV_LIB_RELEASE "${OPENCV_DIR}/lib/Release")
-set(OPENCV_BIN_DEBUG   "${OPENCV_DIR}/bin/Debug")
-set(OPENCV_BIN_RELEASE "${OPENCV_DIR}/bin/Release")
-
-set(ONNXRUNTIME_DIR "D:/Ext-Lib/onnxruntime-win-x64")
-set(ONNXRUNTIME_INCLUDE_DIR "${ONNXRUNTIME_DIR}/include")
-set(ONNXRUNTIME_LIB_DIR "${ONNXRUNTIME_DIR}/lib")
-set(ONNXRUNTIME_BIN_DIR "${ONNXRUNTIME_DIR}/lib")
+# ============================================================
+# 源文件收集
+# ============================================================
 
 file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
@@ -44,6 +106,10 @@ list(FILTER PROJECT_SOURCES EXCLUDE REGEX "${CMAKE_CURRENT_BINARY_DIR}")
 list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*_autogen.*")
 list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*/CMakeFiles/.*")
 
+# ============================================================
+# 翻译文件
+# ============================================================
+
 set(TS_FILES
     translations/muqt_zh_CN.ts
     translations/muqt_en_US.ts
@@ -51,16 +117,25 @@ set(TS_FILES
 
 qt_standard_project_setup()
 
+# ============================================================
+# 可执行目标
+# ============================================================
+
 qt_add_executable(MuQt
     WIN32 MACOSX_BUNDLE
     ${PROJECT_SOURCES}
-    ${APP_ICON_RESOURCE_WINDOWS}
+    $<$<BOOL:${WIN32}>:${APP_ICON_RESOURCE_WINDOWS}>
+    $<$<BOOL:${APPLE}>:${APP_ICON_MACOS}>
 )
 
 qt_add_translations(MuQt
     TS_FILES ${TS_FILES}
     RESOURCE_PREFIX "/translations"
 )
+
+# ============================================================
+# 头文件目录
+# ============================================================
 
 target_include_directories(MuQt PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -82,114 +157,213 @@ target_include_directories(MuQt PRIVATE
     ${ONNXRUNTIME_INCLUDE_DIR}
 )
 
-target_link_directories(MuQt PRIVATE
-    "$<$<CONFIG:Debug>:${MUPDF_LIB_DEBUG}>"
-    "$<$<CONFIG:Release>:${MUPDF_LIB_RELEASE}>"
+# ============================================================
+# 链接目录
+# ============================================================
 
-    "$<$<CONFIG:Debug>:${OPENCV_LIB_DEBUG}>"
-    "$<$<CONFIG:Release>:${OPENCV_LIB_RELEASE}>"
+if(WIN32)
+    target_link_directories(MuQt PRIVATE
+        "$<$<CONFIG:Debug>:${MUPDF_LIB_DEBUG}>"
+        "$<$<CONFIG:Release>:${MUPDF_LIB_RELEASE}>"
+        "$<$<CONFIG:Debug>:${OPENCV_LIB_DEBUG}>"
+        "$<$<CONFIG:Release>:${OPENCV_LIB_RELEASE}>"
+        ${ONNXRUNTIME_LIB_DIR}
+    )
+elseif(APPLE)
+    target_link_directories(MuQt PRIVATE
+        ${MUPDF_LIB_DIR}
+        ${OPENCV_LIB_DIR}
+        ${ONNXRUNTIME_LIB_DIR}
+    )
+endif()
 
-    ${ONNXRUNTIME_LIB_DIR}
-)
+# ============================================================
+# 链接库（平台差异：.lib vs .dylib 命名）
+# ============================================================
 
 target_link_libraries(MuQt PRIVATE
     Qt::Core
     Qt::Widgets
     Qt6::Concurrent
-
-    libmupdf.lib
-    libthirdparty.lib
-
-    "$<$<CONFIG:Debug>:opencv_world4120d.lib>"
-    "$<$<CONFIG:Release>:opencv_world4120.lib>"
-
-    onnxruntime.lib
 )
 
-add_custom_command(TARGET MuQt POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E echo "Copying OpenCV DLL for $<CONFIG> configuration..."
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "$<IF:$<CONFIG:Debug>,${OPENCV_BIN_DEBUG}/opencv_world4120d.dll,${OPENCV_BIN_RELEASE}/opencv_world4120.dll>"
-        "$<TARGET_FILE_DIR:MuQt>/"
-    COMMENT "Copying OpenCV DLL"
-    VERBATIM
-)
+if(WIN32)
+    target_link_libraries(MuQt PRIVATE
+        libmupdf.lib
+        libthirdparty.lib
+        "$<$<CONFIG:Debug>:opencv_world4120d.lib>"
+        "$<$<CONFIG:Release>:opencv_world4120.lib>"
+        onnxruntime.lib
+    )
+elseif(APPLE)
+    find_package(OpenCV REQUIRED)
 
-add_custom_command(TARGET MuQt POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E echo "Copying ONNX Runtime DLLs..."
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${ONNXRUNTIME_BIN_DIR}/onnxruntime.dll"
-        "$<TARGET_FILE_DIR:MuQt>/"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${ONNXRUNTIME_BIN_DIR}/onnxruntime_providers_shared.dll"
-        "$<TARGET_FILE_DIR:MuQt>/"
-    COMMENT "Copying ONNX Runtime DLLs"
-    VERBATIM
-)
+    # 查找 mupdf 编译时依赖的所有系统库
+    find_package(ZLIB REQUIRED)
+    find_package(JPEG REQUIRED)
+    find_package(Freetype REQUIRED)
+
+    find_library(BROTLI_ENC_LIB   brotlienc   HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
+    find_library(BROTLI_DEC_LIB   brotlidec   HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
+    find_library(BROTLI_COMMON_LIB brotlicommon HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
+    find_library(JBIG2_LIB        jbig2dec    HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
+    find_library(OPENJP2_LIB      openjp2     HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
+    find_library(GUMBO_LIB        gumbo       HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
+
+    # mupdf-third：mupdf 编译时打包的所有 thirdparty 合并库
+    # 已包含：mujs / extract / harfbuzz / lcms2mt / openjp2 等全部内置依赖
+    find_library(MUPDF_THIRD_LIB  mupdf-third HINTS "${MUPDF_LIB_DIR}" REQUIRED)
+
+    target_link_libraries(MuQt PRIVATE
+        ${OpenCV_LIBS}
+
+        # mupdf 核心 + thirdparty（顺序重要：mupdf 引用 third 的符号）
+        mupdf
+        ${MUPDF_THIRD_LIB}
+
+        # mupdf 外部系统依赖
+        ${BROTLI_ENC_LIB}
+        ${BROTLI_DEC_LIB}
+        ${BROTLI_COMMON_LIB}
+        ${JBIG2_LIB}
+        ${OPENJP2_LIB}
+        ${GUMBO_LIB}
+        Freetype::Freetype
+        JPEG::JPEG
+        ZLIB::ZLIB
+
+        # macOS 系统框架
+        "-framework CoreFoundation"
+        "-framework CoreGraphics"
+        "-framework CoreText"
+
+        onnxruntime
+    )
+endif()
+
+# ============================================================
+# POST_BUILD：拷贝运行时动态库
+# ============================================================
+
+if(WIN32)
+    # 拷贝 OpenCV DLL
+    add_custom_command(TARGET MuQt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E echo "Copying OpenCV DLL for $<CONFIG>..."
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<IF:$<CONFIG:Debug>,${OPENCV_BIN_DEBUG}/opencv_world4120d.dll,${OPENCV_BIN_RELEASE}/opencv_world4120.dll>"
+            "$<TARGET_FILE_DIR:MuQt>/"
+        VERBATIM
+    )
+
+    # 拷贝 ONNX Runtime DLL
+    add_custom_command(TARGET MuQt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E echo "Copying ONNX Runtime DLLs..."
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${ONNXRUNTIME_BIN_DIR}/onnxruntime.dll"
+            "$<TARGET_FILE_DIR:MuQt>/"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${ONNXRUNTIME_BIN_DIR}/onnxruntime_providers_shared.dll"
+            "$<TARGET_FILE_DIR:MuQt>/"
+        VERBATIM
+    )
+
+elseif(APPLE)
+    # macOS：将 .dylib 拷贝进 .app bundle 的 Frameworks 目录
+    set(BUNDLE_FRAMEWORKS_DIR "$<TARGET_BUNDLE_CONTENT_DIR:MuQt>/Frameworks")
+
+    add_custom_command(TARGET MuQt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${BUNDLE_FRAMEWORKS_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${ONNXRUNTIME_LIB_DIR}/libonnxruntime.dylib"
+            "${BUNDLE_FRAMEWORKS_DIR}/"
+        COMMENT "Copying ONNX Runtime dylib into app bundle"
+        VERBATIM
+    )
+endif()
+
+# ============================================================
+# OCR 模型 & Jieba 词典
+# ============================================================
 
 set(OCR_MODELS_SRC "${CMAKE_SOURCE_DIR}/ocr/models")
-set(OCR_MODELS_DST "$<TARGET_FILE_DIR:MuQt>/ocr/models")
+set(JIEBA_DICT_SRC "${CMAKE_SOURCE_DIR}/ocr/dict")
+
+if(WIN32)
+    set(OCR_MODELS_DST "$<TARGET_FILE_DIR:MuQt>/ocr/models")
+    set(JIEBA_DICT_DST "$<TARGET_FILE_DIR:MuQt>/ocr/dict")
+elseif(APPLE)
+    set(OCR_MODELS_DST "$<TARGET_BUNDLE_CONTENT_DIR:MuQt>/Resources/ocr/models")
+    set(JIEBA_DICT_DST "$<TARGET_BUNDLE_CONTENT_DIR:MuQt>/Resources/ocr/dict")
+endif()
 
 if(EXISTS "${OCR_MODELS_SRC}")
     add_custom_command(TARGET MuQt POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${OCR_MODELS_DST}
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${OCR_MODELS_SRC}
-            ${OCR_MODELS_DST}
-        COMMENT "Copying OCR models to output directory"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${OCR_MODELS_DST}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${OCR_MODELS_SRC}" "${OCR_MODELS_DST}"
+        COMMENT "Copying OCR models"
     )
 else()
     message(WARNING "OCR models directory not found: ${OCR_MODELS_SRC}")
 endif()
 
-set(JIEBA_DICT_SRC "${CMAKE_SOURCE_DIR}/ocr/dict")
-set(JIEBA_DICT_DST "$<TARGET_FILE_DIR:MuQt>/ocr/dict")
-
 if(EXISTS "${JIEBA_DICT_SRC}")
     add_custom_command(TARGET MuQt POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${JIEBA_DICT_DST}
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${JIEBA_DICT_SRC}
-            ${JIEBA_DICT_DST}
-        COMMENT "Copying jieba dict to output directory"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${JIEBA_DICT_DST}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${JIEBA_DICT_SRC}" "${JIEBA_DICT_DST}"
+        COMMENT "Copying Jieba dict"
     )
 else()
-    message(WARNING "jieba dict directory not found: ${JIEBA_DICT_SRC}")
+    message(WARNING "Jieba dict directory not found: ${JIEBA_DICT_SRC}")
 endif()
+
+# ============================================================
+# 部署工具（windeployqt / macdeployqt）
+# ============================================================
 
 if(WIN32)
     find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${CMAKE_PREFIX_PATH}/bin")
-
     if(WINDEPLOYQT_EXECUTABLE)
         add_custom_command(TARGET MuQt POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E echo "Deploying Qt dependencies..."
+            COMMAND ${CMAKE_COMMAND} -E echo "Running windeployqt..."
             COMMAND "${WINDEPLOYQT_EXECUTABLE}"
                 --no-translations
                 --no-system-d3d-compiler
                 --no-opengl-sw
                 --no-compiler-runtime
                 "$<TARGET_FILE:MuQt>"
-            COMMENT "Running windeployqt to deploy Qt DLLs"
             VERBATIM
         )
         message(STATUS "Found windeployqt: ${WINDEPLOYQT_EXECUTABLE}")
     else()
-        message(WARNING "windeployqt not found. Qt DLLs will not be automatically copied.")
-        message(WARNING "Please run windeployqt manually after build.")
+        message(WARNING "windeployqt not found. Please run it manually after build.")
+    endif()
+
+elseif(APPLE)
+    find_program(MACDEPLOYQT_EXECUTABLE macdeployqt HINTS "${CMAKE_PREFIX_PATH}/bin")
+    if(MACDEPLOYQT_EXECUTABLE)
+        add_custom_command(TARGET MuQt POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E echo "Running macdeployqt..."
+            COMMAND "${MACDEPLOYQT_EXECUTABLE}"
+                "$<TARGET_BUNDLE_DIR:MuQt>"
+                -no-strip
+            VERBATIM
+        )
+        message(STATUS "Found macdeployqt: ${MACDEPLOYQT_EXECUTABLE}")
+    else()
+        message(WARNING "macdeployqt not found. Please run it manually after build.")
     endif()
 endif()
+
+# ============================================================
+# 安装规则
+# ============================================================
 
 include(GNUInstallDirs)
 
 install(TARGETS MuQt
-    BUNDLE DESTINATION .
+    BUNDLE  DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
-
-install(FILES ${ONNX_DLLS}
-    DESTINATION ${CMAKE_INSTALL_BINDIR}
-    OPTIONAL
 )
 
 install(DIRECTORY "${OCR_MODELS_SRC}"

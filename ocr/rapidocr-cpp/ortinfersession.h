@@ -4,6 +4,7 @@
 #include "infersession.h"
 #include <onnxruntime_cxx_api.h>
 #include <memory>
+#include <thread>
 #include <stdexcept>
 
 namespace RapidOCR {

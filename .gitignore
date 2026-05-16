@@ -1,8 +1,12 @@
 .qtcreator/
 .idea/
 
+CommonLib/
+
 build/
 deploy/
 cmake*/
 
 ocr/models/
+
+.DS_Store
