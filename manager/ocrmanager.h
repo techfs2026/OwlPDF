@@ -6,6 +6,7 @@
 #include <QPoint>
 #include <QTimer>
 #include <QRect>
+#include <QVector>
 #include <memory>
 #include "iocrengine.h"
 
@@ -39,7 +40,7 @@ public:
     QString lastError() const;
 
 signals:
-    void ocrCompleted(const OCRResult& result, const QRect& regionRect, const QPoint& lastHoverPos);
+    void ocrCompleted(const QVector<TokenWithPosition>& tokens, const QRect& regionRect, const QPoint& lastHoverPos);
 
     void ocrFailed(const QString& error);
 

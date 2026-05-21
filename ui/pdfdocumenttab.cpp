@@ -1004,60 +1004,38 @@ void PDFDocumentTab::onOCRHoverTriggered(const QImage& image, const QRect& regio
     OCRManager::instance().requestOCR(image, regionRect, lastHoverPos);
 }
 
-void PDFDocumentTab::onOCRCompleted(const OCRResult& result, const QRect& regionRect, const QPoint& lastHoverPos)
+void PDFDocumentTab::onOCRCompleted(const QVector<TokenWithPosition>& tokens, const QRect& regionRect, const QPoint& lastHoverPos)
 {
     if (!OCRManager::instance().isOCRHoverEnabled()) {
         return;
     }
-
-    if (!result.success || result.text.isEmpty()) {
+    if (tokens.isEmpty()) {
         qDebug() << "OCR result empty";
-
-
         if (m_ocrFloatingWidget) {
             m_ocrFloatingWidget->updateResult(QString(), 0.0f);
         }
         return;
     }
 
+    qDebug() << "onOCRCompleted TokenWithPosition size:" << tokens.size();
 
-    QString targetWord = result.text;
+    QPoint posInRegion = lastHoverPos - regionRect.topLeft();
+    double scale = m_session->state()->currentZoom();
+    QPoint posInRegionScaled(posInRegion.x()/scale, posInRegion.y()/scale);
+    qDebug() << "posInRegion:" << posInRegion
+             << "scale:" << scale
+             << "posInRegionScaled:" << posInRegionScaled;
 
-    if (ChineseTokenizer::instance().isInitialized()) {
+    TokenWithPosition closestToken =
+        ChineseTokenizer::instance().findClosestToken(tokens, posInRegion);
 
-        QVector<TokenWithPosition> tokens =
-            ChineseTokenizer::instance().tokenizeWithPosition(result);
-
-        qDebug() << "onOCRCompleted TokenWithPosition size:" << tokens.size();
-
-        if (!tokens.isEmpty()) {
-
-            QPoint posInRegion = lastHoverPos - regionRect.topLeft();
-
-
-            double scale = m_session->state()->currentZoom();
-            QPoint posInRegionScaled(posInRegion.x()/scale, posInRegion.y()/scale);
-
-            qDebug() << "posInRegion:" << posInRegion
-                     << "scale:" << scale
-                     << "posInRegionScaled:" << posInRegionScaled;
-
-
-            TokenWithPosition closestToken =
-                ChineseTokenizer::instance().findClosestToken(tokens, posInRegion);
-
-            if (closestToken.isValid()) {
-                targetWord = closestToken.word;
-                qInfo() << "Selected word from OCR result:" << targetWord;
-            }
-        }
-    } else {
-        qWarning() << "ChineseTokenizer not initialized, using full text";
+    QString targetWord = closestToken.isValid() ? closestToken.word : QString();
+    if (closestToken.isValid()) {
+        qInfo() << "Selected word from OCR result:" << targetWord;
     }
 
-
     if (m_ocrFloatingWidget) {
-        m_ocrFloatingWidget->updateResult(targetWord, result.confidence);
+        m_ocrFloatingWidget->updateResult(targetWord, closestToken.confidence);
     }
 }
 

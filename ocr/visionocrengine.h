@@ -27,6 +27,8 @@ public:
     OCRResult recognize(const QImage& image) override;
     OCRResult recognizeDetailed(const QImage& image) override;
 
+    QVector<TokenWithPosition> recognizeTokens(const QImage& image) override;
+
     OCREngineState state() const override { return m_state; }
     bool isReady() const override { return m_state == OCREngineState::Ready; }
     QString lastError() const override { return m_lastError; }

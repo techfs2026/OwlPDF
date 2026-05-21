@@ -221,6 +221,10 @@ QVector<TokenWithPosition> ChineseTokenizer::tokenizeWithPosition(
             QVector<TokenWithPosition> englishTokens = tokenizeEnglishLine(
                 lineText, lineRect, static_cast<int>(i)
                 );
+            float lineScore = (i < ocr.scores.size()) ? ocr.scores[i] : 0.0f;
+            for (TokenWithPosition& t : englishTokens) {
+                t.confidence = lineScore;
+            }
             result.append(englishTokens);
         } else {
             // 中文：用 jieba 分词
@@ -253,6 +257,8 @@ QVector<TokenWithPosition> ChineseTokenizer::tokenizeWithPosition(
                     totalLength,
                     lineRect
                     );
+
+                token.confidence = (i < ocr.scores.size()) ? ocr.scores[i] : 0.0f;
 
                 result.append(token);
             }
@@ -360,3 +366,109 @@ double ChineseTokenizer::distanceToRect(const QPoint& point, const QRect& rect)
 
     return std::sqrt(dx * dx + dy * dy);
 }
+
+namespace {
+// 判断是否单个 ASCII 字母/数字（用于合并被 jieba 拆碎的英文）
+inline bool isSingleLatin(const QString& s) {
+    if (s.length() != 1) return false;
+    QChar c = s[0];
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+           (c >= '0' && c <= '9');
+}
+} // namespace
+
+QVector<WordSpan> ChineseTokenizer::segmentLine(const QString& lineText)
+{
+    QVector<WordSpan> result;
+    if (lineText.isEmpty()) return result;
+
+    const std::string lineStd = lineText.toStdString();
+
+    // 纯英文行：不需要 jieba，直接按空格/标点切，字节偏移好算
+    if (!TextUtil::hasChineseChar(lineStd)) {
+        int i = 0;
+        const int n = static_cast<int>(lineStd.size());
+        while (i < n) {
+            // 跳过分隔符
+            while (i < n) {
+                unsigned char c = static_cast<unsigned char>(lineStd[i]);
+                bool isWordChar = (c >= 'A' && c <= 'Z') ||
+                                  (c >= 'a' && c <= 'z') ||
+                                  (c >= '0' && c <= '9') ||
+                                  c == '\'' || c == '-';
+                if (isWordChar) break;
+                ++i;
+            }
+            int start = i;
+            while (i < n) {
+                unsigned char c = static_cast<unsigned char>(lineStd[i]);
+                bool isWordChar = (c >= 'A' && c <= 'Z') ||
+                                  (c >= 'a' && c <= 'z') ||
+                                  (c >= '0' && c <= '9') ||
+                                  c == '\'' || c == '-';
+                if (!isWordChar) break;
+                ++i;
+            }
+            if (i > start) {
+                WordSpan ws;
+                ws.word = QString::fromStdString(lineStd.substr(start, i - start));
+                ws.byteStart = start;
+                ws.byteEnd   = i;
+                result.append(ws);
+            }
+        }
+        return result;
+    }
+
+    // 中英混排：jieba 分词
+    if (!m_initialized) {
+        qWarning() << "ChineseTokenizer not initialized; cannot segment Chinese line";
+        return result;
+    }
+
+    std::vector<cppjieba::Word> words;
+    m_jieba->Cut(lineStd, words, false);
+
+    size_t wi = 0;
+    while (wi < words.size()) {
+        QString qword = QString::fromStdString(words[wi].word).trimmed();
+
+        if (isSingleLatin(qword)) {
+            // 向后合并连续单字母 → 完整英文/数字串
+            QString merged = qword;
+            int startByte = static_cast<int>(words[wi].offset);
+            int endByte   = static_cast<int>(words[wi].offset + words[wi].word.length());
+
+            while (wi + 1 < words.size()) {
+                QString next = QString::fromStdString(words[wi + 1].word).trimmed();
+                if (isSingleLatin(next)) {
+                    merged += next;
+                    endByte = static_cast<int>(words[wi + 1].offset + words[wi + 1].word.length());
+                    ++wi;
+                } else {
+                    break;
+                }
+            }
+            WordSpan ws;
+            ws.word = merged;
+            ws.byteStart = startByte;
+            ws.byteEnd   = endByte;
+            result.append(ws);
+            ++wi;
+        } else {
+            // 正常中文词；过滤纯标点
+            if (qword.isEmpty()) { ++wi; continue; }
+            if (qword.length() == 1 && !qword[0].isLetterOrNumber()) { ++wi; continue; }
+
+            WordSpan ws;
+            ws.word = qword;
+            ws.byteStart = static_cast<int>(words[wi].offset);
+            ws.byteEnd   = static_cast<int>(words[wi].offset + words[wi].word.length());
+            result.append(ws);
+            ++wi;
+        }
+    }
+    return result;
+}
+
+

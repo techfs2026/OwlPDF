@@ -38,10 +38,6 @@ MuQt Reader 是一款基于 Qt + MuPDF 构建的现代化 PDF 阅读器。
 
 详细说明见 [ARCHITECTURE.md](ARCHITECTURE.md)，以下是快速上手步骤。
 
-## 编译
-
-详细说明见 [BUILDING.md](BUILDING.md)，以下是快速上手步骤。
-
 ### macOS
 
 ```bash
@@ -61,7 +57,7 @@ cmake --build build --target deploy
 
 ### Windows
 
-**方式一：手动配置（已有本地库，已验证）**
+**手动配置（已有本地库，已验证）**
 
 设置以下环境变量后直接构建：
 ```
@@ -74,11 +70,6 @@ ONNXRUNTIME_DIR = D:\Ext-Lib\onnxruntime-win-x64
 cmake -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release
 ```
-
-**方式二：vcpkg（新成员推荐，自动下载编译所有依赖，暂未在Windows下验证）**
-```powershell
-cmake -B build -DBUILD_WITH_VCPKG=ON -G "Visual Studio 17 2022" -A x64
-cmake --build build --config Release
 ```
 
 ## 依赖库

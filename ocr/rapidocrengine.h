@@ -29,6 +29,8 @@ public:
     OCRResult recognize(const QImage& image) override;
     OCRResult recognizeDetailed(const QImage& image) override;  // 返回详细结果
 
+    QVector<TokenWithPosition> recognizeTokens(const QImage& image) override;
+
     // 参数设置
     void setTextScore(float score);
     void setUseDet(bool use);

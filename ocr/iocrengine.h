@@ -5,6 +5,8 @@
 #include <QObject>
 #include <QImage>
 #include <QString>
+#include <QVector>
+#include <QRect>
 #include <vector>
 #include <string>
 #include <opencv2/core/types.hpp>   // cv::Point2f
@@ -21,12 +23,8 @@ enum class OCREngineState {
 };
 
 // ============================================================
-// OCR 识别结果（引擎无关的通用契约）
-//
-// 重要：boxes 的坐标约定为 —— 相对输入 QImage 的像素坐标，
-//      原点在左上角，每个 box 为 4 个角点 (cv::Point2f)。
-//      任何引擎实现都必须把自己的结果归一化到这个约定，
-//      上层 ChineseTokenizer 等才能保持不变。
+// OCR 识别结果（整段纯文本场景：复制、全文搜索等）
+//   boxes 约定：相对输入 QImage 的像素坐标，原点左上，每 box 4 角点。
 // ============================================================
 struct OCRResult {
     bool success = false;
@@ -34,10 +32,28 @@ struct OCRResult {
     float confidence = 0.0f;
     QString error;
 
-    std::vector<std::vector<cv::Point2f>> boxes;  // 文本框（像素坐标，左上原点）
-    std::vector<std::string> texts;               // 各区域文本
-    std::vector<float> scores;                    // 各区域置信度
-    float elapsedTime = 0.0f;                      // 耗时(秒)
+    std::vector<std::vector<cv::Point2f>> boxes;  // 行级文本框
+    std::vector<std::string> texts;               // 各行文本
+    std::vector<float> scores;                    // 各行置信度
+    float elapsedTime = 0.0f;
+};
+
+// ============================================================
+// 带位置的词（取词场景）
+//   —— 从 chinesetokenizer.h 上移为公共契约。
+//   estimatedRect：词在输入图像上的像素矩形。
+//     · Windows(RapidOCR)：按字符比例估算（固有限制）
+//     · macOS(Vision)：Vision 子串真实坐标（精确）
+// ============================================================
+struct TokenWithPosition {
+    QString word;
+    int startIndex = -1;
+    int endIndex   = -1;
+    QRect estimatedRect;
+    int lineIndex  = -1;
+    float confidence = 0.0f;
+
+    bool isValid() const { return !word.isEmpty(); }
 };
 
 // ============================================================
@@ -50,15 +66,16 @@ public:
     explicit IOCREngine(QObject* parent = nullptr) : QObject(parent) {}
     ~IOCREngine() override = default;
 
-    // 初始化（modelDir 对 Vision 引擎可忽略）
     virtual bool initializeSync(const QString& modelDir) = 0;
     virtual bool initializeAsync(const QString& modelDir) = 0;
 
-    // 识别
+    // 整段纯文本（复制、全文搜索）
     virtual OCRResult recognize(const QImage& image) = 0;
     virtual OCRResult recognizeDetailed(const QImage& image) = 0;
 
-    // 状态
+    // 带位置的词列表（取词）——各引擎用自己最优方式产出
+    virtual QVector<TokenWithPosition> recognizeTokens(const QImage& image) = 0;
+
     virtual OCREngineState state() const = 0;
     virtual bool isReady() const = 0;
     virtual QString lastError() const = 0;
@@ -69,9 +86,6 @@ signals:
     void recognitionCompleted(const OCRResult& result);
 };
 
-// ============================================================
-// 工厂：按平台返回合适的引擎实现
-// ============================================================
 IOCREngine* createOCREngine(QObject* parent = nullptr);
 
 #endif // IOCRENGINE_H

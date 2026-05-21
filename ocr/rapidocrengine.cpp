@@ -340,5 +340,12 @@ OCRResult RapidOcrEngine::convertToOCRResult(const RapidOCR::RapidOCROutput& out
     return result;
 }
 
+QVector<TokenWithPosition> RapidOcrEngine::recognizeTokens(const QImage& image)
+{
+    OCRResult r = recognizeDetailed(image);
+    if (!r.success) return {};
+    return ChineseTokenizer::instance().tokenizeWithPosition(r);
+}
+
 #endif
 

@@ -157,20 +157,21 @@ void OCRManager::performOCR()
     QPoint lastHoverPos = m_pending.lastHoverPos;
     m_pending.valid = false;
 
-    QFuture<OCRResult> future = QtConcurrent::run([this, image]() {
-        return m_engine->recognize(image);
+    QFuture<QVector<TokenWithPosition>> future = QtConcurrent::run([this, image]() {
+        return m_engine->recognizeTokens(image);
     });
 
-    QFutureWatcher<OCRResult>* watcher = new QFutureWatcher<OCRResult>(this);
+    QFutureWatcher<QVector<TokenWithPosition>>* watcher =
+        new QFutureWatcher<QVector<TokenWithPosition>>(this);
 
-    connect(watcher, &QFutureWatcher<OCRResult>::finished,
+    connect(watcher, &QFutureWatcher<QVector<TokenWithPosition>>::finished,
             this, [this, watcher, regionRect, lastHoverPos]() {
-                OCRResult result = watcher->result();
+                QVector<TokenWithPosition> tokens = watcher->result();
 
-                if (result.success) {
-                    emit ocrCompleted(result, regionRect, lastHoverPos);
+                if (!tokens.isEmpty()) {
+                    emit ocrCompleted(tokens, regionRect, lastHoverPos);
                 } else {
-                    emit ocrFailed(result.error);
+                    emit ocrFailed(tr("未识别到文本"));
                 }
 
                 watcher->deleteLater();

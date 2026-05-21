@@ -5,120 +5,74 @@
 #include <QStringList>
 #include <QPoint>
 #include <QRect>
+#include <QVector>
 #include <memory>
 #include "cppjieba/Jieba.hpp"
-#include "iocrengine.h"
-#include "textutil.h"
+#include "iocrengine.h"   // OCRResult / TokenWithPosition 公共契约
 
 /**
- * @brief 分词结果 - 带位置信息的词
+ * @brief 一个分词单元：词 + 在原 UTF-8 行内的字节偏移
+ *   纯分词结果，不含像素位置。位置由调用方（引擎）决定如何赋予：
+ *     · Windows：比例估算
+ *     · macOS：Vision 子串真实坐标
  */
-struct TokenWithPosition {
-    QString word;           // 词语
-    int startIndex;         // 在原文本中的起始位置
-    int endIndex;           // 在原文本中的结束位置
-    QRect estimatedRect;    // 估算的位置矩形(基于字符位置)
-    int lineIndex  = -1;
-
-    bool isValid() const { return !word.isEmpty(); }
+struct WordSpan {
+    QString word;
+    int byteStart = 0;   // UTF-8 字节偏移（jieba 的 offset 即字节）
+    int byteEnd   = 0;
 };
 
 /**
- * @brief 中文分词器
+ * @brief 中文分词器（cppjieba 封装）
  *
- * 使用 cppjieba 进行中文分词,并计算每个词的大致位置
- * 支持中英文混合文本的智能分词
+ * 跨平台共用。两类能力：
+ *   1) 纯分词：segmentLine() —— 给一行文本，返回 WordSpan 列表（含合并英文单字母）
+ *   2) Windows 专属：tokenizeWithPosition() —— 比例估算位置（RapidOCR 只有行框）
  */
 class ChineseTokenizer
 {
 public:
     static ChineseTokenizer& instance();
 
-    /**
-     * @brief 初始化分词器
-     * @param dictDir 词典目录路径
-     */
     bool initialize(const QString& dictDir);
-
-    /**
-     * @brief 检查是否已初始化
-     */
     bool isInitialized() const { return m_initialized; }
 
-    /**
-     * @brief 对文本进行分词
-     * @param text 待分词文本
-     * @return 分词结果列表
-     */
     QStringList tokenize(const QString& text);
-
-    /**
-     * @brief 对英文文本按单词分割
-     * @param text 英文文本
-     * @return 单词列表
-     */
     QStringList tokenizeEnglish(const QString& text);
 
     /**
-     * @brief 对OCR结果进行分词（带位置信息）
-     * 自动识别中英文，使用对应的分词策略
-     * @param ocr OCR识别结果
-     * @return 分词结果列表（带位置）
+     * @brief 纯分词：对一行文本分词，返回带字节偏移的词列表。
+     *   自动处理中英混排：jieba 切中文，连续单字母拉丁合并为英文单词。
+     *   不含像素坐标——由调用方赋予。两平台共用。
+     */
+    QVector<WordSpan> segmentLine(const QString& lineText);
+
+    /**
+     * @brief Windows 专属：对 OCRResult 分词并用比例估算位置。
+     *   （RapidOCR 只能给行框，故只能估算词位置）
      */
     QVector<TokenWithPosition> tokenizeWithPosition(const OCRResult& ocr);
 
-    /**
-     * @brief 从四边形框计算边界矩形
-     */
     QRect boundingRectFromBox(const std::vector<cv::Point2f>& box);
+    QRect estimateWordRectInLine(int startIndex, int endIndex,
+                                 int totalLength, const QRect& lineRect);
 
-    /**
-     * @brief 估算词语在行内的矩形位置
-     */
-    QRect estimateWordRectInLine(
-        int startIndex,
-        int endIndex,
-        int totalLength,
-        const QRect& lineRect);
+    TokenWithPosition findClosestToken(const QVector<TokenWithPosition>& tokens,
+                                       const QPoint& mousePos);
 
-    /**
-     * @brief 从分词结果中找到最接近指定位置的词
-     * @param tokens 分词结果
-     * @param mousePos 鼠标位置(全局坐标)
-     * @return 最接近的词,如果没有找到返回空
-     */
-    TokenWithPosition findClosestToken(
-        const QVector<TokenWithPosition>& tokens,
-        const QPoint& mousePos
-        );
-
-    /**
-     * @brief 获取最后的错误信息
-     */
     QString lastError() const { return m_lastError; }
 
 private:
     ChineseTokenizer();
     ~ChineseTokenizer();
-
     ChineseTokenizer(const ChineseTokenizer&) = delete;
     ChineseTokenizer& operator=(const ChineseTokenizer&) = delete;
 
-    /**
-     * @brief 计算点到矩形的距离
-     */
     double distanceToRect(const QPoint& point, const QRect& rect);
+    QVector<TokenWithPosition> tokenizeEnglishLine(const QString& text,
+                                                   const QRect& lineRect,
+                                                   int lineIndex);
 
-    /**
-     * @brief 对英文行进行单词分割（带位置）
-     */
-    QVector<TokenWithPosition> tokenizeEnglishLine(
-        const QString& text,
-        const QRect& lineRect,
-        int lineIndex
-        );
-
-private:
     std::unique_ptr<cppjieba::Jieba> m_jieba;
     bool m_initialized;
     QString m_lastError;
