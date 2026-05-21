@@ -15,16 +15,23 @@
 #include <QTimer>
 #include <QDebug>
 #include <QFile>
+#include <QPainter>
+#include <QStyleOptionTab>
+#include <QIcon>
+#include <QStringList>
+#include "stylemanager.h"
+#include "themedicon.h"
 
-class NoRotateTabBar : public QTabBar
+// 竖排图标 Tab（侧边导航）：图标居中 + 选中态左侧主色条，颜色全部取自 StyleManager token
+class IconTabBar : public QTabBar
 {
 public:
-    NoRotateTabBar(QWidget* parent = nullptr) : QTabBar(parent) {}
+    IconTabBar(QWidget* parent = nullptr) : QTabBar(parent) {}
 
     QSize tabSizeHint(int index) const override
     {
         Q_UNUSED(index);
-        return QSize(36, 64);
+        return QSize(44, 48);
     }
 
 protected:
@@ -32,34 +39,53 @@ protected:
     {
         Q_UNUSED(event);
 
+        StyleManager& sm = StyleManager::instance();
+        const QColor accent    = sm.getColor("primary");
+        const QColor surface   = sm.getColor("surface");
+        const QColor hoverBg    = sm.getColor("hover");
+        const QColor iconActive = sm.getColor("primary");
+        const QColor iconIdle   = sm.getColor("textSecondary");
+
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
 
         for (int i = 0; i < count(); i++) {
             QStyleOptionTab opt;
             initStyleOption(&opt, i);
-
             QRect rect = tabRect(i);
 
-            if (opt.state & QStyle::State_Selected) {
-                painter.fillRect(rect, QColor(255, 255, 255));
-                painter.fillRect(rect.left(), rect.top(), 2, rect.height(), QColor(33, 150, 243));
-            } else if (opt.state & QStyle::State_MouseOver) {
-                painter.fillRect(rect, QColor(245, 245, 243));
+            const bool selected = opt.state & QStyle::State_Selected;
+            const bool hovered  = opt.state & QStyle::State_MouseOver;
+
+            if (selected) {
+                painter.fillRect(rect, surface);
+                // 左侧 2px 主色强调条
+                painter.fillRect(rect.left(), rect.top(), 2, rect.height(), accent);
+            } else if (hovered) {
+                painter.fillRect(rect, hoverBg);
             }
 
-            painter.save();
-            painter.setPen(opt.state & QStyle::State_Selected ? QColor(28, 28, 30) : QColor(107, 107, 105));
-
-            QFont font = painter.font();
-            font.setPixelSize(10);
-            font.setWeight(opt.state & QStyle::State_Selected ? QFont::DemiBold : QFont::Normal);
-            painter.setFont(font);
-
-            painter.drawText(rect, Qt::AlignCenter, tabText(i));
-            painter.restore();
+            // 图标按 index 取名，用 ThemedIcon 渲染对应状态颜色的单色 SVG
+            if (i < m_iconNames.size()) {
+                const int iconSize = 20;
+                QRect iconRect(
+                    rect.left() + (rect.width() - iconSize) / 2,
+                    rect.top() + (rect.height() - iconSize) / 2,
+                    iconSize, iconSize);
+                QPixmap pm = ThemedIcon::coloredPixmap(
+                    m_iconNames.at(i),
+                    selected ? iconActive : iconIdle,
+                    iconSize);
+                painter.drawPixmap(iconRect, pm);
+            }
         }
     }
+
+public:
+    void setIconNames(const QStringList& names) { m_iconNames = names; }
+
+private:
+    QStringList m_iconNames;
 };
 
 class CustomTabWidget : public QTabWidget
@@ -67,8 +93,14 @@ class CustomTabWidget : public QTabWidget
 public:
     CustomTabWidget(QWidget* parent = nullptr) : QTabWidget(parent)
     {
-        setTabBar(new NoRotateTabBar(this));
+        m_iconBar = new IconTabBar(this);
+        setTabBar(m_iconBar);
     }
+
+    void setIconNames(const QStringList& names) { m_iconBar->setIconNames(names); }
+
+private:
+    IconTabBar* m_iconBar;
 };
 
 NavigationPanel::NavigationPanel(PDFDocumentSession* session, QWidget* parent)
@@ -258,8 +290,13 @@ void NavigationPanel::setupUI()
 
     thumbnailTab->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    m_tabWidget->addTab(outlineTab, tr("Outline"));
-    m_tabWidget->addTab(thumbnailTab, tr("Thumbnails"));
+    // Tab 用图标 + tooltip 表达（规避竖排文字与国际化问题）
+    // 图标由 IconTabBar 自绘，名称在此注册，颜色跟随主题
+    int outlineIdx = m_tabWidget->addTab(outlineTab, QString());
+    int thumbIdx   = m_tabWidget->addTab(thumbnailTab, QString());
+    m_tabWidget->setTabToolTip(outlineIdx, tr("Outline"));
+    m_tabWidget->setTabToolTip(thumbIdx, tr("Thumbnails"));
+    static_cast<CustomTabWidget*>(m_tabWidget)->setIconNames({"tab-outline", "tab-thumbnail"});
 
     m_tabWidget->setTabPosition(QTabWidget::West);
     m_tabWidget->setUsesScrollButtons(false);

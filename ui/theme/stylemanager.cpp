@@ -5,6 +5,7 @@
 #include <QTextStream>
 #include <QDebug>
 #include <QRegularExpression>
+#include <algorithm>
 
 StyleManager& StyleManager::instance()
 {
@@ -273,8 +274,30 @@ QString StyleManager::processVariables(const QString& styleSheet, const ThemeCon
     variables["@font-size"] = QString::number(config.fontSize) + "px";
     variables["@font-family"] = config.fontFamily;
 
-    for (auto it = variables.constBegin(); it != variables.constEnd(); ++it) {
-        result.replace(it.key(), it.value());
+    // 间距梯度
+    variables["@space-1"] = QString::number(config.space1) + "px";
+    variables["@space-2"] = QString::number(config.space2) + "px";
+    variables["@space-3"] = QString::number(config.space3) + "px";
+    variables["@space-4"] = QString::number(config.space4) + "px";
+    variables["@space-5"] = QString::number(config.space5) + "px";
+
+    // 圆角梯度
+    variables["@radius-sm"] = QString::number(config.radiusSm) + "px";
+    variables["@radius-md"] = QString::number(config.radiusMd) + "px";
+    variables["@radius-lg"] = QString::number(config.radiusLg) + "px";
+
+    // 字号梯度
+    variables["@font-size-sm"] = QString::number(config.fontSizeSm) + "px";
+    variables["@font-size-base"] = QString::number(config.fontSizeBase) + "px";
+    variables["@font-size-lg"] = QString::number(config.fontSizeLg) + "px";
+
+    // 按变量名长度降序替换，避免短名（@font-size）吃掉长名（@font-size-base）的前缀
+    QStringList keys = variables.keys();
+    std::sort(keys.begin(), keys.end(), [](const QString& a, const QString& b) {
+        return a.length() > b.length();
+    });
+    for (const QString& key : keys) {
+        result.replace(key, variables[key]);
     }
 
     return result;

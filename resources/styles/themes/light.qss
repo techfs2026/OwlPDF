@@ -136,7 +136,7 @@ QListView::item:selected, QTreeView::item:selected, QTableView::item:selected {
     color: @text-primary;
 }
 
-/* ==================== 标签页 ==================== */
+/* ==================== 标签页（顶部文档 Tab） ==================== */
 QTabWidget::pane {
     border: none;
     background-color: @background-color;
@@ -151,20 +151,20 @@ QTabBar {
 QTabBar::tab {
     background-color: transparent;
     color: @text-secondary;
-    padding: 10px 20px;
-    margin-right: 2px;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+    padding: @space-3 @space-4;
+    margin-right: @space-1;
+    border-top-left-radius: @radius-md;
+    border-top-right-radius: @radius-md;
     min-width: 120px;
     max-width: 220px;
-    font-size: @font-size;
+    font-size: @font-size-base;
     border: 1px solid transparent;
     border-bottom: none;
 }
 
 QTabBar::tab:selected {
     background-color: @background-color;
-    color: @text-primary;
+    color: @primary-color;
     font-weight: 600;
     border: 1px solid @border-light;
     border-bottom: 1px solid @background-color;
@@ -178,11 +178,11 @@ QTabBar::tab:hover:!selected {
 QTabBar::close-button {
     image: url(:/icons/resources/icons/close-file.png);
     subcontrol-position: right;
-    margin: 0 4px 0 2px;
+    margin: 0 @space-1 0 2px;
     padding: 0;
     width: 20px;
     height: 20px;
-    border-radius: 3px;
+    border-radius: @radius-sm;
 }
 
 QTabBar::close-button:hover {

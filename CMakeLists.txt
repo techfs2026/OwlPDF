@@ -74,9 +74,9 @@ endif()
 # ============================================================
 
 if(WIN32)
-    find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Concurrent LinguistTools)
+    find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Concurrent Svg LinguistTools)
 elseif(APPLE)
-    find_package(Qt6 6.11 REQUIRED COMPONENTS Core Widgets Concurrent LinguistTools)
+    find_package(Qt6 6.11 REQUIRED COMPONENTS Core Widgets Concurrent Svg LinguistTools)
 endif()
 
 # ============================================================
@@ -202,6 +202,7 @@ target_link_libraries(MuQt PRIVATE
     Qt::Core
     Qt::Widgets
     Qt6::Concurrent
+    Qt6::Svg
 )
 
 if(WIN32)

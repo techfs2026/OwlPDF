@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "themedicon.h"
 #include "pdfdocumenttab.h"
 #include "dictionaryconnector.h"
 #include "ocrstatusindicator.h"
@@ -596,14 +597,14 @@ void MainWindow::onCurrentTabSearchCompleted(const QString& query, int totalMatc
 
 void MainWindow::createActions()
 {
-    m_openAction = new QAction(QIcon(":icons/resources/icons/open-file.png"),
+    m_openAction = new QAction(ThemedIcon::toolButton("open-file"),
                                tr("Open"), this);
     m_openAction->setShortcut(QKeySequence::Open);
     m_openAction->setToolTip(tr("Open File (Ctrl+O)"));
     connect(m_openAction, &QAction::triggered, this, &MainWindow::openFile);
 
-    m_closeAction = new QAction(QIcon(":icons/resources/icons/close-file.png"),
-                               tr("Close"), this);
+    m_closeAction = new QAction(ThemedIcon::toolButton("close-file"),
+                                tr("Close"), this);
     m_closeAction->setShortcut(QKeySequence::Close);
     connect(m_closeAction, &QAction::triggered, this, &MainWindow::closeCurrentTab);
 
@@ -616,7 +617,7 @@ void MainWindow::createActions()
     m_copyAction->setEnabled(false);
     connect(m_copyAction, &QAction::triggered, this, &MainWindow::copySelectedText);
 
-    m_findAction = new QAction(QIcon(":icons/resources/icons/search.png"),
+    m_findAction = new QAction(ThemedIcon::toolButton("search"),
                                tr("Find"), this);
     m_findAction->setShortcut(QKeySequence::Find);
     m_findAction->setToolTip(tr("Search (Ctrl+F)"));
@@ -632,46 +633,46 @@ void MainWindow::createActions()
     m_findPreviousAction->setEnabled(false);
     connect(m_findPreviousAction, &QAction::triggered, this, &MainWindow::findPrevious);
 
-    m_firstPageAction = new QAction(QIcon(":icons/resources/icons/first-arrow.png"),
+    m_firstPageAction = new QAction(ThemedIcon::toolButton("first-arrow"),
                                     tr("First Page"), this);
     m_firstPageAction->setToolTip(tr("First Page (Home)"));
     connect(m_firstPageAction, &QAction::triggered, this, &MainWindow::firstPage);
 
-    m_previousPageAction = new QAction(QIcon(":icons/resources/icons/left-arrow.png"),
+    m_previousPageAction = new QAction(ThemedIcon::toolButton("left-arrow"),
                                        tr("Previous Page"), this);
     m_previousPageAction->setToolTip(tr("Previous Page (PgUp)"));
     connect(m_previousPageAction, &QAction::triggered, this, &MainWindow::previousPage);
 
-    m_nextPageAction = new QAction(QIcon(":icons/resources/icons/right-arrow.png"),
+    m_nextPageAction = new QAction(ThemedIcon::toolButton("right-arrow"),
                                    tr("Next Page"), this);
     m_nextPageAction->setToolTip(tr("Next Page (PgDown)"));
     connect(m_nextPageAction, &QAction::triggered, this, &MainWindow::nextPage);
 
-    m_lastPageAction = new QAction(QIcon(":icons/resources/icons/last-arrow.png"),
+    m_lastPageAction = new QAction(ThemedIcon::toolButton("last-arrow"),
                                    tr("Last Page"), this);
     m_lastPageAction->setToolTip(tr("Last Page (End)"));
     connect(m_lastPageAction, &QAction::triggered, this, &MainWindow::lastPage);
 
-    m_zoomInAction = new QAction(QIcon(":icons/resources/icons/zoom-in.png"),
+    m_zoomInAction = new QAction(ThemedIcon::toolButton("zoom-in"),
                                  tr("Zoom In"), this);
     m_zoomInAction->setShortcut(QKeySequence::ZoomIn);
     m_zoomInAction->setToolTip(tr("Zoom In (Ctrl++)"));
     connect(m_zoomInAction, &QAction::triggered, this, &MainWindow::zoomIn);
 
-    m_zoomOutAction = new QAction(QIcon(":icons/resources/icons/zoom-out.png"),
+    m_zoomOutAction = new QAction(ThemedIcon::toolButton("zoom-out"),
                                   tr("Zoom Out"), this);
     m_zoomOutAction->setShortcut(QKeySequence::ZoomOut);
     m_zoomOutAction->setToolTip(tr("Zoom Out (Ctrl+-)"));
     connect(m_zoomOutAction, &QAction::triggered, this, &MainWindow::zoomOut);
 
-    m_fitPageAction = new QAction(QIcon(":icons/resources/icons/fit-to-page.png"),
+    m_fitPageAction = new QAction(ThemedIcon::toolButton("fit-to-page"),
                                   tr("Fit Page"), this);
     m_fitPageAction->setShortcut(tr("Ctrl+1"));
     m_fitPageAction->setToolTip(tr("Fit Page (Ctrl+1)"));
     m_fitPageAction->setCheckable(true);
     connect(m_fitPageAction, &QAction::triggered, this, &MainWindow::fitPage);
 
-    m_fitWidthAction = new QAction(QIcon(":icons/resources/icons/fit-to-width.png"),
+    m_fitWidthAction = new QAction(ThemedIcon::toolButton("fit-to-width"),
                                    tr("Fit Width"), this);
     m_fitWidthAction->setShortcut(tr("Ctrl+2"));
     m_fitWidthAction->setToolTip(tr("Fit Width (Ctrl+2)"));
@@ -681,7 +682,7 @@ void MainWindow::createActions()
     m_pageModeGroup = new QActionGroup(this);
     m_pageModeGroup->setExclusive(true);
 
-    m_singlePageAction = new QAction(QIcon(":icons/resources/icons/single-page-mode.png"),
+    m_singlePageAction = new QAction(ThemedIcon::toolButton("single-page-mode"),
                                      tr("Single Page"), this);
     m_singlePageAction->setCheckable(true);
     m_singlePageAction->setChecked(true);
@@ -690,7 +691,7 @@ void MainWindow::createActions()
         togglePageMode(PageDisplayMode::SinglePage);
     });
 
-    m_doublePageAction = new QAction(QIcon(":icons/resources/icons/double-page-mode.png"),
+    m_doublePageAction = new QAction(ThemedIcon::toolButton("double-page-mode"),
                                      tr("Double Page"), this);
     m_doublePageAction->setCheckable(true);
     m_pageModeGroup->addAction(m_doublePageAction);
@@ -698,14 +699,14 @@ void MainWindow::createActions()
         togglePageMode(PageDisplayMode::DoublePage);
     });
 
-    m_continuousScrollAction = new QAction(QIcon(":icons/resources/icons/continuous-mode.png"),
+    m_continuousScrollAction = new QAction(ThemedIcon::toolButton("continuous-mode"),
                                            tr("Continuous Scroll"), this);
     m_continuousScrollAction->setCheckable(true);
     m_continuousScrollAction->setChecked(true);
     connect(m_continuousScrollAction, &QAction::triggered,
             this, &MainWindow::toggleContinuousScroll);
 
-    m_navPanelAction = new QAction(QIcon(":icons/resources/icons/sidebar.png"),
+    m_navPanelAction = new QAction(ThemedIcon::toolButton("sidebar"),
                                    tr("Navigation Panel"), this);
     m_navPanelAction->setToolTip(tr("Show Navigation Panel (F9)"));
     m_navPanelAction->setCheckable(true);
@@ -721,7 +722,7 @@ void MainWindow::createActions()
     connect(m_showLinksAction, &QAction::triggered,
             this, &MainWindow::toggleLinksVisible);
 
-    m_paperEffectAction = new QAction(QIcon(":icons/resources/icons/paper-effect.png"),
+    m_paperEffectAction = new QAction(ThemedIcon::toolButton("paper-effect"),
                                       tr("Paper Enhancement"), this);
     m_paperEffectAction->setToolTip(tr("Eye-protective paper texture enhancement"));
     m_paperEffectAction->setCheckable(true);
@@ -729,7 +730,7 @@ void MainWindow::createActions()
     connect(m_paperEffectAction, &QAction::triggered,
             this, &MainWindow::togglePaperEffect);
 
-    m_ocrHoverAction = new QAction(QIcon(":icons/resources/icons/ocr.png"),
+    m_ocrHoverAction = new QAction(ThemedIcon::toolButton("ocr"),
                                    tr("OCR Lookup"), this);
     m_ocrHoverAction->setShortcut(QKeySequence(tr("Ctrl+Shift+O")));
     m_ocrHoverAction->setToolTip(tr("Enable OCR hover mode (Ctrl+Shift+O)\n"
@@ -748,7 +749,11 @@ void MainWindow::createActions()
 
 void MainWindow::createMenuBar()
 {
+#ifdef Q_OS_MACOS
+    menuBar()->setNativeMenuBar(true);
+#else
     menuBar()->setNativeMenuBar(false);
+#endif
 
     QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
     fileMenu->addAction(m_openAction);
@@ -911,11 +916,11 @@ void MainWindow::setupConnections()
         }
     });
 
-    #ifdef Q_OS_MAC
-        QKeySequence seq(Qt::META | Qt::Key_Q);
-    #else
-        QKeySequence seq(Qt::CTRL | Qt::Key_Q);
-    #endif
+#ifdef Q_OS_MAC
+    QKeySequence seq(Qt::META | Qt::Key_Q);
+#else
+    QKeySequence seq(Qt::CTRL | Qt::Key_Q);
+#endif
 
     QShortcut* ocrShortcut = new QShortcut(seq, this);
     connect(ocrShortcut, &QShortcut::activated, this, &MainWindow::triggerOCRAtCurrentPosition);

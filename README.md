@@ -32,7 +32,7 @@ MuQt Reader 是一款基于 Qt + MuPDF 构建的现代化 PDF 阅读器。
 
 ### 实验功能
 - **护眼纸质感**：基于 OpenCV 实现扫描版 PDF 护眼纸质感体验
-- **OCR 悬停取词**：基于 PaddleOCR 实现的悬停取词，方便与外部词典工具（如 GoldenDict-NG）互动
+- **OCR 悬停取词**：基于 PaddleOCR(Windows)/Vision(MacOS) 实现的悬停取词，方便与外部词典工具（如 GoldenDict-NG）互动
 
 ## 架构
 
@@ -69,7 +69,6 @@ ONNXRUNTIME_DIR = D:\Ext-Lib\onnxruntime-win-x64
 ```powershell
 cmake -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release
-```
 ```
 
 ## 依赖库

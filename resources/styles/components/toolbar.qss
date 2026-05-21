@@ -1,59 +1,59 @@
-/* ==================== 工具栏样式 - PDF Expert 风格 ==================== */
+/* ==================== 工具栏样式 ==================== */
 
 QToolBar {
     background-color: @surface-color;
     border: none;
-    spacing: 2px;
-    padding: 6px 8px;
-    min-height: 48px;
+    spacing: @space-1;
+    padding: @space-2 @space-3;
+    min-height: 44px;
 }
 
+/* 分组分隔线：组间留白由 spacing + 这里的 margin 共同形成节奏 */
 QToolBar::separator {
     background-color: @border-light;
     width: 1px;
-    margin: 10px 4px;
+    margin: @space-2 @space-2;
 }
 
-/* 工具按钮 */
+/* ---------- 工具按钮：统一 36x36 可点区 ---------- */
 QToolBar QToolButton {
     background-color: transparent;
     border: 1px solid transparent;
-    border-radius: 6px;
-    color: @text-primary;
+    border-radius: @radius-md;
+    color: @text-secondary;
     padding: 0px;
-    margin: 0px 1px;  /* 添加极小的左右边距，保持视觉统一 */
-    min-width: 32px;
-    min-height: 32px;
+    margin: 0px;
+    min-width: 36px;
+    min-height: 36px;
 }
 
 QToolBar QToolButton:hover {
     background-color: @hover-background;
-    border: 1px solid @border-light;
+    border: 1px solid transparent;
+    color: @text-primary;
 }
 
 QToolBar QToolButton:pressed {
     background-color: @pressed-background;
-    border: 1px solid @border-medium;
 }
 
+/* 选中态（如适合页面/单页等 toggle）：主色文字 + 浅色块，一眼可辨当前模式 */
 QToolBar QToolButton:checked {
     background-color: @selected-background;
-    border: 1px solid @border-medium;
-    color: @text-primary;
-    font-weight: 600;
+    border: 1px solid transparent;
+    color: @primary-color;
 }
 
 QToolBar QToolButton:checked:hover {
     background-color: @pressed-background;
-    border: 1px solid @border-dark;
 }
 
 QToolBar QToolButton:disabled {
-    opacity: 0.4;
+    color: @text-disabled;
     background-color: transparent;
 }
 
-/* 工具按钮下拉菜单 */
+/* 下拉指示 */
 QToolBar QToolButton::menu-indicator {
     image: url(:/icons/expand.png);
     subcontrol-position: bottom right;
@@ -63,31 +63,21 @@ QToolBar QToolButton::menu-indicator {
     padding: 2px;
 }
 
-/* 工具按钮文本标签 */
-QToolBar QToolButton[popupMode="1"] {
-    padding-right: 20px;
-}
-
-QToolBar QToolButton[popupMode="2"] {
-    padding-right: 10px;
-}
-
-/* 页码输入框 */
+/* ---------- 页码输入框 ---------- */
 QToolBar QSpinBox {
     background-color: @paper-color;
     border: 1px solid @border-medium;
-    border-radius: 5px;
-    padding: 4px 8px;
+    border-radius: @radius-sm;
+    padding: @space-1 @space-2;
     color: @text-primary;
     font-weight: 600;
-    min-height: 26px;
+    min-height: 28px;
     min-width: 80px;
     max-width: 100px;
-    margin: 0px 2px;  /* 添加边距与按钮保持一致 */
+    margin: 0px @space-1;
 }
 
 QToolBar QSpinBox:hover {
-    background-color: @hover-background;
     border: 1px solid @border-dark;
 }
 
@@ -96,22 +86,21 @@ QToolBar QSpinBox:focus {
     border: 1px solid @primary-color;
 }
 
-/* 缩放下拉框 */
+/* ---------- 缩放下拉框 ---------- */
 QToolBar QComboBox {
     background-color: @paper-color;
     border: 1px solid @border-medium;
-    border-radius: 5px;
-    padding: 4px 8px;
+    border-radius: @radius-sm;
+    padding: @space-1 @space-2;
     color: @text-primary;
     font-weight: 600;
-    min-height: 26px;
-    min-width: 70px;
-    max-width: 90px;
-    margin: 0px 2px;  /* 添加边距与按钮保持一致 */
+    min-height: 28px;
+    min-width: 72px;
+    max-width: 92px;
+    margin: 0px @space-1;
 }
 
 QToolBar QComboBox:hover {
-    background-color: @hover-background;
     border: 1px solid @border-dark;
 }
 
@@ -126,8 +115,8 @@ QToolBar QComboBox::drop-down {
     width: 20px;
     border: none;
     background-color: transparent;
-    border-top-right-radius: 4px;
-    border-bottom-right-radius: 4px;
+    border-top-right-radius: @radius-sm;
+    border-bottom-right-radius: @radius-sm;
 }
 
 QToolBar QComboBox::drop-down:hover {
@@ -140,24 +129,10 @@ QToolBar QComboBox::down-arrow {
     height: 10px;
 }
 
-/* 工具栏标签 */
+/* ---------- 工具栏标签 ---------- */
 QToolBar QLabel {
     color: @text-secondary;
-    padding: 0px 4px;
-    margin: 0px 2px;
-    font-size: 12px;
-}
-
-/* 工具栏按钮组 */
-QToolBar #buttonGroup {
-    background-color: @hover-background;
-    border: 1px solid @border-light;
-    border-radius: 6px;
-    padding: 2px;
-    margin: 0px 2px;
-}
-
-QToolBar #buttonGroup QToolButton {
-    margin: 0px;
-    border-radius: 4px;
+    padding: 0px @space-1;
+    margin: 0px @space-1;
+    font-size: @font-size-sm;
 }

@@ -37,6 +37,23 @@ struct ThemeConfig {
     int borderRadius;
     int fontSize;
     QString fontFamily;
+
+    // 间距梯度（4px 基准）
+    int space1 = 4;
+    int space2 = 8;
+    int space3 = 12;
+    int space4 = 16;
+    int space5 = 24;
+
+    // 圆角梯度
+    int radiusSm = 4;
+    int radiusMd = 6;
+    int radiusLg = 10;
+
+    // 字号梯度
+    int fontSizeSm = 12;
+    int fontSizeBase = 13;
+    int fontSizeLg = 15;
 };
 
 class StyleManager : public QObject

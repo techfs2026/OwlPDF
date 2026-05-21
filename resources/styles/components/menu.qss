@@ -1,20 +1,20 @@
-/* ==================== 菜单样式 - 现代简洁 ==================== */
+/* ==================== 菜单样式 ==================== */
 
 /* 菜单栏 */
 QMenuBar {
     background-color: @surface-color;
     border: none;
     border-bottom: 1px solid @border-light;
-    padding: 4px 8px;
-    font-size: @font-size;
+    padding: @space-1 @space-2;
+    font-size: @font-size-base;
 }
 
 QMenuBar::item {
     background-color: transparent;
     color: @text-primary;
-    padding: 8px 16px;
-    border-radius: 6px;
-    margin: 0px 2px;
+    padding: @space-2 @space-1;
+    border-radius: @radius-md;
+    margin: 0px @space-1;
 }
 
 QMenuBar::item:selected {
@@ -29,20 +29,21 @@ QMenuBar::item:pressed {
 QMenu {
     background-color: @surface-color;
     border: 1px solid @border-medium;
-    border-radius: 8px;
-    padding: 6px;
+    border-radius: @radius-lg;
+    padding: @space-2;
 }
 
 QMenu::item {
-    padding: 8px 36px 8px 16px;
-    border-radius: 5px;
+    padding: @space-1 36px @space-1 @space-4;
+    border-radius: @radius-sm;
     color: @text-primary;
-    font-size: @font-size;
-    min-height: 24px;
+    font-size: @font-size-base;
+    min-height: 20px;
 }
 
 QMenu::item:selected {
     background-color: @selected-background;
+    color: @primary-color;
 }
 
 QMenu::item:disabled {
@@ -52,11 +53,11 @@ QMenu::item:disabled {
 QMenu::separator {
     height: 1px;
     background-color: @border-light;
-    margin: 6px 12px;
+    margin: @space-1 @space-3;
 }
 
 QMenu::icon {
-    padding-left: 10px;
+    padding-left: @space-3;
     width: 16px;
     height: 16px;
 }
@@ -64,7 +65,7 @@ QMenu::icon {
 QMenu::indicator {
     width: 16px;
     height: 16px;
-    margin-left: 6px;
+    margin-left: @space-2;
 }
 
 QMenu::indicator:checked {
@@ -75,19 +76,9 @@ QMenu::indicator:unchecked {
     image: none;
 }
 
-/* 右箭头（子菜单指示） */
 QMenu::right-arrow {
     image: url(:/icons/chevron-right.png);
     width: 12px;
     height: 12px;
-    margin-right: 8px;
-}
-
-/* 菜单项快捷键 */
-QMenu::item:selected QKeySequence {
-    color: @text-primary;
-}
-
-QMenu::item:!selected QKeySequence {
-    color: @text-secondary;
+    margin-right: @space-2;
 }
