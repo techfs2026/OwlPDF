@@ -97,6 +97,9 @@ private:
     void updateStatusBar();
     void updateZoomCombox(double zoom);
 
+    QString elideTabTitle(const QString& fullTitle, int maxLength) const;
+    void installTabCloseButton(int index);
+
     PDFDocumentTab* currentTab() const;
     PDFDocumentTab* createNewTab();
     void connectTabSignals(PDFDocumentTab* tab);

@@ -27,3 +27,49 @@ QMainWindow::separator {
 QMainWindow::separator:hover {
     background-color: @border-medium;
 }
+
+QToolButton#tabCloseButton {
+    background: transparent;
+    border: none;
+    border-radius: @radius-lg;   /* 10px，正好让 20×20 成正圆，且不破坏 token 体系 */
+    padding: 0;
+    margin: 0;
+}
+
+QToolButton#tabCloseButton:hover {
+    background-color: @selected-background;
+}
+
+QToolButton#tabCloseButton:pressed {
+    background-color: @pressed-background;
+}
+
+/* ==================== Tab 头 ==================== */
+QTabBar::tab {
+    background-color: @surface-color;
+    color: @text-secondary;
+    border: 1px solid @border-light;
+    border-bottom: none;
+    border-top-left-radius: @radius-md;
+    border-top-right-radius: @radius-md;
+    /* 右侧 = 关闭按钮(20) + 内缩留白，像 Chrome 那样不贴右边框 */
+    padding: @space-2 @space-5 @space-2 @space-3;
+    margin-right: @space-1;
+}
+
+QTabBar::tab:selected {
+    background-color: @background-color;
+    color: @text-primary;
+    border-color: @border-medium;
+    border-bottom: none;
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: @hover-background;
+    color: @text-primary;
+}
+
+/* tab 之间不重叠，配合 documentMode 更干净 */
+QTabBar::tab:!first {
+    /* 间隔已由 margin-right 控制，这里留空占位，便于以后微调 */
+}

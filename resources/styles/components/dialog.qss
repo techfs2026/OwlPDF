@@ -1,0 +1,77 @@
+/* ==================== 对话框容器 ==================== */
+QDialog {
+    background-color: @background-color;
+    color: @text-primary;
+    font-family: @font-family;
+    font-size: @font-size-base;
+}
+
+/* ==================== 文字标签 ==================== */
+/* 默认正文标签 */
+QDialog QLabel {
+    color: @text-primary;
+    font-size: @font-size-base;
+    background: transparent;
+}
+
+/* 角色：说明性文字（页面用 setProperty("role","caption") 命中） */
+QDialog QLabel[role="caption"] {
+    color: @text-secondary;
+    font-size: @font-size-sm;
+}
+
+/* 角色：标题文字 */
+QDialog QLabel[role="title"] {
+    color: @text-primary;
+    font-size: @font-size-lg;
+}
+
+/* ==================== 输入框 ==================== */
+QDialog QLineEdit {
+    background-color: @surface-color;
+    color: @text-primary;
+    border: 1px solid @border-medium;
+    border-radius: @radius-sm;
+    padding: @space-1 @space-2;
+    font-size: @font-size-base;
+    selection-background-color: @selected-background;
+}
+QDialog QLineEdit:hover {
+    border-color: @border-dark;
+}
+QDialog QLineEdit:focus {
+    border-color: @primary-color;
+}
+QDialog QLineEdit:disabled {
+    color: @text-disabled;
+    border-color: @border-light;
+}
+
+/* ==================== 数字输入框 ==================== */
+QDialog QSpinBox {
+    background-color: @surface-color;
+    color: @text-primary;
+    border: 1px solid @border-medium;
+    border-radius: @radius-sm;
+    padding: @space-1 @space-2;
+    font-size: @font-size-base;
+    selection-background-color: @selected-background;
+}
+QDialog QSpinBox:hover {
+    border-color: @border-dark;
+}
+QDialog QSpinBox:focus {
+    border-color: @primary-color;
+}
+QDialog QSpinBox:disabled {
+    color: @text-disabled;
+    border-color: @border-light;
+}
+
+/* ==================== 按钮区 ==================== */
+/* QDialogButtonBox 内的按钮基础态由 button.qss 提供，
+ * 这里只补充对话框场景下需要的差异。主按钮（OK）由页面
+ * 通过 setProperty("variant","primary") 命中 button.qss 的主色变体。 */
+QDialog QDialogButtonBox {
+    /* 占位：按钮间距由布局控制，外观由 button.qss 决定 */
+}

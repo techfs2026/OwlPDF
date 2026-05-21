@@ -226,14 +226,14 @@ void NavigationPanel::setupUI()
     toolbarLayout->setSpacing(8);
 
     m_expandAllBtn = new QToolButton(this);
-    m_expandAllBtn->setIcon(QIcon(":icons/resources/icons/expand.png"));
+    m_expandAllBtn->setIcon(QIcon(":icons/resources/icons/expand.svg"));
     m_expandAllBtn->setToolTip(tr("Expand All"));
     m_expandAllBtn->setObjectName("outlineToolButton");
     m_expandAllBtn->setFixedSize(28, 28);
     m_expandAllBtn->setIconSize(QSize(14, 14));
 
     m_collapseAllBtn = new QToolButton(this);
-    m_collapseAllBtn->setIcon(QIcon(":icons/resources/icons/fold.png"));
+    m_collapseAllBtn->setIcon(QIcon(":icons/resources/icons/fold.svg"));
     m_collapseAllBtn->setToolTip(tr("Collapse All"));
     m_collapseAllBtn->setObjectName("outlineToolButton");
     m_collapseAllBtn->setFixedSize(28, 28);

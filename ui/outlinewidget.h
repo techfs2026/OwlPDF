@@ -9,6 +9,7 @@
 #include <QStyledItemDelegate>
 
 #include "pdfcontenthandler.h"
+#include "stylemanager.h"
 
 class OutlineItem;
 class OutlineEditor;
@@ -20,6 +21,9 @@ enum LocalDropIndicator {
     DI_Inside
 };
 
+// 自绘区域的配色统一从 StyleManager 的 token 取，不写死颜色，也不再维护
+// 独立的 m_darkMode 开关 —— StyleManager 已按当前主题返回对应 token，
+// 暗色/亮色自动跟随，与 ThemedIcon 的取色方式一致。
 class DragOverlayWidget : public QWidget {
 public:
     DragOverlayWidget(QWidget* parent = nullptr)
@@ -48,6 +52,7 @@ public:
 
 protected:
     void paintEvent(QPaintEvent* event) override {
+        Q_UNUSED(event);
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing);
 
@@ -69,7 +74,8 @@ protected:
 
             p.setPen(QColor(ghost.color).lighter(130));
             QFont font = p.font();
-            font.setPointSize(10);
+            // 字号统一到 token：@font-size-sm
+            font.setPixelSize(StyleManager::instance().currentConfig().fontSizeSm);
             p.setFont(font);
             p.drawText(ghost.rect.adjusted(16,0,0,0),
                        Qt::AlignVCenter, ghost.text);
@@ -85,20 +91,26 @@ public:
     explicit OutlineItemDelegate(QTreeWidget* treeWidget, QObject* parent = nullptr)
         : QStyledItemDelegate(parent)
         , m_treeWidget(treeWidget)
-        , m_darkMode(false)
     {}
-
-    void setDarkMode(bool dark) { m_darkMode = dark; }
 
     void paint(QPainter* painter, const QStyleOptionViewItem& option,
                const QModelIndex& index) const override
     {
+        StyleManager& sm = StyleManager::instance();
+
         painter->save();
 
+        // 选中/hover 底色由 delegate 整行通染：从视口左缘(x=0)画到行右端，
+        // 盖住左侧缩进/装饰区，避免 Qt 原生高亮从缝隙透出。
+        // （原生 ::item:selected / ::branch:selected 背景已在 qss 置为
+        //   transparent，二者配合确保底色唯一来源是这里。）
+        QRect fillRect = option.rect;
+        fillRect.setLeft(0);
+
         if (option.state & QStyle::State_Selected) {
-            painter->fillRect(option.rect, m_darkMode ? QColor("#0A4B7F") : QColor("#E3F2FD"));
+            painter->fillRect(fillRect, sm.getColor("selected"));
         } else if (option.state & QStyle::State_MouseOver) {
-            painter->fillRect(option.rect, m_darkMode ? QColor("#2C2C2E") : QColor("#F2F2F7"));
+            painter->fillRect(fillRect, sm.getColor("hover"));
         }
 
         if (!m_treeWidget) {
@@ -125,9 +137,10 @@ public:
         if (item->childCount() > 0) {
             painter->setRenderHint(QPainter::Antialiasing);
 
-            QColor iconColor = m_darkMode ? QColor("#AEAEB2") : QColor("#8E8E93");
+            // 折叠三角：常态 = text-secondary，hover = primary
+            QColor iconColor = sm.getColor("textSecondary");
             if (option.state & QStyle::State_MouseOver) {
-                iconColor = m_darkMode ? QColor("#0A84FF") : QColor("#007AFF");
+                iconColor = sm.getColor("primary");
             }
 
             painter->setPen(Qt::NoPen);
@@ -139,12 +152,12 @@ public:
             QPolygonF triangle;
             if (item->isExpanded()) {
                 triangle << QPointF(triangleX, triangleY - 2)
-                         << QPointF(triangleX + 10, triangleY - 2)
-                         << QPointF(triangleX + 5, triangleY + 4);
+                << QPointF(triangleX + 10, triangleY - 2)
+                << QPointF(triangleX + 5, triangleY + 4);
             } else {
                 triangle << QPointF(triangleX, triangleY - 5)
-                         << QPointF(triangleX + 7, triangleY)
-                         << QPointF(triangleX, triangleY + 5);
+                << QPointF(triangleX + 7, triangleY)
+                << QPointF(triangleX, triangleY + 5);
             }
 
             painter->drawPolygon(triangle);
@@ -164,19 +177,20 @@ public:
         }
 
         QFont font = item->font(0);
-        font.setPointSize(10);
+        // 字号统一到 token：@font-size-sm
+        font.setPixelSize(sm.currentConfig().fontSizeSm);
         painter->setFont(font);
 
+        // 文字颜色：选中态 = primary；外部链接 = primary；普通条目 = text-primary。
+        // （此前普通条目只要带页码就染主色，导致整树皆蓝，现按语义收敛。）
         QColor textColor;
         if (option.state & QStyle::State_Selected) {
-            textColor = m_darkMode ? QColor("#0A84FF") : QColor("#007AFF");
+            textColor = sm.getColor("primary");
         } else {
-            QVariant pageVar = item->data(0, Qt::UserRole + 1);
-            if (pageVar.isValid()) {
-                textColor = m_darkMode ? QColor("#0A84FF") : QColor("#007AFF");
-            } else {
-                textColor = m_darkMode ? QColor("#EBEBF5") : QColor("#1C1C1E");
-            }
+            QVariant uriVar = item->data(0, UriRole);
+            bool isExternalLink = uriVar.isValid() && !uriVar.toString().isEmpty();
+            textColor = isExternalLink ? sm.getColor("primary")
+                                       : sm.getColor("textPrimary");
         }
         painter->setPen(textColor);
 
@@ -192,9 +206,8 @@ public:
         painter->drawText(titleRect, Qt::AlignLeft | Qt::AlignVCenter, title);
 
         if (!pageNum.isEmpty()) {
-            QColor pageColor = textColor;
-            pageColor.setAlpha(180);
-            painter->setPen(pageColor);
+            // 页码用次要文字色，弱化于标题
+            painter->setPen(sm.getColor("textSecondary"));
 
             QRect pageRect = option.rect.adjusted(option.rect.width() - pageNumWidth - rightMargin,
                                                   0, -rightMargin, 0);
@@ -215,8 +228,10 @@ public:
     }
 
 private:
+    // UriRole 与 OutlineWidget 中的定义保持一致（Qt::UserRole + 2）
+    static constexpr int UriRole = Qt::UserRole + 2;
+
     QTreeWidget* m_treeWidget;
-    bool m_darkMode;
 };
 
 class OutlineWidget : public QTreeWidget

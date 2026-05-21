@@ -2,6 +2,8 @@
 #include "outlineeditor.h"
 #include "outlineitem.h"
 #include "outlinedialog.h"
+#include "stylemanager.h"
+#include "themedicon.h"
 
 #include <QHeaderView>
 #include <QContextMenuEvent>
@@ -15,6 +17,17 @@
 #include <QAbstractButton>
 #include <QElapsedTimer>
 #include <QStyledItemDelegate>
+
+namespace {
+// 右键菜单图标名（对应 :/icons/resources/icons/<name>.svg）。
+// TODO: 确认这些 SVG 是否已存在于 icons 资源中；若图标名不同，改这里即可。
+constexpr const char* kIconEdit       = "edit";
+constexpr const char* kIconAddChild   = "add-child";
+constexpr const char* kIconAddSibling = "add-sibling";
+constexpr const char* kIconDelete     = "trash";
+constexpr const char* kIconSave       = "save";
+constexpr const char* kIconAddItem    = "plus";
+} // namespace
 
 
 OutlineWidget::OutlineWidget(PDFContentHandler* contentHandler, QWidget* parent)
@@ -48,6 +61,8 @@ OutlineWidget::~OutlineWidget()
 
 void OutlineWidget::setupUI()
 {
+    // objectName 供 outlinewidget.qss 选择器命中
+    setObjectName("outlineWidget");
 
     setColumnCount(1);
     setHeaderHidden(true);
@@ -65,7 +80,7 @@ void OutlineWidget::setupUI()
     setFrameShape(QFrame::NoFrame);
     setContextMenuPolicy(Qt::DefaultContextMenu);
 
-    setStyleSheet("QTreeView::branch { image: none; }");
+    // 隐藏默认分支箭头的样式已迁移到 outlinewidget.qss（铁律：页面不写 setStyleSheet）
 
     m_overlay = new DragOverlayWidget(viewport());
     m_overlay->resize(viewport()->size());
@@ -230,35 +245,45 @@ QMenu* OutlineWidget::createContextMenu(QTreeWidgetItem* item)
     QMenu* menu = new QMenu(this);
 
     if (item) {
+        // 图标颜色随主题：用 text-secondary 作为菜单图标常态色
+        const QColor iconColor = StyleManager::instance().getColor("textSecondary");
 
-        QAction* editAction = menu->addAction(tr("✏️  Edit"));
+        QAction* editAction = menu->addAction(
+            ThemedIcon::colored(kIconEdit, iconColor), tr("Edit"));
         connect(editAction, &QAction::triggered,
                 this, &OutlineWidget::onEditOutline);
 
-        QAction* addChildAction = menu->addAction(tr("➕  Add Child"));
+        QAction* addChildAction = menu->addAction(
+            ThemedIcon::colored(kIconAddChild, iconColor), tr("Add Child"));
         connect(addChildAction, &QAction::triggered,
                 this, &OutlineWidget::onAddChildOutline);
 
-        QAction* addSiblingAction = menu->addAction(tr("➕  Add Sibling"));
+        QAction* addSiblingAction = menu->addAction(
+            ThemedIcon::colored(kIconAddSibling, iconColor), tr("Add Sibling"));
         connect(addSiblingAction, &QAction::triggered,
                 this, &OutlineWidget::onAddSiblingOutline);
 
         menu->addSeparator();
 
-        QAction* deleteAction = menu->addAction(tr("🗑️  Delete"));
+        QAction* deleteAction = menu->addAction(
+            ThemedIcon::colored(kIconDelete, iconColor), tr("Delete"));
         deleteAction->setShortcut(QKeySequence::Delete);
         connect(deleteAction, &QAction::triggered,
                 this, &OutlineWidget::onDeleteOutline);
     } else {
+        const QColor iconColor = StyleManager::instance().getColor("textSecondary");
 
-        QAction* addAction = menu->addAction(tr("➕  Add Outline Item"));
+        QAction* addAction = menu->addAction(
+            ThemedIcon::colored(kIconAddItem, iconColor), tr("Add Outline Item"));
         connect(addAction, &QAction::triggered,
                 this, &OutlineWidget::onAddChildOutline);
     }
 
     menu->addSeparator();
 
-    QAction* saveAction = menu->addAction(tr("💾  Save to PDF"));
+    QAction* saveAction = menu->addAction(
+        ThemedIcon::colored(kIconSave, StyleManager::instance().getColor("textSecondary")),
+        tr("Save to PDF"));
     saveAction->setEnabled(m_outlineEditor && m_outlineEditor->hasUnsavedChanges());
     connect(saveAction, &QAction::triggered,
             this, &OutlineWidget::onSaveToDocument);
@@ -266,9 +291,11 @@ QMenu* OutlineWidget::createContextMenu(QTreeWidgetItem* item)
     if (topLevelItemCount() > 0) {
         menu->addSeparator();
 
-        QAction* deleteAllAction = menu->addAction(tr("🗑️  Delete All"));
+        // 危险操作：图标用 error 色提示
+        QAction* deleteAllAction = menu->addAction(
+            ThemedIcon::colored(kIconDelete, StyleManager::instance().getColor("error")),
+            tr("Delete All"));
         deleteAllAction->setToolTip(tr("Delete all outline items"));
-
 
         QFont font = deleteAllAction->font();
         font.setBold(true);
@@ -625,9 +652,10 @@ QTreeWidgetItem* OutlineWidget::createTreeItem(OutlineItem* outlineItem)
 
     item->setText(0, title);
 
-
+    // 字号统一到 token：@font-size-sm（实际着色与字号由 delegate 统一控制，
+    // 这里设置仅作为 fallback，不写死字面值）
     QFont font = item->font(0);
-    font.setPointSize(10);
+    font.setPixelSize(StyleManager::instance().currentConfig().fontSizeSm);
     item->setFont(0, font);
 
     item->setSizeHint(0, QSize(0, 28));
@@ -656,6 +684,7 @@ QTreeWidgetItem* OutlineWidget::createTreeItem(OutlineItem* outlineItem)
 
 QTreeWidgetItem* OutlineWidget::findItemByPage(int pageIndex, QTreeWidgetItem* parent)
 {
+    Q_UNUSED(parent);
     QTreeWidgetItemIterator it(this);
 
     while (*it) {
@@ -745,7 +774,9 @@ void OutlineWidget::setItemDefaultColor(QTreeWidgetItem* item)
         return;
     }
 
-    item->setForeground(0, QBrush(QColor("#007AFF")));
+    // 颜色由 delegate 统一从 token 取，这里不再写死 foreground；
+    // 仅复位粗体与背景这类“状态”属性。
+    item->setForeground(0, QBrush());
 
     QFont font = item->font(0);
     font.setBold(false);
@@ -833,9 +864,15 @@ void OutlineWidget::dragMoveEvent(QDragMoveEvent* event)
 
     OutlineItem* targetOutline = item ? getOutlineItem(item) : nullptr;
 
+    // 拖拽指示色统一取主题主色
+    const QColor accent = StyleManager::instance().getColor("primary");
+    QColor ghostFill = accent;
+    ghostFill.setAlpha(40);
+
 
     if (!item) {
         OutlineItem* root = m_contentHandler->outlineRoot();
+        Q_UNUSED(root);
 
         m_dropIndicator = DI_None;
 
@@ -844,7 +881,7 @@ void OutlineWidget::dragMoveEvent(QDragMoveEvent* event)
         m_overlay->ghost.valid = true;
         m_overlay->ghost.rect = QRect(0, viewport()->height() - 32, viewport()->width(), 28);
         m_overlay->ghost.text = m_draggedItem->text(0);
-        m_overlay->ghost.color = QColor(0,122,255,40);
+        m_overlay->ghost.color = ghostFill;
 
         m_overlay->update();
         event->acceptProposedAction();
@@ -880,6 +917,7 @@ void OutlineWidget::dragMoveEvent(QDragMoveEvent* event)
 
         insertIndex = (m_dropIndicator == DI_Above) ? targetIndex : targetIndex + 1;
     }
+    Q_UNUSED(insertIndex);
 
 
     m_overlay->line.valid = false;
@@ -889,21 +927,24 @@ void OutlineWidget::dragMoveEvent(QDragMoveEvent* event)
         m_overlay->line.valid = true;
         m_overlay->line.lineRect =
             QRect(rect.left() + 8, rect.top(), rect.width() - 16, 2);
-        m_overlay->line.color = QColor("#007AFF");
+        m_overlay->line.color = accent;
     }
     else if (m_dropIndicator == DI_Below) {
         m_overlay->line.valid = true;
         m_overlay->line.lineRect =
             QRect(rect.left() + 8, rect.bottom() - 1, rect.width() - 16, 2);
-        m_overlay->line.color = QColor("#007AFF");
+        m_overlay->line.color = accent;
     }
     else if (m_dropIndicator == DI_Inside) {
         QRect r = rect.adjusted(6,3,-6,-3);
 
+        QColor insideFill = accent;
+        insideFill.setAlpha(50);
+
         m_overlay->ghost.valid = true;
         m_overlay->ghost.rect = r;
         m_overlay->ghost.text = m_draggedItem->text(0);
-        m_overlay->ghost.color = QColor(0,122,255,50);
+        m_overlay->ghost.color = insideFill;
     }
 
     m_overlay->update();

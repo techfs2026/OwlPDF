@@ -10,6 +10,8 @@
         <file>resources/styles/components/searchwidget.qss</file>
         <file>resources/styles/components/statusbar.qss</file>
         <file>resources/styles/components/toolbar.qss</file>
+        <file>resources/styles/components/dialog.qss</file>
+        <file>resources/styles/components/outlinewidget.qss</file>
     </qresource>
     <qresource prefix="/icons">
         <file>resources/windows.ico</file>
@@ -32,5 +34,13 @@
         <file>resources/icons/tab-outline.svg</file>
         <file>resources/icons/tab-thumbnail.svg</file>
         <file>resources/icons/open-file.svg</file>
+        <file>resources/icons/close-file.svg</file>
+        <file>resources/icons/fold.svg</file>
+        <file>resources/icons/edit.svg</file>
+        <file>resources/icons/add-child.svg</file>
+        <file>resources/icons/add-sibling.svg</file>
+        <file>resources/icons/plus.svg</file>
+        <file>resources/icons/save.svg</file>
+        <file>resources/icons/trash.svg</file>
     </qresource>
 </RCC>

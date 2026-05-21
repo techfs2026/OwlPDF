@@ -1,4 +1,7 @@
 /* ==================== PDF 页面显示组件样式 ==================== */
+/* 说明：本组件含若干"功能性半透明覆盖色"（文本选择/链接/搜索高亮等），
+   需要 alpha 透出底层文字，token 体系输出不透明 #RRGGBB 无法表达，
+   故这些 rgba(...) 保留裸值。括号内注明其对应的语义色来源。 */
 
 PDFPageWidget {
     background-color: @background-color;
@@ -19,21 +22,21 @@ PDFPageWidget #pageShadow {
 PDFPageWidget #loadingPlaceholder {
     background-color: @surface-color;
     border: 1px solid @border-light;
-    border-radius: 4px;
+    border-radius: @radius-sm;
 }
 
 PDFPageWidget #loadingLabel {
     color: @text-secondary;
-    font-size: 13px;
+    font-size: @font-size-base;
 }
 
-/* 页码指示器 */
+/* 页码指示器（悬浮深色胶囊） */
 PDFPageWidget #pageIndicator {
-    background-color: rgba(28, 28, 30, 0.8);
+    background-color: rgba(28, 28, 30, 0.8);   /* = text-primary @ 80% */
     color: @surface-color;
-    border-radius: 6px;
-    padding: 8px 16px;
-    font-size: 14px;
+    border-radius: @radius-md;
+    padding: @space-2 @space-4;
+    font-size: @font-size-lg;
     font-weight: 600;
 }
 
@@ -41,19 +44,19 @@ PDFPageWidget #pageIndicator {
 PDFPageWidget #ocrTooltip {
     background-color: @surface-color;
     border: 1px solid @border-medium;
-    border-radius: 8px;
-    padding: 12px;
+    border-radius: @radius-lg;
+    padding: @space-3;
 }
 
 PDFPageWidget #ocrTooltip QLabel {
     color: @text-primary;
-    font-size: 13px;
+    font-size: @font-size-base;
     line-height: 1.6;
 }
 
-/* 链接高亮 */
+/* 链接高亮（半透明，需透出文字） */
 PDFPageWidget #linkHighlight {
-    background-color: rgba(0, 122, 255, 0.15);
+    background-color: rgba(0, 122, 255, 0.15);   /* = primary @ 15% */
     border: 1px solid rgba(0, 122, 255, 0.3);
     border-radius: 2px;
 }
@@ -65,44 +68,45 @@ PDFPageWidget #linkHighlight:hover {
 
 /* 文本选择高亮 */
 PDFPageWidget #textSelection {
-    background-color: rgba(0, 122, 255, 0.3);
+    background-color: rgba(0, 122, 255, 0.3);   /* = primary @ 30% */
 }
 
-/* 搜索结果高亮 */
+/* 搜索结果高亮（黄） */
 PDFPageWidget #searchHighlight {
     background-color: rgba(255, 204, 0, 0.4);
     border: 1px solid rgba(255, 204, 0, 0.6);
 }
 
 PDFPageWidget #searchHighlight:current {
-    background-color: rgba(255, 149, 0, 0.5);
+    background-color: rgba(255, 149, 0, 0.5);   /* = warning 系，当前命中 */
     border: 1px solid rgba(255, 149, 0, 0.8);
 }
 
-/* 注释高亮 */
+/* 注释高亮（绿） */
 PDFPageWidget #annotationHighlight {
-    background-color: rgba(52, 199, 89, 0.2);
+    background-color: rgba(52, 199, 89, 0.2);   /* = success @ 20% */
     border: 1px solid rgba(52, 199, 89, 0.4);
 }
 
-/* 右键菜单 */
+/* ---------- 右键菜单（与全局 QMenu 一致） ---------- */
 PDFPageWidget QMenu {
     background-color: @surface-color;
     border: 1px solid @border-medium;
-    border-radius: 8px;
-    padding: 6px;
+    border-radius: @radius-lg;
+    padding: @space-2;
 }
 
 PDFPageWidget QMenu::item {
-    padding: 8px 36px 8px 16px;
-    border-radius: 5px;
+    padding: @space-1 36px @space-1 @space-4;
+    border-radius: @radius-sm;
     color: @text-primary;
-    font-size: 13px;
-    min-height: 24px;
+    font-size: @font-size-base;
+    min-height: 20px;
 }
 
 PDFPageWidget QMenu::item:selected {
     background-color: @selected-background;
+    color: @primary-color;
 }
 
 PDFPageWidget QMenu::item:disabled {
@@ -112,19 +116,19 @@ PDFPageWidget QMenu::item:disabled {
 PDFPageWidget QMenu::separator {
     height: 1px;
     background-color: @border-light;
-    margin: 6px 12px;
+    margin: @space-1 @space-3;
 }
 
 PDFPageWidget QMenu::icon {
-    padding-left: 10px;
+    padding-left: @space-3;
 }
 
-/* 缓存统计信息 */
+/* 缓存统计信息（调试用浮层） */
 PDFPageWidget #cacheStats {
-    background-color: rgba(28, 28, 30, 0.9);
+    background-color: rgba(28, 28, 30, 0.9);   /* = text-primary @ 90% */
     color: @surface-color;
-    border-radius: 6px;
-    padding: 8px 12px;
-    font-size: 11px;
+    border-radius: @radius-md;
+    padding: @space-2 @space-3;
+    font-size: @font-size-sm;
     font-family: monospace;
 }

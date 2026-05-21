@@ -170,6 +170,8 @@ QString StyleManager::getFullStyleSheet()
         "scrollbar",
         "menu",
         "button",
+        "dialog",
+        "outlinewidget",
     };
 
     for (const QString& component : components) {

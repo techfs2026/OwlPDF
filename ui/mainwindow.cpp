@@ -13,6 +13,7 @@
 #endif
 
 #include <QMenuBar>
+#include <QHBoxLayout>
 #include <QMimeData>
 #include <QToolBar>
 #include <QStatusBar>
@@ -23,6 +24,7 @@
 #include <QComboBox>
 #include <QTabWidget>
 #include <QTabBar>
+#include <QToolButton>
 #include <QApplication>
 #include <QFileInfo>
 #include <QCloseEvent>
@@ -46,7 +48,9 @@ MainWindow::MainWindow(QWidget* parent)
     resize(AppConfig::instance().defaultWindowSize());
 
     m_tabWidget = new QTabWidget(this);
-    m_tabWidget->setTabsClosable(true);
+    // 关闭按钮改用自定义 ThemedIcon 按钮（见 installTabCloseButton），
+    // 因此不启用 Qt 自动关闭按钮，避免重复出现两个关闭图标。
+    m_tabWidget->setTabsClosable(false);
     m_tabWidget->setMovable(true);
     m_tabWidget->setDocumentMode(true);
     m_tabWidget->setUsesScrollButtons(true);
@@ -192,9 +196,45 @@ PDFDocumentTab* MainWindow::createNewTab()
     int index = m_tabWidget->addTab(tab, tr("New Tab"));
     m_tabWidget->setCurrentIndex(index);
 
+    installTabCloseButton(index);
+
     connectTabSignals(tab);
 
     return tab;
+}
+
+// 给指定 tab 安装自定义关闭按钮：图标用 close-file.svg，经 ThemedIcon
+// 染色跟随主题。点击时按 tab 当前所在 index 关闭（不用闭包捕获 index，
+// 因为 tab 可拖动/插入会使 index 变化，运行时再查实际位置）。
+void MainWindow::installTabCloseButton(int index)
+{
+    QToolButton* closeBtn = new QToolButton;   // 注意：父对象先不设，交给 wrapper
+    closeBtn->setObjectName("tabCloseButton");
+    closeBtn->setIcon(ThemedIcon::toolButton("close-file", 12));
+    closeBtn->setIconSize(QSize(12, 12));
+    closeBtn->setFixedSize(20, 20);
+    closeBtn->setAutoRaise(false);
+    closeBtn->setCursor(Qt::ArrowCursor);
+    closeBtn->setToolTip(tr("Close Tab"));
+    closeBtn->setFocusPolicy(Qt::NoFocus);
+
+    // 外层透明容器：右侧留出间隔，把按钮从 tab 右边框往里推
+    QWidget* wrapper = new QWidget(m_tabWidget);
+    wrapper->setObjectName("tabCloseButtonWrapper");
+    auto* lay = new QHBoxLayout(wrapper);
+    lay->setContentsMargins(0, 0, 6, 0);   // 右 6px 留白 = 按钮整体左移 6px
+    lay->setSpacing(0);
+    lay->addWidget(closeBtn);
+
+    QWidget* tabPage = m_tabWidget->widget(index);
+    connect(closeBtn, &QToolButton::clicked, this, [this, tabPage]() {
+        int idx = m_tabWidget->indexOf(tabPage);
+        if (idx >= 0) {
+            closeTab(idx);
+        }
+    });
+
+    m_tabWidget->tabBar()->setTabButton(index, QTabBar::RightSide, wrapper);
 }
 
 void MainWindow::connectTabSignals(PDFDocumentTab* tab)
@@ -273,31 +313,50 @@ void MainWindow::updateTabTitle(int index)
     PDFDocumentTab* tab = qobject_cast<PDFDocumentTab*>(m_tabWidget->widget(index));
     if (tab) {
         QString fullTitle = tab->documentTitle();
-        QString displayTitle = fullTitle;
 
         const int maxLength = 20;
-        if (displayTitle.length() > maxLength) {
-            QFileInfo fileInfo(fullTitle);
-            QString baseName = fileInfo.completeBaseName();
-            QString extension = fileInfo.suffix();
-
-            if (!extension.isEmpty()) {
-                int availableLength = maxLength - extension.length() - 4;
-
-                if (baseName.length() > availableLength) {
-                    baseName = baseName.left(availableLength);
-                    displayTitle = baseName + "..." + "." + extension;
-                } else {
-                    displayTitle = fullTitle;
-                }
-            } else {
-                displayTitle = displayTitle.left(maxLength - 3) + "...";
-            }
-        }
-
-        m_tabWidget->setTabText(index, displayTitle);
+        m_tabWidget->setTabText(index, elideTabTitle(fullTitle, maxLength));
         m_tabWidget->setTabToolTip(index, tab->documentPath());
     }
+}
+
+// 截断策略：扩展名（后缀）始终完整保留；对主文件名做“前 x + … + 后 x”，
+// 头尾保留、中间用省略号，x 由可用长度动态均分（前段多 1 个，更自然）。
+// 总长不超过 maxLength。若全名本就不超限，原样返回。
+QString MainWindow::elideTabTitle(const QString& fullTitle, int maxLength) const
+{
+    if (fullTitle.length() <= maxLength) {
+        return fullTitle;
+    }
+
+    const QChar ellipsis(0x2026); // '…'
+
+    QFileInfo fileInfo(fullTitle);
+    QString baseName = fileInfo.completeBaseName();
+    QString extension = fileInfo.suffix();
+    QString suffix = extension.isEmpty() ? QString() : ("." + extension);
+
+    // 主文件名可用字符数 = 总上限 - 后缀长度 - 省略号(1)
+    int budget = maxLength - suffix.length() - 1;
+
+    // 后缀本身就把预算吃光（极端的超长扩展名）：退化为对全名首段截断
+    if (budget < 2) {
+        return fullTitle.left(qMax(1, maxLength - 1)) + ellipsis;
+    }
+
+    // 若主文件名其实不需要省略（含后缀后仍 <= 上限），原样返回
+    if (baseName.length() + suffix.length() <= maxLength) {
+        return fullTitle;
+    }
+
+    // 动态均分：前段 = ceil(budget/2)，后段 = floor(budget/2)
+    int frontLen = (budget + 1) / 2;
+    int backLen  = budget - frontLen;
+
+    QString front = baseName.left(frontLen);
+    QString back  = backLen > 0 ? baseName.right(backLen) : QString();
+
+    return front + ellipsis + back + suffix;
 }
 
 void MainWindow::previousPage()

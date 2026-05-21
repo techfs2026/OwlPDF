@@ -1,0 +1,38 @@
+/* outlinewidget.qss —— 左侧导航的目录树外观
+ *
+ * 说明：item 的文字着色、hover/选中底色、折叠三角等由 OutlineItemDelegate
+ *       自绘（从 StyleManager token 取色），此处只负责 QSS 能表达的部分：
+ *       容器背景、默认分支箭头隐藏、滚动留白等。
+ * 铁律：只消费 token，不出现裸颜色值或像素值。
+ */
+
+QTreeWidget#outlineWidget {
+    background-color: @surface-color;
+    border: none;
+    outline: none;
+    font-family: @font-family;
+}
+
+/* 隐藏 Qt 默认分支箭头（折叠三角由 delegate 自绘）。
+ * 原先写在 C++ 的 setStyleSheet 中，现按铁律收回到组件 qss。 */
+QTreeWidget#outlineWidget::branch {
+    image: none;
+    background: transparent;
+}
+
+/* item 的内边距用 token；着色交给 delegate，这里不设 color */
+QTreeWidget#outlineWidget::item {
+    padding: @space-1 @space-2;
+    border: none;
+}
+
+/* 选中/hover 底色完全由 OutlineItemDelegate 自绘整行通染。
+ * 这里把 Qt 原生的 item / branch 选中背景置为透明，否则原生高亮
+ * （亮色主题下为系统 highlight 纯蓝）会从左侧缩进区透出，形成色块。 */
+QTreeWidget#outlineWidget::item:selected {
+    background: transparent;
+    color: @text-primary;
+}
+QTreeWidget#outlineWidget::branch:selected {
+    background: transparent;
+}

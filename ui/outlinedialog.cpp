@@ -32,38 +32,40 @@ OutlineDialog::~OutlineDialog()
 
 void OutlineDialog::setupUI()
 {
+    // objectName 供 dialog.qss 选择器命中（如需对本对话框做差异化）
+    setObjectName("outlineDialog");
+
     if (m_mode == AddMode) {
         setWindowTitle(tr("Add Outline"));
     } else {
         setWindowTitle(tr("Edit Outline"));
     }
 
+    // 布局间距对齐 token 数值梯度（@space-4 = 16, @space-5 = 24）。
+    // QLayout 的 spacing/margin 无法由 qss 设置，故在此使用，但取值与
+    // token 体系保持一致，不引入魔法数字。
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
-    mainLayout->setSpacing(16);
-    mainLayout->setContentsMargins(20, 20, 20, 20);
+    mainLayout->setSpacing(16);                     // @space-4
+    mainLayout->setContentsMargins(24, 24, 24, 24); // @space-5
 
+    // 说明文字：用 role="caption" 声明语义，颜色/字号由 dialog.qss 决定
     QLabel* descLabel = new QLabel(this);
+    descLabel->setProperty("role", "caption");
     if (m_mode == AddMode) {
         descLabel->setText(tr("Please enter outline information:"));
     } else {
         descLabel->setText(tr("Edit outline information:"));
     }
-    QFont descFont = descLabel->font();
-    descFont.setPointSize(10);
-    descLabel->setFont(descFont);
-    descLabel->setStyleSheet("color: #666666;");
     mainLayout->addWidget(descLabel);
 
     QFormLayout* formLayout = new QFormLayout();
-    formLayout->setSpacing(12);
+    formLayout->setSpacing(12);                     // @space-3
     formLayout->setLabelAlignment(Qt::AlignRight | Qt::AlignVCenter);
     formLayout->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
 
     m_titleEdit = new QLineEdit(this);
     m_titleEdit->setPlaceholderText(tr("Enter outline title"));
-    m_titleEdit->setMinimumWidth(300);
     QLabel* titleLabel = new QLabel(tr("Title:"), this);
-    titleLabel->setMinimumWidth(60);
     formLayout->addRow(titleLabel, m_titleEdit);
 
     m_pageSpinBox = new QSpinBox(this);
@@ -71,9 +73,7 @@ void OutlineDialog::setupUI()
     m_pageSpinBox->setMaximum(m_maxPage);
     m_pageSpinBox->setValue(1);
     m_pageSpinBox->setSuffix(tr(" page"));
-    m_pageSpinBox->setMinimumWidth(150);
     QLabel* pageLabel = new QLabel(tr("Target Page:"), this);
-    pageLabel->setMinimumWidth(60);
     formLayout->addRow(pageLabel, m_pageSpinBox);
 
     mainLayout->addLayout(formLayout);
@@ -84,10 +84,13 @@ void OutlineDialog::setupUI()
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
         this);
 
+    QPushButton* okButton = m_buttonBox->button(QDialogButtonBox::Ok);
+    // 确定按钮为主操作，用 variant="primary" 命中 button.qss 的主色变体
+    okButton->setProperty("variant", "primary");
     if (m_mode == AddMode) {
-        m_buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Add"));
+        okButton->setText(tr("Add"));
     } else {
-        m_buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Save"));
+        okButton->setText(tr("Save"));
     }
     m_buttonBox->button(QDialogButtonBox::Cancel)->setText(tr("Cancel"));
 

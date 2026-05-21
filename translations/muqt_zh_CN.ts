@@ -657,15 +657,12 @@ OCR取词功能将同时被关闭。</translation>
 
 <message>
     <source>Outline</source>
-    <translation>目
-录</translation>
+    <translation>目录</translation>
 </message>
 
 <message>
     <source>Thumbnails</source>
-    <translation>缩
-略
-图</translation>
+    <translation>缩略图</translation>
 </message>
 
     <message>
@@ -791,43 +788,28 @@ OCR取词功能将同时被关闭。</translation>
     <name>OutlineWidget</name>
 
     <message>
-        <source>✏️  Edit</source>
-        <translation>✏️  编辑</translation>
+        <source>Edit</source>
+        <translation>编辑</translation>
     </message>
-
     <message>
-        <source>➕  Add Child</source>
-        <translation>➕  添加子项</translation>
+        <source>Add Child</source>
+        <translation>添加子项</translation>
     </message>
-
     <message>
-        <source>➕  Add Sibling</source>
-        <translation>➕  添加同级项</translation>
+        <source>Add Sibling</source>
+        <translation>添加同级项</translation>
     </message>
-
     <message>
-        <source>🗑️  Delete</source>
-        <translation>🗑️  删除</translation>
+        <source>Add Outline Item</source>
+        <translation>添加目录项</translation>
     </message>
-
     <message>
-        <source>➕  Add Outline Item</source>
-        <translation>➕  添加目录项</translation>
+        <source>Save to PDF</source>
+        <translation>保存到 PDF</translation>
     </message>
-
     <message>
-        <source>💾  Save to PDF</source>
-        <translation>💾  保存到PDF</translation>
-    </message>
-
-    <message>
-        <source>🗑️  Delete All</source>
-        <translation>🗑️  删除全部</translation>
-    </message>
-
-    <message>
-        <source>Delete all outline items</source>
-        <translation>删除所有目录项</translation>
+        <source>Delete All</source>
+        <translation>全部删除</translation>
     </message>
 
     <message>
