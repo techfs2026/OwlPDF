@@ -1,22 +1,26 @@
-// ocrengine.cpp
-#include "ocrengine.h"
+#include <QtGlobal>
+#ifndef Q_OS_MACOS
+
+#include "rapidocrengine.h"
 #include <QDebug>
 #include <QtConcurrent>
 
-OCREngine::OCREngine(QObject* parent)
-    : QObject(parent)
+
+
+RapidOcrEngine::RapidOcrEngine(QObject* parent)
+    : IOCREngine(parent)
     , m_state(OCREngineState::Uninitialized)
 {
 }
 
-OCREngine::~OCREngine()
+RapidOcrEngine::~RapidOcrEngine()
 {
 }
 
-bool OCREngine::initializeAsync(const QString& modelDir)
+bool RapidOcrEngine::initializeAsync(const QString& modelDir)
 {
     if (m_state == OCREngineState::Loading || m_state == OCREngineState::Ready) {
-        qWarning() << "OCREngine: Already initialized or loading";
+        qWarning() << "RapidOcrEngine: Already initialized or loading";
         return false;
     }
 
@@ -40,7 +44,7 @@ bool OCREngine::initializeAsync(const QString& modelDir)
     return true;
 }
 
-bool OCREngine::initializeSync(const QString& modelDir)
+bool RapidOcrEngine::initializeSync(const QString& modelDir)
 {
     setState(OCREngineState::Loading);
     m_modelDir = modelDir;
@@ -56,9 +60,9 @@ bool OCREngine::initializeSync(const QString& modelDir)
     return success;
 }
 
-bool OCREngine::initializeInternal(const QString& modelDir)
+bool RapidOcrEngine::initializeInternal(const QString& modelDir)
 {
-    qInfo() << "OCREngine: Starting initialization...";
+    qInfo() << "RapidOcrEngine: Starting initialization...";
 
     try {
         // 创建RapidOCR配置
@@ -79,7 +83,7 @@ bool OCREngine::initializeInternal(const QString& modelDir)
             return false;
         }
 
-        qInfo() << "OCREngine: Initialization successful";
+        qInfo() << "RapidOcrEngine: Initialization successful";
         return true;
 
     } catch (const std::exception& e) {
@@ -88,7 +92,7 @@ bool OCREngine::initializeInternal(const QString& modelDir)
     }
 }
 
-OCRResult OCREngine::recognize(const QImage& image)
+OCRResult RapidOcrEngine::recognize(const QImage& image)
 {
     OCRResult result;
 
@@ -113,7 +117,7 @@ OCRResult OCREngine::recognize(const QImage& image)
         m_isProcessing = true;  // 设置处理标志
         setState(OCREngineState::Processing);
 
-        qDebug() << "OCREngine: Starting recognition...";
+        qDebug() << "RapidOcrEngine: Starting recognition...";
 
         // 执行OCR识别
         RapidOCR::RapidOCROutput output = (*m_rapidOCR)(image);
@@ -145,7 +149,7 @@ OCRResult OCREngine::recognize(const QImage& image)
     return result;
 }
 
-OCRResult OCREngine::recognizeDetailed(const QImage& image)
+OCRResult RapidOcrEngine::recognizeDetailed(const QImage& image)
 {
     OCRResult result;
 
@@ -162,7 +166,7 @@ OCRResult OCREngine::recognizeDetailed(const QImage& image)
     try {
         setState(OCREngineState::Processing);
 
-        qDebug() << "OCREngine: Starting detailed recognition...";
+        qDebug() << "RapidOcrEngine: Starting detailed recognition...";
 
         // 执行OCR识别
         RapidOCR::RapidOCROutput output = (*m_rapidOCR)(image);
@@ -181,7 +185,7 @@ OCRResult OCREngine::recognizeDetailed(const QImage& image)
         setState(OCREngineState::Ready);
 
         if (result.success) {
-            qInfo() << "OCREngine: Detailed recognition completed";
+            qInfo() << "RapidOcrEngine: Detailed recognition completed";
             qInfo() << "  Detected" << result.texts.size() << "text regions";
             qInfo() << "  Total text:" << result.text;
             qInfo() << "  Elapsed time:" << result.elapsedTime << "seconds";
@@ -200,7 +204,7 @@ OCRResult OCREngine::recognizeDetailed(const QImage& image)
     return result;
 }
 
-void OCREngine::setTextScore(float score)
+void RapidOcrEngine::setTextScore(float score)
 {
     m_textScore = score;
     if (m_rapidOCR) {
@@ -215,7 +219,7 @@ void OCREngine::setTextScore(float score)
     }
 }
 
-void OCREngine::setUseDet(bool use)
+void RapidOcrEngine::setUseDet(bool use)
 {
     m_useDet = use;
     if (m_rapidOCR) {
@@ -227,7 +231,7 @@ void OCREngine::setUseDet(bool use)
     }
 }
 
-void OCREngine::setUseCls(bool use)
+void RapidOcrEngine::setUseCls(bool use)
 {
     m_useCls = use;
     if (m_rapidOCR) {
@@ -239,7 +243,7 @@ void OCREngine::setUseCls(bool use)
     }
 }
 
-void OCREngine::setUseRec(bool use)
+void RapidOcrEngine::setUseRec(bool use)
 {
     m_useRec = use;
     if (m_rapidOCR) {
@@ -251,7 +255,7 @@ void OCREngine::setUseRec(bool use)
     }
 }
 
-void OCREngine::setReturnWordBox(bool enable)
+void RapidOcrEngine::setReturnWordBox(bool enable)
 {
     m_returnWordBox = enable;
     if (m_rapidOCR) {
@@ -264,7 +268,7 @@ void OCREngine::setReturnWordBox(bool enable)
     }
 }
 
-void OCREngine::setState(OCREngineState state)
+void RapidOcrEngine::setState(OCREngineState state)
 {
     if (m_state != state) {
         m_state = state;
@@ -272,13 +276,13 @@ void OCREngine::setState(OCREngineState state)
     }
 }
 
-void OCREngine::setError(const QString& error)
+void RapidOcrEngine::setError(const QString& error)
 {
     m_lastError = error;
     qWarning() << "OCREngine error:" << error;
 }
 
-OCRResult OCREngine::convertToOCRResult(const RapidOCR::RapidOCROutput& output)
+OCRResult RapidOcrEngine::convertToOCRResult(const RapidOCR::RapidOCROutput& output)
 {
     OCRResult result;
 
@@ -335,4 +339,6 @@ OCRResult OCREngine::convertToOCRResult(const RapidOCR::RapidOCROutput& output)
 
     return result;
 }
+
+#endif
 

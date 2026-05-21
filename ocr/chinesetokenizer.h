@@ -7,7 +7,8 @@
 #include <QRect>
 #include <memory>
 #include "cppjieba/Jieba.hpp"
-#include "ocrengine.h"
+#include "iocrengine.h"
+#include "textutil.h"
 
 /**
  * @brief 分词结果 - 带位置信息的词

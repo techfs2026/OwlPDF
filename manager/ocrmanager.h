@@ -7,7 +7,7 @@
 #include <QTimer>
 #include <QRect>
 #include <memory>
-#include "ocrengine.h"
+#include "iocrengine.h"
 
 class OCRManager : public QObject
 {
@@ -58,7 +58,7 @@ private slots:
     void onEngineStateChanged(OCREngineState state);
 
 private:
-    std::unique_ptr<OCREngine> m_engine;
+    std::unique_ptr<IOCREngine> m_engine;
     QTimer m_debounceTimer;
 
     struct PendingRequest {

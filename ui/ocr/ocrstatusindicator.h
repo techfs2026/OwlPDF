@@ -2,7 +2,7 @@
 #define OCRSTATUSINDICATOR_H
 
 #include <QWidget>
-#include "ocrengine.h"
+#include "iocrengine.h"
 
 class OCRStatusIndicator : public QWidget
 {

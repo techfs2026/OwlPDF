@@ -1,5 +1,5 @@
 #include "chinesetokenizer.h"
-#include "rapidocr-cpp/utils.h"
+#include "textutil.h"
 #include <QFileInfo>
 #include <QDebug>
 #include <cmath>
@@ -214,7 +214,7 @@ QVector<TokenWithPosition> ChineseTokenizer::tokenizeWithPosition(
         QRect lineRect = boundingRectFromBox(box);
 
         // 2. 判断是中文还是英文 - 使用工具函数
-        bool hasChinese = RapidOCR::Utils::hasChineseChar(lineStd);
+        bool hasChinese = TextUtil::hasChineseChar(lineStd);
 
         if (!hasChinese) {
             // 英文：按单词分割

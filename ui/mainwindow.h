@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include <QTimer>
 #include <QPushButton>
-#include "ocrengine.h"
+#include "iocrengine.h"
 #include "datastructure.h"
 
 class QTabWidget;

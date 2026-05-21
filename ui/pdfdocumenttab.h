@@ -5,7 +5,7 @@
 #include <QDateTime>
 
 #include "datastructure.h"
-#include "ocrengine.h"
+#include "iocrengine.h"
 #include "ocrmanager.h"
 #include "navigationpanel.h"
 

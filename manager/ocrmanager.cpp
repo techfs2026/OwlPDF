@@ -31,12 +31,12 @@ bool OCRManager::initialize(const QString& modelDir)
 
     qInfo() << "OCRManager: Initializing with model dir:" << modelDir;
 
-    m_engine = std::make_unique<OCREngine>();
+    m_engine.reset(createOCREngine());
 
-    connect(m_engine.get(), &OCREngine::stateChanged,
+    connect(m_engine.get(), &IOCREngine::stateChanged,
             this, &OCRManager::onEngineStateChanged);
 
-    connect(m_engine.get(), &OCREngine::initialized,
+    connect(m_engine.get(), &IOCREngine::initialized,
             this, [](bool success, const QString& error) {
                 if (success) {
                     qInfo() << "OCRManager: Engine initialized successfully";

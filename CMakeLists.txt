@@ -8,6 +8,11 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
+# macOS 上需要 Objective-C++ 来编译 .mm（Vision 桥接）
+if(APPLE)
+    enable_language(OBJCXX)
+endif()
+
 # ============================================================
 # 平台相关路径配置
 # ============================================================
@@ -37,7 +42,7 @@ if(WIN32)
 
 elseif(APPLE)
     # ---------- macOS ----------
-    # 自动检测 Homebrew 前缀（Apple Silicon=/opt/homebrew，Intel=/usr/local）
+    # macOS 使用系统 Vision 框架做 OCR，不需要 onnxruntime / RapidOCR 模型。
     execute_process(
         COMMAND brew --prefix
         OUTPUT_VARIABLE HOMEBREW_PREFIX
@@ -56,15 +61,12 @@ elseif(APPLE)
     set(MUPDF_INCLUDE_DIR "${MUPDF_DIR}/include")
     set(MUPDF_LIB_DIR     "${MUPDF_DIR}/lib")
 
-    # OpenCV：brew install opencv
+    # OpenCV：brew install opencv（仍需保留：cv::Point2f 类型 + 护眼功能）
     set(OPENCV_DIR        "${HOMEBREW_PREFIX}/opt/opencv")
     set(OPENCV_INCLUDE_DIR "${OPENCV_DIR}/include/opencv4")
     set(OPENCV_LIB_DIR    "${OPENCV_DIR}/lib")
 
-    # ONNX Runtime：从github下载 macOS 预编译包后解压到此路径
-    set(ONNXRUNTIME_DIR   "${CMAKE_SOURCE_DIR}/CommonLib/onnxruntime-osx-arm64-1.26.0")
-    set(ONNXRUNTIME_INCLUDE_DIR "${ONNXRUNTIME_DIR}/include")
-    set(ONNXRUNTIME_LIB_DIR     "${ONNXRUNTIME_DIR}/lib")
+    # 注意：macOS 不再使用 onnxruntime
 endif()
 
 # ============================================================
@@ -84,7 +86,6 @@ endif()
 if(WIN32)
     set(APP_ICON_RESOURCE_WINDOWS "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
 elseif(APPLE)
-    # macOS 图标：将 app.icns 放在项目根目录下
     set(MACOSX_BUNDLE_ICON_FILE "app.icns")
     set(APP_ICON_MACOS "${CMAKE_CURRENT_SOURCE_DIR}/app.icns")
     set_source_files_properties(${APP_ICON_MACOS} PROPERTIES
@@ -98,6 +99,7 @@ endif()
 
 file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.mm"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.qrc"
 )
@@ -105,6 +107,18 @@ file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
 list(FILTER PROJECT_SOURCES EXCLUDE REGEX "${CMAKE_CURRENT_BINARY_DIR}")
 list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*_autogen.*")
 list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*/CMakeFiles/.*")
+
+# 平台相关源文件过滤：
+if(APPLE)
+    # macOS 用 Vision，整个 RapidOCR 实现（含 onnx 依赖）全部剔除
+    list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*/rapidocr-cpp/.*")
+    list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*rapidocrengine\\.cpp$")
+    list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*rapidocrengine\\.h$")
+else()
+    # Windows/Linux 不编译 Vision 引擎
+    list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*visionocrengine\\.mm$")
+    list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*visionocrengine\\.h$")
+endif()
 
 # ============================================================
 # 翻译文件
@@ -154,8 +168,12 @@ target_include_directories(MuQt PRIVATE
 
     ${MUPDF_INCLUDE_DIR}
     ${OPENCV_INCLUDE_DIR}
-    ${ONNXRUNTIME_INCLUDE_DIR}
 )
+
+# onnxruntime 头文件目录仅非 APPLE 平台需要
+if(NOT APPLE)
+    target_include_directories(MuQt PRIVATE ${ONNXRUNTIME_INCLUDE_DIR})
+endif()
 
 # ============================================================
 # 链接目录
@@ -173,12 +191,11 @@ elseif(APPLE)
     target_link_directories(MuQt PRIVATE
         ${MUPDF_LIB_DIR}
         ${OPENCV_LIB_DIR}
-        ${ONNXRUNTIME_LIB_DIR}
     )
 endif()
 
 # ============================================================
-# 链接库（平台差异：.lib vs .dylib 命名）
+# 链接库
 # ============================================================
 
 target_link_libraries(MuQt PRIVATE
@@ -198,30 +215,25 @@ if(WIN32)
 elseif(APPLE)
     find_package(OpenCV REQUIRED)
 
-    # 查找 mupdf 编译时依赖的所有系统库
+    # mupdf 编译时依赖的系统库
     find_package(ZLIB REQUIRED)
     find_package(JPEG REQUIRED)
     find_package(Freetype REQUIRED)
 
-    find_library(BROTLI_ENC_LIB   brotlienc   HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
-    find_library(BROTLI_DEC_LIB   brotlidec   HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
+    find_library(BROTLI_ENC_LIB    brotlienc    HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
+    find_library(BROTLI_DEC_LIB    brotlidec    HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
     find_library(BROTLI_COMMON_LIB brotlicommon HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
-    find_library(JBIG2_LIB        jbig2dec    HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
-    find_library(OPENJP2_LIB      openjp2     HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
-    find_library(GUMBO_LIB        gumbo       HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
-
-    # mupdf-third：mupdf 编译时打包的所有 thirdparty 合并库
-    # 已包含：mujs / extract / harfbuzz / lcms2mt / openjp2 等全部内置依赖
-    find_library(MUPDF_THIRD_LIB  mupdf-third HINTS "${MUPDF_LIB_DIR}" REQUIRED)
+    find_library(JBIG2_LIB         jbig2dec     HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
+    find_library(OPENJP2_LIB       openjp2      HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
+    find_library(GUMBO_LIB         gumbo        HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
+    find_library(MUPDF_THIRD_LIB   mupdf-third  HINTS "${MUPDF_LIB_DIR}" REQUIRED)
 
     target_link_libraries(MuQt PRIVATE
         ${OpenCV_LIBS}
 
-        # mupdf 核心 + thirdparty（顺序重要：mupdf 引用 third 的符号）
         mupdf
         ${MUPDF_THIRD_LIB}
 
-        # mupdf 外部系统依赖
         ${BROTLI_ENC_LIB}
         ${BROTLI_DEC_LIB}
         ${BROTLI_COMMON_LIB}
@@ -236,8 +248,9 @@ elseif(APPLE)
         "-framework CoreFoundation"
         "-framework CoreGraphics"
         "-framework CoreText"
-
-        onnxruntime
+        "-framework Foundation"
+        "-framework ImageIO"
+        "-framework Vision"        # OCR 引擎
     )
 endif()
 
@@ -246,7 +259,6 @@ endif()
 # ============================================================
 
 if(WIN32)
-    # 拷贝 OpenCV DLL
     add_custom_command(TARGET MuQt POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E echo "Copying OpenCV DLL for $<CONFIG>..."
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -255,7 +267,6 @@ if(WIN32)
         VERBATIM
     )
 
-    # 拷贝 ONNX Runtime DLL
     add_custom_command(TARGET MuQt POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E echo "Copying ONNX Runtime DLLs..."
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -266,23 +277,13 @@ if(WIN32)
             "$<TARGET_FILE_DIR:MuQt>/"
         VERBATIM
     )
-
-elseif(APPLE)
-    # macOS：将 .dylib 拷贝进 .app bundle 的 Frameworks 目录
-    set(BUNDLE_FRAMEWORKS_DIR "$<TARGET_BUNDLE_CONTENT_DIR:MuQt>/Frameworks")
-
-    add_custom_command(TARGET MuQt POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${BUNDLE_FRAMEWORKS_DIR}"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${ONNXRUNTIME_LIB_DIR}/libonnxruntime.dylib"
-            "${BUNDLE_FRAMEWORKS_DIR}/"
-        COMMENT "Copying ONNX Runtime dylib into app bundle"
-        VERBATIM
-    )
+# macOS 不需要拷贝 onnxruntime.dylib（已不使用）
 endif()
 
 # ============================================================
 # OCR 模型 & Jieba 词典
+#   - Windows/Linux：需要 OCR 模型（RapidOCR/onnx）
+#   - macOS：用 Vision，不需要 OCR 模型，但仍需 Jieba 词典（中文分词）
 # ============================================================
 
 set(OCR_MODELS_SRC "${CMAKE_SOURCE_DIR}/ocr/models")
@@ -292,20 +293,23 @@ if(WIN32)
     set(OCR_MODELS_DST "$<TARGET_FILE_DIR:MuQt>/ocr/models")
     set(JIEBA_DICT_DST "$<TARGET_FILE_DIR:MuQt>/ocr/dict")
 elseif(APPLE)
-    set(OCR_MODELS_DST "$<TARGET_BUNDLE_CONTENT_DIR:MuQt>/Resources/ocr/models")
     set(JIEBA_DICT_DST "$<TARGET_BUNDLE_CONTENT_DIR:MuQt>/Resources/ocr/dict")
 endif()
 
-if(EXISTS "${OCR_MODELS_SRC}")
-    add_custom_command(TARGET MuQt POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${OCR_MODELS_DST}"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${OCR_MODELS_SRC}" "${OCR_MODELS_DST}"
-        COMMENT "Copying OCR models"
-    )
-else()
-    message(WARNING "OCR models directory not found: ${OCR_MODELS_SRC}")
+# OCR 模型：仅非 APPLE 拷贝
+if(NOT APPLE)
+    if(EXISTS "${OCR_MODELS_SRC}")
+        add_custom_command(TARGET MuQt POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${OCR_MODELS_DST}"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory "${OCR_MODELS_SRC}" "${OCR_MODELS_DST}"
+            COMMENT "Copying OCR models"
+        )
+    else()
+        message(WARNING "OCR models directory not found: ${OCR_MODELS_SRC}")
+    endif()
 endif()
 
+# Jieba 词典：所有平台都需要
 if(EXISTS "${JIEBA_DICT_SRC}")
     add_custom_command(TARGET MuQt POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory "${JIEBA_DICT_DST}"
@@ -341,7 +345,6 @@ if(WIN32)
 elseif(APPLE)
     find_program(MACDEPLOYQT_EXECUTABLE macdeployqt HINTS "${CMAKE_PREFIX_PATH}/bin")
     if(MACDEPLOYQT_EXECUTABLE)
-        # 不挂在 POST_BUILD，改为独立 target，手动触发
         add_custom_target(deploy
             COMMAND ${CMAKE_COMMAND} -E echo "Running macdeployqt..."
             COMMAND "${MACDEPLOYQT_EXECUTABLE}"
@@ -367,10 +370,12 @@ install(TARGETS MuQt
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
-install(DIRECTORY "${OCR_MODELS_SRC}"
-    DESTINATION ${CMAKE_INSTALL_BINDIR}/ocr
-    OPTIONAL
-)
+if(NOT APPLE)
+    install(DIRECTORY "${OCR_MODELS_SRC}"
+        DESTINATION ${CMAKE_INSTALL_BINDIR}/ocr
+        OPTIONAL
+    )
+endif()
 
 qt_generate_deploy_app_script(
     TARGET MuQt
