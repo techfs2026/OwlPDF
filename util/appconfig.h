@@ -5,6 +5,7 @@
 #include <QString>
 #include <QColor>
 #include <QSize>
+#include <QDir>
 #include <QCoreApplication>
 
 class AppConfig
@@ -111,11 +112,26 @@ private:
     bool m_rememberLastFile;
     bool m_debugMode;
 
-    QString m_ocrModelDir = QCoreApplication::applicationDirPath() + "/ocr/models";
     int m_ocrDebounceDelay = 300;
     int m_ocrHoverRegionSize = 200;
 
-    QString m_jiebaDictDir = QCoreApplication::applicationDirPath() + "/ocr/dict";
+    QString m_ocrModelDir = QDir::cleanPath(
+        QCoreApplication::applicationDirPath() +
+        #ifdef Q_OS_MAC
+            "/../Resources/ocr/models"
+        #else
+            "/ocr/models"
+        #endif
+    );
+
+    QString m_jiebaDictDir = QDir::cleanPath(
+        QCoreApplication::applicationDirPath() +
+        #ifdef Q_OS_MAC
+            "/../Resources/ocr/dict"
+        #else
+            "/ocr/dict"
+        #endif
+    );
 };
 
 #endif

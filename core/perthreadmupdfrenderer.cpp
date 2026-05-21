@@ -213,7 +213,6 @@ int PerThreadMuPDFRenderer::pageCount() const
 
 QSizeF PerThreadMuPDFRenderer::pageSize(int pageIndex) const
 {
-
     if (!isDocumentLoaded() || pageIndex < 0 || pageIndex >= m_pageCount) {
         return QSizeF();
     }
@@ -223,15 +222,18 @@ QSizeF PerThreadMuPDFRenderer::pageSize(int pageIndex) const
     }
 
     QSizeF size;
+    fz_page* page = nullptr;
 
     fz_try(m_context) {
-        fz_page* page = fz_load_page(m_context, m_document, pageIndex);
+        page = fz_load_page(m_context, m_document, pageIndex);
         fz_rect bounds = fz_bound_page(m_context, page);
         size.setWidth(bounds.x1 - bounds.x0);
         size.setHeight(bounds.y1 - bounds.y0);
-        fz_drop_page(m_context, page);
 
         m_pageSizeCache[pageIndex] = size;
+    }
+    fz_always(m_context) {
+        if (page) fz_drop_page(m_context, page);
     }
     fz_catch(m_context) {
         QString err = QString("Failed to get page size for page %1: %2")
@@ -239,6 +241,7 @@ QSizeF PerThreadMuPDFRenderer::pageSize(int pageIndex) const
             .arg(fz_caught_message(m_context));
         setLastError(err);
         qWarning() << "PerThreadMuPDFRenderer:" << err;
+        size = QSizeF();   // 失败时返回空尺寸，不缓存
     }
 
     return size;
@@ -264,6 +267,8 @@ static QImage pixmapToQImage(fz_context* ctx, fz_pixmap* pixmap)
     int stride = fz_pixmap_stride(ctx, pixmap);
     unsigned char* samples = fz_pixmap_samples(ctx, pixmap);
 
+    // 注意：这里必须 deep copy。pixmap 在本函数返回后会被 drop，
+    // 而 QImage(samples, ...) 的浅包装会指向已释放内存。
     QImage image(width, height, QImage::Format_RGB888);
     for (int y = 0; y < height; ++y) {
         unsigned char* src = samples + y * stride;
@@ -314,13 +319,19 @@ RenderResult PerThreadMuPDFRenderer::renderPage(int pageIndex, double zoom, int 
         break;
     }
 
+    // 指针提到 fz_try 外声明并置空，fz_always 才能访问到它们。
+    fz_page*   page   = nullptr;
+    fz_device* device = nullptr;
+    fz_pixmap* pixmap = nullptr;
+
     fz_try(m_context) {
-        fz_page* page = fz_load_page(m_context, m_document, pageIndex);
+        page = fz_load_page(m_context, m_document, pageIndex);
+
         fz_matrix matrix = calculateMatrixForMuPDF(actualZoom, rotation);
         fz_rect bounds = fz_bound_page(m_context, page);
         bounds = fz_transform_rect(bounds, matrix);
 
-        fz_pixmap* pixmap = fz_new_pixmap_with_bbox(
+        pixmap = fz_new_pixmap_with_bbox(
             m_context,
             fz_device_rgb(m_context),
             fz_round_rect(bounds),
@@ -329,22 +340,25 @@ RenderResult PerThreadMuPDFRenderer::renderPage(int pageIndex, double zoom, int 
             );
         fz_clear_pixmap_with_value(m_context, pixmap, 0xff);
 
-        fz_device* device = fz_new_draw_device(m_context, fz_identity, pixmap);
+        device = fz_new_draw_device(m_context, fz_identity, pixmap);
         fz_run_page(m_context, page, device, matrix, nullptr);
 
-        result.image = pixmapToQImage(m_context, pixmap);
+        // close 可能抛异常（flush 操作），留在 try 内；drop 移到 always。
+        fz_close_device(m_context, device);
 
+        result.image = pixmapToQImage(m_context, pixmap);
 
         if (applyPaperEffect && !result.image.isNull()) {
             result.image = m_paperEffectEnhancer.enhance(result.image);
         }
 
         result.success = true;
-
-        fz_close_device(m_context, device);
-        fz_drop_device(m_context, device);
-        fz_drop_pixmap(m_context, pixmap);
-        fz_drop_page(m_context, page);
+    }
+    fz_always(m_context) {
+        // 无论成功还是异常都会执行；fz_drop_* 对 nullptr 安全。
+        if (device) fz_drop_device(m_context, device);
+        if (pixmap) fz_drop_pixmap(m_context, pixmap);
+        if (page)   fz_drop_page(m_context, page);
     }
     fz_catch(m_context) {
         QString err = QString("Failed to render page %1: %2")
@@ -352,11 +366,14 @@ RenderResult PerThreadMuPDFRenderer::renderPage(int pageIndex, double zoom, int 
             .arg(fz_caught_message(m_context));
         setLastError(err);
         result.errorMessage = err;
+        result.success = false;
+        result.image = QImage();   // 异常时确保不返回半成品图像
         qWarning() << "PerThreadMuPDFRenderer:" << err;
     }
 
     return result;
 }
+
 void PerThreadMuPDFRenderer::setPaperEffectEnabled(bool enabled)
 {
     m_paperEffectEnabled = enabled;
@@ -377,26 +394,24 @@ bool PerThreadMuPDFRenderer::extractText(int pageIndex, PageTextData& outData, Q
     outData = PageTextData();
     outData.pageIndex = pageIndex;
 
-    fz_stext_page* stext = nullptr;
-    fz_page* page = nullptr;
+    fz_stext_page* stext  = nullptr;
+    fz_page*       page   = nullptr;
+    fz_device*     dev    = nullptr;
+    bool           ok     = false;
 
     fz_try(m_context) {
         page = fz_load_page(m_context, m_document, pageIndex);
 
         fz_rect bound = fz_bound_page(m_context, page);
-
         stext = fz_new_stext_page(m_context, bound);
 
         fz_stext_options opts;
         memset(&opts, 0, sizeof(opts));
         opts.flags = 0;
 
-        fz_device* dev = fz_new_stext_device(m_context, stext, &opts);
-
+        dev = fz_new_stext_device(m_context, stext, &opts);
         fz_run_page(m_context, page, dev, fz_identity, nullptr);
-
-        fz_close_device(m_context, dev);
-        fz_drop_device(m_context, dev);
+        fz_close_device(m_context, dev);   // close 留在 try
 
         for (fz_stext_block* block = stext->first_block; block; block = block->next) {
             if (block->type != FZ_STEXT_BLOCK_TEXT) continue;
@@ -436,22 +451,25 @@ bool PerThreadMuPDFRenderer::extractText(int pageIndex, PageTextData& outData, Q
             outData.fullText.append("\n\n");
         }
 
+        ok = true;
+    }
+    fz_always(m_context) {
+        // dev 在 close 后仍需 drop；stext / page 统一在此释放。
+        if (dev)   fz_drop_device(m_context, dev);
         if (stext) fz_drop_stext_page(m_context, stext);
-        if (page) fz_drop_page(m_context, page);
+        if (page)  fz_drop_page(m_context, page);
     }
     fz_catch(m_context) {
-        if (stext) fz_drop_stext_page(m_context, stext);
-        if (page) fz_drop_page(m_context, page);
-
-        if (errorMsg) {
-            *errorMsg = QString("Failed to extract text on page %1: %2")
-            .arg(pageIndex)
-                .arg(fz_caught_message(m_context));
-        }
-        return false;
+        QString err = QString("Failed to extract text on page %1: %2")
+        .arg(pageIndex)
+            .arg(fz_caught_message(m_context));
+        setLastError(err);
+        if (errorMsg) *errorMsg = err;
+        qWarning() << "PerThreadMuPDFRenderer:" << err;
+        ok = false;
     }
 
-    return true;
+    return ok;
 }
 
 bool PerThreadMuPDFRenderer::isTextPDF(int samplePages)
@@ -470,14 +488,20 @@ bool PerThreadMuPDFRenderer::isTextPDF(int samplePages)
     for (int i = 0; i < pagesToCheck; ++i) {
         bool hasText = false;
 
+        fz_page*       page   = nullptr;
+        fz_stext_page* stext  = nullptr;
+        fz_device*     device = nullptr;
+
         fz_try(m_context) {
-            fz_page* page = fz_load_page(m_context, m_document, i);
-            fz_stext_page* stext = fz_new_stext_page(m_context, fz_bound_page(m_context, page));
-            fz_stext_options options = {0};
-            fz_device* device = fz_new_stext_device(m_context, stext, &options);
+            page = fz_load_page(m_context, m_document, i);
+            stext = fz_new_stext_page(m_context, fz_bound_page(m_context, page));
+
+            fz_stext_options options;
+            memset(&options, 0, sizeof(options));
+
+            device = fz_new_stext_device(m_context, stext, &options);
             fz_run_page(m_context, page, device, fz_identity, nullptr);
             fz_close_device(m_context, device);
-            fz_drop_device(m_context, device);
 
             for (fz_stext_block* block = stext->first_block; block; block = block->next) {
                 if (block->type == FZ_STEXT_BLOCK_TEXT) {
@@ -493,12 +517,16 @@ bool PerThreadMuPDFRenderer::isTextPDF(int samplePages)
                     if (hasText) break;
                 }
             }
-
-            fz_drop_stext_page(m_context, stext);
-            fz_drop_page(m_context, page);
+        }
+        fz_always(m_context) {
+            if (device) fz_drop_device(m_context, device);
+            if (stext)  fz_drop_stext_page(m_context, stext);
+            if (page)   fz_drop_page(m_context, page);
         }
         fz_catch(m_context) {
             hasText = false;
+            qWarning() << "PerThreadMuPDFRenderer: isTextPDF check failed on page" << i
+                       << ":" << fz_caught_message(m_context);
         }
 
         if (hasText) {

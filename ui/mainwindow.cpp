@@ -911,7 +911,13 @@ void MainWindow::setupConnections()
         }
     });
 
-    QShortcut* ocrShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q), this);
+    #ifdef Q_OS_MAC
+        QKeySequence seq(Qt::META | Qt::Key_Q);
+    #else
+        QKeySequence seq(Qt::CTRL | Qt::Key_Q);
+    #endif
+
+    QShortcut* ocrShortcut = new QShortcut(seq, this);
     connect(ocrShortcut, &QShortcut::activated, this, &MainWindow::triggerOCRAtCurrentPosition);
 }
 

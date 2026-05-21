@@ -472,11 +472,17 @@ void ThumbnailItem::setThumbnail(const QImage& image)
 
     m_hasImage = true;
 
+    // 关键：按"物理像素"缩放，并保持 devicePixelRatio。
+    // m_imageLabel->size() 是逻辑尺寸；乘上图自带的 dpr 得到目标物理像素。
+    const qreal dpr = image.devicePixelRatio();   // Mac=2.0, Win=1.0
+    const QSize targetPhysical = QSize(m_imageLabel->width(), m_imageLabel->height()) * dpr;
+
     QImage scaled = image.scaled(
-        m_imageLabel->size(),
+        targetPhysical,                 // 目标用物理像素
         Qt::KeepAspectRatio,
         Qt::SmoothTransformation
         );
+    scaled.setDevicePixelRatio(dpr);    // scaled() 会重置 dpr，这里补回来
 
     QPixmap pixmap = createRoundedPixmap(scaled);
     m_imageLabel->setPixmap(pixmap);
@@ -542,8 +548,12 @@ void ThumbnailItem::updateStyle()
 
 QPixmap ThumbnailItem::createRoundedPixmap(const QImage& image)
 {
-    QPixmap pixmap = QPixmap::fromImage(image);
-    QPixmap rounded(pixmap.size());
+    const qreal dpr = image.devicePixelRatio();
+
+    QPixmap pixmap = QPixmap::fromImage(image);   // fromImage 会继承 image 的 dpr
+
+    QPixmap rounded(pixmap.size());               // pixmap.size() 是物理像素
+    rounded.setDevicePixelRatio(dpr);             // 关键：结果 pixmap 也要标 dpr
     rounded.fill(Qt::transparent);
 
     QPainter painter(&rounded);
@@ -551,7 +561,12 @@ QPixmap ThumbnailItem::createRoundedPixmap(const QImage& image)
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
 
     QPainterPath path;
-    path.addRoundedRect(rounded.rect(), 4, 4);
+    // 注意：painter 工作在逻辑坐标（因为 rounded 有 dpr），
+    // 用 deviceIndependent 尺寸画圆角矩形，圆角半径才不会被放大。
+    QRectF logicalRect(0, 0,
+                       rounded.width() / dpr,
+                       rounded.height() / dpr);
+    path.addRoundedRect(logicalRect, 4, 4);
     painter.setClipPath(path);
     painter.drawPixmap(0, 0, pixmap);
 

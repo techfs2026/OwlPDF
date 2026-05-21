@@ -341,16 +341,17 @@ if(WIN32)
 elseif(APPLE)
     find_program(MACDEPLOYQT_EXECUTABLE macdeployqt HINTS "${CMAKE_PREFIX_PATH}/bin")
     if(MACDEPLOYQT_EXECUTABLE)
-        add_custom_command(TARGET MuQt POST_BUILD
+        # 不挂在 POST_BUILD，改为独立 target，手动触发
+        add_custom_target(deploy
             COMMAND ${CMAKE_COMMAND} -E echo "Running macdeployqt..."
             COMMAND "${MACDEPLOYQT_EXECUTABLE}"
                 "$<TARGET_BUNDLE_DIR:MuQt>"
-                -no-strip
+            DEPENDS MuQt
             VERBATIM
         )
-        message(STATUS "Found macdeployqt: ${MACDEPLOYQT_EXECUTABLE}")
+        message(STATUS "Found macdeployqt: ${MACDEPLOYQT_EXECUTABLE}. Run 'cmake --build . --target deploy' to package.")
     else()
-        message(WARNING "macdeployqt not found. Please run it manually after build.")
+        message(WARNING "macdeployqt not found.")
     endif()
 endif()
 
