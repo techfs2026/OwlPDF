@@ -34,3 +34,5 @@ qrc_*.cpp
 x64/
 Debug/
 Release/
+
+TODO.md

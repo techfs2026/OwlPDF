@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "stylemanager.h"
+#include "appconfig.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -96,9 +97,16 @@ int main(int argc, char *argv[])
 #endif
 
     if (argc > 1) {
+        // 命令行指定了文件 → 只开它，不恢复上次会话
         QString filePath = QString::fromLocal8Bit(argv[1]);
         QTimer::singleShot(100, &mainWindow, [&mainWindow, filePath]() {
             mainWindow.openFileFromCommandLine(filePath);
+        });
+    } else if (AppConfig::instance().rememberLastFile()) {
+        // 未指定文件 → 恢复上次会话。延后一拍，让 macOS 的 QFileOpenEvent
+        // （双击打开）有机会先到；restoreLastSession 内部若发现已有文档会自动跳过。
+        QTimer::singleShot(120, &mainWindow, [&mainWindow]() {
+            mainWindow.restoreLastSession();
         });
     }
 

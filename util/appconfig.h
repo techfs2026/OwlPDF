@@ -3,10 +3,28 @@
 
 #include <QSettings>
 #include <QString>
-#include <QColor>
 #include <QSize>
+#include <QByteArray>
+#include <QVector>
 #include <QDir>
 #include <QCoreApplication>
+
+// 单个标签页的会话状态（用于「恢复上次会话」）
+struct SessionTabState {
+    QString filePath;
+    int     page             = 0;
+    int     zoomMode         = 0;     // ZoomMode 枚举值
+    double  zoom             = 1.0;
+    int     displayMode      = 0;     // PageDisplayMode 枚举值
+    bool    continuousScroll = false;
+};
+
+// 整个窗口的会话状态
+struct SessionState {
+    QVector<SessionTabState> tabs;
+    int  activeIndex    = 0;
+    bool showNavigation = false;
+};
 
 class AppConfig
 {
@@ -38,11 +56,7 @@ public:
     int resizeDebounceDelay() const { return m_resizeDebounceDelay; }
     void setResizeDebounceDelay(int delay);
 
-    QColor backgroundColor() const { return m_backgroundColor; }
-    void setBackgroundColor(const QColor& color);
-
     QSize defaultWindowSize() const { return m_defaultWindowSize; }
-    void setDefaultWindowSize(const QSize& size);
 
     int maxTextCacheSize() const { return MAX_TEXT_CACHE_SIZE; }
     int pdfTypeDetectSamplePages() const { return PDF_TYPE_DETECT_SAMPLE_PAGES; }
@@ -51,20 +65,15 @@ public:
     bool rememberLastFile() const { return m_rememberLastFile; }
     void setRememberLastFile(bool remember);
 
-    QString lastFilePath() const;
-    void setLastFilePath(const QString& path);
+    // 会话恢复：保存 / 读取所有标签页
+    void saveSession(const QVector<SessionTabState>& tabs,
+                     int activeIndex,
+                     bool showNavigation);
+    SessionState loadSession();
 
-    int lastZoomMode() const;
-    void setLastZoomMode(int mode);
-
-    int lastDisplayMode() const;
-    void setLastDisplayMode(int mode);
-
-    bool lastContinuousScroll() const;
-    void setLastContinuousScroll(bool enabled);
-
-    bool lastNavigation() const;
-    void setNavigation(bool enabled);
+    // 窗口几何（大小 + 位置 + 最大化状态）
+    QByteArray windowGeometry() const;
+    void setWindowGeometry(const QByteArray& geometry);
 
     QString ocrModelDir() const { return m_ocrModelDir; }
     void setOcrModelDir(const QString& dir) { m_ocrModelDir = dir; }
@@ -106,7 +115,6 @@ private:
     int m_preloadMargin;
     int m_resizeDebounceDelay;
 
-    QColor m_backgroundColor;
     QSize m_defaultWindowSize;
 
     bool m_rememberLastFile;

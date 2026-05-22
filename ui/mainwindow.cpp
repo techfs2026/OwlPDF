@@ -6,6 +6,7 @@
 #include "ocrmanager.h"
 #include "chinesetokenizer.h"
 #include "appconfig.h"
+#include "settingsdialog.h"
 
 #ifdef Q_OS_WIN
 #include "fileassociationmanager.h"
@@ -31,6 +32,8 @@
 #include <QDockWidget>
 #include <QActionGroup>
 #include <QShortcut>
+#include <QPointer>
+#include <QScreen>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -45,7 +48,21 @@ MainWindow::MainWindow(QWidget* parent)
     , m_ocrInitialized(false)
 {
     setWindowTitle(tr("MuQt"));
-    resize(AppConfig::instance().defaultWindowSize());
+
+    // 优先恢复上次窗口几何（大小+位置+最大化状态）；
+    // 无记录（首次运行）则用默认尺寸，并在主屏可用区域居中。
+    const QByteArray savedGeometry = AppConfig::instance().windowGeometry();
+    if (!savedGeometry.isEmpty()) {
+        restoreGeometry(savedGeometry);
+    } else {
+        resize(AppConfig::instance().defaultWindowSize());
+        if (QScreen* screen = QGuiApplication::primaryScreen()) {
+            const QRect avail = screen->availableGeometry();
+            const QSize sz = size();
+            move(avail.x() + (avail.width()  - sz.width())  / 2,
+                 avail.y() + (avail.height() - sz.height()) / 2);
+        }
+    }
 
     m_tabWidget = new QTabWidget(this);
     // 关闭按钮改用自定义 ThemedIcon 按钮（见 installTabCloseButton），
@@ -671,6 +688,11 @@ void MainWindow::createActions()
     m_quitAction->setShortcut(QKeySequence::Quit);
     connect(m_quitAction, &QAction::triggered, this, &MainWindow::quit);
 
+    m_settingsAction = new QAction(tr("Settings..."), this);
+    m_settingsAction->setShortcut(QKeySequence::Preferences);
+    m_settingsAction->setMenuRole(QAction::PreferencesRole);
+    connect(m_settingsAction, &QAction::triggered, this, &MainWindow::showSettingsDialog);
+
     m_copyAction = new QAction(tr("Copy"), this);
     m_copyAction->setShortcut(QKeySequence::Copy);
     m_copyAction->setEnabled(false);
@@ -845,11 +867,18 @@ void MainWindow::createMenuBar()
     viewMenu->addSeparator();
     viewMenu->addAction(m_toggleToolBarAction);
 
-#ifdef Q_OS_WIN
+    // 设置项：macOS 经 PreferencesRole 自动归入应用菜单（Cmd+,），
+    // 其它平台放进 Tools 菜单。
+#ifdef Q_OS_MACOS
+    fileMenu->addAction(m_settingsAction);
+#else
     QMenu* toolsMenu = menuBar()->addMenu(tr("&Tools"));
+    toolsMenu->addAction(m_settingsAction);
+#ifdef Q_OS_WIN
     QAction* manageAssociationAction = new QAction(tr("File Association Settings..."), this);
     connect(manageAssociationAction, &QAction::triggered, this, &MainWindow::onManageFileAssociation);
     toolsMenu->addAction(manageAssociationAction);
+#endif
 #endif
 }
 
@@ -1234,6 +1263,8 @@ void MainWindow::closeEvent(QCloseEvent* event)
         }
     }
 
+    saveSession();
+
     QMainWindow::closeEvent(event);
 }
 
@@ -1298,8 +1329,6 @@ void MainWindow::dropEvent(QDropEvent* event)
             if (index >= 0) {
                 updateTabTitle(index);
             }
-
-            AppConfig::instance().setLastFilePath(filePath);
         } else {
             failCount++;
             qWarning() << "Failed to load:" << filePath << "Error:" << errorMsg;
@@ -1664,9 +1693,129 @@ void MainWindow::openFileFromCommandLine(const QString& filePath)
         m_tabWidget->setTabText(index, fileInfo.fileName());
         m_tabWidget->setTabToolTip(index, filePath);
 
-        AppConfig::instance().setLastFilePath(filePath);
-
         statusBar()->showMessage(tr("Opened: %1").arg(filePath), 3000);
+    }
+}
+
+void MainWindow::restoreLastSession()
+{
+    // 已有文档（命令行 / macOS 双击已打开文件）则放弃恢复
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        PDFDocumentTab* t = qobject_cast<PDFDocumentTab*>(m_tabWidget->widget(i));
+        if (t && t->isDocumentLoaded()) {
+            return;
+        }
+    }
+
+    SessionState session = AppConfig::instance().loadSession();
+    if (session.tabs.isEmpty()) {
+        return;
+    }
+
+    PDFDocumentTab* activeTab = nullptr;
+    for (int i = 0; i < session.tabs.size(); ++i) {
+        const SessionTabState& st = session.tabs.at(i);
+        if (!QFileInfo::exists(st.filePath)) {
+            continue;   // 文件已被移动/删除
+        }
+
+        PDFDocumentTab* tab = currentTab();
+        if (!tab || tab->isDocumentLoaded()) {
+            tab = createNewTab();
+        }
+        if (!tab->loadDocument(st.filePath)) {
+            continue;
+        }
+
+        QFileInfo fileInfo(st.filePath);
+        int index = m_tabWidget->indexOf(tab);
+        m_tabWidget->setTabText(index, fileInfo.fileName());
+        m_tabWidget->setTabToolTip(index, st.filePath);
+
+        applyTabViewState(tab, st);
+
+        if (i == session.activeIndex) {
+            activeTab = tab;
+        }
+    }
+
+    if (m_tabWidget->count() == 0) {
+        return;   // 会话里的文件已全部失效
+    }
+
+    if (!activeTab) {
+        activeTab = qobject_cast<PDFDocumentTab*>(m_tabWidget->widget(0));
+    }
+
+    m_navPanelAction->setChecked(session.showNavigation);
+    m_tabWidget->setCurrentIndex(m_tabWidget->indexOf(activeTab));
+    onTabChanged(m_tabWidget->currentIndex());
+
+    statusBar()->showMessage(
+        tr("Restored %n document(s) from last session", "", m_tabWidget->count()), 3000);
+}
+
+void MainWindow::saveSession()
+{
+    QVector<SessionTabState> tabs;
+    int activeIndex = 0;
+    PDFDocumentTab* active = currentTab();
+
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        PDFDocumentTab* tab = qobject_cast<PDFDocumentTab*>(m_tabWidget->widget(i));
+        if (!tab || !tab->isDocumentLoaded()) {
+            continue;
+        }
+
+        SessionTabState st;
+        st.filePath         = tab->documentPath();
+        st.page             = tab->currentPage();
+        st.zoomMode         = static_cast<int>(tab->zoomMode());
+        st.zoom             = tab->zoom();
+        st.displayMode      = static_cast<int>(tab->displayMode());
+        st.continuousScroll = tab->isContinuousScroll();
+
+        if (tab == active) {
+            activeIndex = tabs.size();
+        }
+        tabs.append(st);
+    }
+
+    AppConfig::instance().saveSession(tabs, activeIndex, m_navPanelAction->isChecked());
+    AppConfig::instance().setWindowGeometry(saveGeometry());
+}
+
+void MainWindow::applyTabViewState(PDFDocumentTab* tab, const SessionTabState& state)
+{
+    tab->setDisplayMode(static_cast<PageDisplayMode>(state.displayMode));
+    tab->setContinuousScroll(state.continuousScroll);
+
+    // 缩放与跳页延后到视口尺寸就绪后再套用（适应宽/高依赖视口尺寸）
+    const ZoomMode zoomMode = static_cast<ZoomMode>(state.zoomMode);
+    const double zoom = state.zoom;
+    const int page = state.page;
+    QPointer<PDFDocumentTab> guard(tab);
+    QTimer::singleShot(0, this, [guard, zoomMode, zoom, page]() {
+        if (!guard) {
+            return;
+        }
+        if (zoomMode == ZoomMode::FitWidth) {
+            guard->fitWidth();
+        } else if (zoomMode == ZoomMode::FitPage) {
+            guard->fitPage();
+        } else {
+            guard->setZoom(zoom);
+        }
+        guard->goToPage(page);
+    });
+}
+
+void MainWindow::showSettingsDialog()
+{
+    SettingsDialog dialog(this);
+    if (dialog.exec() == QDialog::Accepted) {
+        // 窗口缩放防抖延时由 MainWindow 持有，立即生效
+        m_resizeDebounceTimer.setInterval(AppConfig::instance().resizeDebounceDelay());
     }
 }
 

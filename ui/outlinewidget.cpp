@@ -18,17 +18,6 @@
 #include <QElapsedTimer>
 #include <QStyledItemDelegate>
 
-namespace {
-// 右键菜单图标名（对应 :/icons/resources/icons/<name>.svg）。
-// TODO: 确认这些 SVG 是否已存在于 icons 资源中；若图标名不同，改这里即可。
-constexpr const char* kIconEdit       = "edit";
-constexpr const char* kIconAddChild   = "add-child";
-constexpr const char* kIconAddSibling = "add-sibling";
-constexpr const char* kIconDelete     = "trash";
-constexpr const char* kIconSave       = "save";
-constexpr const char* kIconAddItem    = "plus";
-} // namespace
-
 
 OutlineWidget::OutlineWidget(PDFContentHandler* contentHandler, QWidget* parent)
     : QTreeWidget(parent)
@@ -247,24 +236,24 @@ QMenu* OutlineWidget::createContextMenu(QTreeWidgetItem* item)
         const QColor iconColor = StyleManager::instance().getColor("textSecondary");
 
         QAction* editAction = menu->addAction(
-            ThemedIcon::colored(kIconEdit, iconColor), tr("Edit"));
+            ThemedIcon::colored("edit", iconColor), tr("Edit"));
         connect(editAction, &QAction::triggered,
                 this, &OutlineWidget::onEditOutline);
 
         QAction* addChildAction = menu->addAction(
-            ThemedIcon::colored(kIconAddChild, iconColor), tr("Add Child"));
+            ThemedIcon::colored("add-child", iconColor), tr("Add Child"));
         connect(addChildAction, &QAction::triggered,
                 this, &OutlineWidget::onAddChildOutline);
 
         QAction* addSiblingAction = menu->addAction(
-            ThemedIcon::colored(kIconAddSibling, iconColor), tr("Add Sibling"));
+            ThemedIcon::colored("add-sibling", iconColor), tr("Add Sibling"));
         connect(addSiblingAction, &QAction::triggered,
                 this, &OutlineWidget::onAddSiblingOutline);
 
         menu->addSeparator();
 
         QAction* deleteAction = menu->addAction(
-            ThemedIcon::colored(kIconDelete, iconColor), tr("Delete"));
+            ThemedIcon::colored("trash", iconColor), tr("Delete"));
         deleteAction->setShortcut(QKeySequence::Delete);
         connect(deleteAction, &QAction::triggered,
                 this, &OutlineWidget::onDeleteOutline);
@@ -272,7 +261,7 @@ QMenu* OutlineWidget::createContextMenu(QTreeWidgetItem* item)
         const QColor iconColor = StyleManager::instance().getColor("textSecondary");
 
         QAction* addAction = menu->addAction(
-            ThemedIcon::colored(kIconAddItem, iconColor), tr("Add Outline Item"));
+            ThemedIcon::colored("plus", iconColor), tr("Add Outline Item"));
         connect(addAction, &QAction::triggered,
                 this, &OutlineWidget::onAddChildOutline);
     }
@@ -280,7 +269,7 @@ QMenu* OutlineWidget::createContextMenu(QTreeWidgetItem* item)
     menu->addSeparator();
 
     QAction* saveAction = menu->addAction(
-        ThemedIcon::colored(kIconSave, StyleManager::instance().getColor("textSecondary")),
+        ThemedIcon::colored("save", StyleManager::instance().getColor("textSecondary")),
         tr("Save to PDF"));
     saveAction->setEnabled(m_outlineEditor && m_outlineEditor->hasUnsavedChanges());
     connect(saveAction, &QAction::triggered,
@@ -291,7 +280,7 @@ QMenu* OutlineWidget::createContextMenu(QTreeWidgetItem* item)
 
         // 危险操作：图标用 error 色提示
         QAction* deleteAllAction = menu->addAction(
-            ThemedIcon::colored(kIconDelete, StyleManager::instance().getColor("error")),
+            ThemedIcon::colored("trash", StyleManager::instance().getColor("error")),
             tr("Delete All"));
         deleteAllAction->setToolTip(tr("Delete all outline items"));
 

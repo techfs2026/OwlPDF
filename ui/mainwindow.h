@@ -16,6 +16,7 @@ class QLabel;
 class QActionGroup;
 class PDFDocumentTab;
 class OCRStatusIndicator;
+struct SessionTabState;
 
 class MainWindow : public QMainWindow
 {
@@ -82,8 +83,11 @@ private slots:
 
     void toggleToolBar();
 
+    void showSettingsDialog();
+
 public slots:
     void openFileFromCommandLine(const QString& filePath);
+    void restoreLastSession();
 
 private:
     void createMenuBar();
@@ -110,6 +114,9 @@ private:
     void initOCREngine();
     void shutdownOCREngine();
     QString getEngineStateText(OCREngineState state) const;
+
+    void saveSession();
+    void applyTabViewState(PDFDocumentTab* tab, const SessionTabState& state);
 
 #ifdef Q_OS_WIN
 private slots:
@@ -163,6 +170,8 @@ private:
     QAction* m_navPanelAction;
 
     QAction* m_paperEffectAction;
+
+    QAction* m_settingsAction;
 
     QTimer m_resizeDebounceTimer;
 

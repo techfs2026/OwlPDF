@@ -38,50 +38,6 @@ MuQt Reader 是一款基于 Qt + MuPDF 构建的现代化 PDF 阅读器。
 
 详细说明见 [ARCHITECTURE.md](ARCHITECTURE.md)，以下是快速上手步骤。
 
-### macOS
-
-```bash
-# 1. 安装依赖
-brew install mupdf opencv brotli jbig2dec openjpeg gumbo-parser dylibbundler
-
-# 2. 安装 Qt6（https://www.qt.io/download-qt-installer），然后设置路径
-export Qt6_DIR=/Users/yourname/Qt/6.11.1/macos/lib/cmake/Qt6
-
-# 3. 构建
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(sysctl -n hw.logicalcpu)
-
-# 4. 打包（生成可分发 .app）
-cmake --build build --target deploy
-```
-
-### Windows
-
-**手动配置（已有本地库，已验证）**
-
-设置以下环境变量后直接构建：
-```
-Qt6_DIR       = D:\Qt6\6.x.x\msvc2022_64\lib\cmake\Qt6
-MUPDF_DIR     = D:\Ext-Lib\mupdf-win-x64
-OPENCV_DIR    = D:\Ext-Lib\opencv-win-x64
-ONNXRUNTIME_DIR = D:\Ext-Lib\onnxruntime-win-x64
-```
-```powershell
-cmake -B build -G "Visual Studio 17 2022" -A x64
-cmake --build build --config Release
-```
-
-## 设为默认 PDF 阅读器（macOS）
-
-构建出的 `MuQt.app` 已声明可处理 PDF 文件，支持在「访达」中双击 PDF 直接打开。将其设为系统默认 PDF 程序：
-
-1. 将 `MuQt.app` 拖入「应用程序」文件夹。
-2. 在「访达」中右键任意 PDF 文件 →「显示简介」。
-3. 在「打开方式」中选择 **MuQt**，再点击「全部更改…」并确认。
-
-此后双击任意 PDF 都会用 MuQt 打开。若列表中暂未出现 MuQt，可执行一次
-`/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/MuQt.app`
-刷新启动服务数据库。
 
 ## 依赖库
 

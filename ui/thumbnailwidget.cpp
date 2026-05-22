@@ -56,6 +56,10 @@ void ThumbnailWidget::setThumbnailManager(ThumbnailManagerV2* manager)
 }
 
 bool ThumbnailWidget::isLargeLoadMode() {
+    // scrollContentsBy 等会在文档/管理器就绪前就被 Qt 回调，必须判空
+    if (!m_manager || !m_manager->thumbnailLoadStrategy()) {
+        return false;
+    }
     return m_manager->thumbnailLoadStrategy()->type() == LoadStrategyType::LARGE_DOC;
 }
 
