@@ -82,6 +82,7 @@ public:
                      bool wholeWords = false,
                      int startPage = 0);
     void cancelSearch();
+    void clearSearch();
     SearchResult findNext();
     SearchResult findPrevious();
 

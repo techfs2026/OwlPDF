@@ -7,6 +7,7 @@
 #include <QCoreApplication>
 #include <QMetaObject>
 #include <QTimer>
+#include <memory>
 
 SearchManager::SearchManager(PerThreadMuPDFRenderer* renderer,
                              TextCacheManager* textCacheManager,
@@ -246,20 +247,14 @@ void SearchManager::clearHistory()
     m_searchHistory.clear();
 }
 
-QVector<SearchResult> SearchManager::searchPage(int pageIndex,
-                                                const QString& query,
-                                                const SearchOptions& options)
+QVector<SearchResult> SearchManager::searchInPage(int pageIndex,
+                                                  const PageTextData& textData,
+                                                  const QString& query,
+                                                  const SearchOptions& options)
 {
     QVector<SearchResult> results;
 
-    if (!m_renderer || !m_renderer->isDocumentLoaded()) {
-        return results;
-    }
-
-    PageTextData textData = m_textCacheManager->getPageTextData(pageIndex);
-
     if (textData.isEmpty()) {
-        qDebug() << "searchPage: No text data cached for page" << pageIndex;
         return results;
     }
 
@@ -383,44 +378,101 @@ void SearchWorker::process()
         return;
     }
 
-    qDebug() << "SearchWorker started - searching page:" << m_startPage;
+    auto isCancelled = [this]() {
+        return m_cancelRequested.load() ||
+               (m_manager && m_manager->m_cancelRequested.load());
+    };
 
-    int pageIndex = m_startPage;
+    // 文档信息只在开始时从共享 renderer 读一次，循环内不再触碰它
+    const int totalPages = m_manager->m_renderer->pageCount();
+    const QString pdfPath = m_manager->m_renderer->documentPath();
+
+    if (totalPages <= 0) {
+        emit finished(m_query, 0);
+        return;
+    }
+
+    int startPage = m_startPage;
+    if (startPage < 0 || startPage >= totalPages) {
+        startPage = 0;
+    }
+
+    qDebug() << "SearchWorker started -" << totalPages
+             << "pages, from page" << startPage;
+
+    // 仅当某页文本未命中缓存时才惰性创建（打开整篇 PDF 有开销）
+    std::unique_ptr<PerThreadMuPDFRenderer> ownRenderer;
+
+    const int progressStep = qMax(1, totalPages / 100);
     int totalMatches = 0;
+    bool reachedLimit = false;
 
-    if (m_cancelRequested.load() || (m_manager && m_manager->m_cancelRequested.load())) {
-        qDebug() << "SearchWorker: cancelled before start";
-        emit cancelled();
-        return;
-    }
+    // 从 startPage 起回绕遍历全文，使"下一个匹配"自当前页向后走
+    for (int processed = 0; processed < totalPages; ++processed) {
+        if (isCancelled()) {
+            qDebug() << "SearchWorker: cancelled at" << processed << "/" << totalPages;
+            emit cancelled();
+            return;
+        }
 
-    QVector<SearchResult> pageResults;
-    try {
-        pageResults = m_manager->searchPage(pageIndex, m_query, m_options);
-    } catch (...) {
-        emit error(tr("Exception during searchPage"));
-        return;
-    }
+        const int pageIndex = (startPage + processed) % totalPages;
 
-    if (m_cancelRequested.load() || (m_manager && m_manager->m_cancelRequested.load())) {
-        qDebug() << "SearchWorker: cancelled after searchPage";
-        emit cancelled();
-        return;
-    }
+        // 取页面文本：优先缓存；未缓存则当场提取并回填缓存
+        PageTextData textData;
+        if (m_manager->m_textCacheManager->contains(pageIndex)) {
+            textData = m_manager->m_textCacheManager->getPageTextData(pageIndex);
+        } else {
+            if (!ownRenderer) {
+                ownRenderer = std::make_unique<PerThreadMuPDFRenderer>(pdfPath);
+            }
+            if (ownRenderer->isDocumentLoaded()) {
+                PageTextData extracted;
+                if (ownRenderer->extractText(pageIndex, extracted)) {
+                    extracted.pageIndex = pageIndex;
+                    m_manager->m_textCacheManager->addPageTextData(pageIndex, extracted);
+                    textData = extracted;
+                }
+            }
+        }
 
-    if (!pageResults.isEmpty()) {
-        {
+        QVector<SearchResult> pageResults;
+        try {
+            pageResults = m_manager->searchInPage(pageIndex, textData, m_query, m_options);
+        } catch (...) {
+            qWarning() << "SearchWorker: exception searching page" << pageIndex;
+            pageResults.clear();
+        }
+
+        if (!pageResults.isEmpty()) {
             QMutexLocker locker(&m_manager->m_mutex);
             for (const SearchResult& r : pageResults) {
+                if (totalMatches >= m_options.maxResults) {
+                    reachedLimit = true;
+                    break;
+                }
                 m_manager->m_results.append(r);
+                ++totalMatches;
             }
-            totalMatches = pageResults.size();
+        }
+
+        if (reachedLimit) {
+            emit progress(processed + 1, totalPages, totalMatches);
+            qDebug() << "SearchWorker: reached maxResults limit" << m_options.maxResults;
+            break;
+        }
+
+        if (processed % progressStep == 0 || processed == totalPages - 1) {
+            emit progress(processed + 1, totalPages, totalMatches);
         }
     }
 
-    emit progress(1, 1, totalMatches);
+    if (isCancelled()) {
+        emit cancelled();
+        return;
+    }
 
-    qDebug() << "SearchWorker: Search completed on page" << pageIndex << ", matches:" << totalMatches;
+    qDebug() << "SearchWorker: completed," << totalMatches << "matches across"
+             << totalPages << "pages";
 
     emit finished(m_query, totalMatches);
 }

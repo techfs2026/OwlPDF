@@ -93,6 +93,10 @@ public:
         , m_treeWidget(treeWidget)
     {}
 
+    // 折叠三角所占装饰列宽度（三角之后即正文起点）。
+    // paint() 与 OutlineWidget::mousePressEvent() 的命中判定共用此值。
+    static constexpr int kDecorationWidth = 16;
+
     void paint(QPainter* painter, const QStyleOptionViewItem& option,
                const QModelIndex& index) const override
     {
@@ -161,9 +165,9 @@ public:
             }
 
             painter->drawPolygon(triangle);
-            leftMargin += 20;
+            leftMargin += kDecorationWidth;
         } else {
-            leftMargin += 20;
+            leftMargin += kDecorationWidth;
         }
 
         QString fullText = item->text(0);

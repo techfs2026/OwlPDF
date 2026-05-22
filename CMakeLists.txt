@@ -148,6 +148,19 @@ qt_add_translations(MuQt
 )
 
 # ============================================================
+# macOS 应用包 Info.plist
+#   使用自定义 Info.plist，声明 MuQt 可处理 PDF 文件
+#   （CFBundleDocumentTypes），使其能被设为默认 PDF 程序。
+#   设置该属性后 Qt 不会再生成默认 plist。
+# ============================================================
+
+if(APPLE)
+    set_target_properties(MuQt PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist"
+    )
+endif()
+
+# ============================================================
 # 头文件目录
 # ============================================================
 

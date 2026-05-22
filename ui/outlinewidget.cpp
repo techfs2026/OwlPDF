@@ -70,7 +70,7 @@ void OutlineWidget::setupUI()
 
     setAlternatingRowColors(false);
     setAnimated(true);
-    setIndentation(20);
+    setIndentation(6);   // 每级缩进；paint 与命中判定均从 indentation() 取此值
     setIconSize(QSize(16, 16));
     setMouseTracking(true);
     setExpandsOnDoubleClick(true);
@@ -108,12 +108,10 @@ void OutlineWidget::mousePressEvent(QMouseEvent* event)
 
 
         int leftMargin = 8 + depth * indent;
-        int iconX = leftMargin + 4;
-        int iconWidth = 20;
 
-
-        if (event->pos().x() >= iconX &&
-            event->pos().x() <= iconX + iconWidth) {
+        // 点击装饰列（折叠三角所在区域）即切换展开/折叠
+        if (event->pos().x() >= leftMargin &&
+            event->pos().x() < leftMargin + OutlineItemDelegate::kDecorationWidth) {
             item->setExpanded(!item->isExpanded());
             event->accept();
             viewport()->update();

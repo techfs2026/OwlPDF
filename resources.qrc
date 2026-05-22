@@ -16,6 +16,7 @@
     <qresource prefix="/icons">
         <file>resources/windows.ico</file>
         <file>resources/icons/search.svg</file>
+        <file>resources/icons/search-options.svg</file>
         <file>resources/icons/first-arrow.svg</file>
         <file>resources/icons/left-arrow.svg</file>
         <file>resources/icons/right-arrow.svg</file>

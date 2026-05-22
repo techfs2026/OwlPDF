@@ -313,6 +313,13 @@ void PDFDocumentSession::cancelSearch()
     }
 }
 
+void PDFDocumentSession::clearSearch()
+{
+    if (m_interactionHandler) {
+        m_interactionHandler->clearSearchResults();
+    }
+}
+
 SearchResult PDFDocumentSession::findNext()
 {
     return m_interactionHandler ? m_interactionHandler->findNext() : SearchResult();

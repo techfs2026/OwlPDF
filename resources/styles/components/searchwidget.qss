@@ -6,100 +6,51 @@ SearchWidget {
     padding: 8px 12px;
 }
 
-/* 搜索输入框 */
+/* 搜索输入框（前导放大镜 / 尾随清除均为内嵌 action，间距由 Qt 自动预留） */
 SearchWidget #searchLineEdit {
     background-color: @paper-color;
     border: 1px solid @border-medium;
     border-radius: 6px;
-    padding: 8px 36px 8px 36px;
+    padding: 6px 8px;
     color: @text-primary;
     font-size: 13px;
     selection-background-color: @primary-color;
     selection-color: @surface-color;
-    min-height: 32px;
+    min-height: 30px;
 }
 
 SearchWidget #searchLineEdit:hover {
     border: 1px solid @border-dark;
-    background-color: @surface-color;
 }
 
 SearchWidget #searchLineEdit:focus {
     border: 1px solid @primary-color;
-    background-color: @surface-color;
 }
 
-/* 搜索图标 */
-SearchWidget #searchIcon {
-    background-color: transparent;
-    border: none;
-    padding: 6px;
-}
-
-/* 清除按钮 */
-SearchWidget #clearButton {
-    background-color: transparent;
-    border: none;
-    border-radius: 4px;
-    padding: 4px;
-    margin: 2px;
-}
-
-SearchWidget #clearButton:hover {
-    background-color: @hover-background;
-}
-
-SearchWidget #clearButton:pressed {
-    background-color: @pressed-background;
-}
-
-/* 导航按钮 */
+/* 图标按钮：上一个 / 下一个 / 关闭 */
 SearchWidget #previousButton,
-SearchWidget #nextButton {
-    background-color: transparent;
-    border: 1px solid transparent;
-    border-radius: 5px;
-    padding: 6px;
-    color: @text-primary;
-    min-width: 28px;
-    min-height: 28px;
-}
-
-SearchWidget #previousButton:hover,
-SearchWidget #nextButton:hover {
-    background-color: @hover-background;
-    border: 1px solid @border-light;
-}
-
-SearchWidget #previousButton:pressed,
-SearchWidget #nextButton:pressed {
-    background-color: @pressed-background;
-    border: 1px solid @border-medium;
-}
-
-SearchWidget #previousButton:disabled,
-SearchWidget #nextButton:disabled {
-    opacity: 0.4;
-}
-
-/* 关闭按钮 */
+SearchWidget #nextButton,
 SearchWidget #closeButton {
     background-color: transparent;
     border: 1px solid transparent;
     border-radius: 5px;
     padding: 6px;
-    color: @text-primary;
     min-width: 28px;
     min-height: 28px;
 }
 
+SearchWidget #previousButton:hover,
+SearchWidget #nextButton:hover,
 SearchWidget #closeButton:hover {
     background-color: @hover-background;
     border: 1px solid @border-light;
 }
 
+SearchWidget #previousButton:pressed,
+SearchWidget #nextButton:pressed,
 SearchWidget #closeButton:pressed {
     background-color: @pressed-background;
+    border: 1px solid @border-medium;
 }
 
 /* 匹配计数标签 */
@@ -110,16 +61,17 @@ SearchWidget #matchLabel {
     padding: 4px 10px;
     font-size: 12px;
     font-weight: 600;
-    min-width: 60px;
+    min-width: 64px;
 }
 
-/* 选项按钮 */
+/* 搜索选项按钮 */
 SearchWidget #optionsButton {
     background-color: transparent;
     border: 1px solid transparent;
     border-radius: 5px;
     padding: 6px;
-    color: @text-primary;
+    min-width: 28px;
+    min-height: 28px;
 }
 
 SearchWidget #optionsButton:hover {
@@ -127,12 +79,17 @@ SearchWidget #optionsButton:hover {
     border: 1px solid @border-light;
 }
 
+/* 任一搜索选项启用时高亮 */
 SearchWidget #optionsButton:checked {
     background-color: @selected-background;
     border: 1px solid @border-medium;
 }
 
-/* 选项菜单 */
+SearchWidget #optionsButton::menu-indicator {
+    image: none;
+}
+
+/* 搜索选项下拉菜单 */
 SearchWidget QMenu {
     background-color: @surface-color;
     border: 1px solid @border-medium;
@@ -141,7 +98,7 @@ SearchWidget QMenu {
 }
 
 SearchWidget QMenu::item {
-    padding: 8px 36px 8px 16px;
+    padding: 8px 28px 8px 28px;
     border-radius: 5px;
     color: @text-primary;
     font-size: 13px;
@@ -157,43 +114,22 @@ SearchWidget QMenu::separator {
     margin: 6px 12px;
 }
 
-SearchWidget QMenu::indicator {
-    width: 16px;
-    height: 16px;
-    margin-left: 6px;
-}
-
-SearchWidget QMenu::indicator:checked {
-    image: url(:/icons/check.png);
-}
-
-/* 搜索结果列表（如果有） */
-SearchWidget #resultsList {
+/* 搜索历史补全弹窗（QCompleter 的弹窗为顶层 QListView，需全局选择器） */
+#searchHistoryPopup {
     background-color: @surface-color;
-    border: 1px solid @border-light;
-    border-radius: 6px;
+    border: 1px solid @border-medium;
+    border-radius: 8px;
     padding: 4px;
-    margin-top: 8px;
+    outline: none;
 }
 
-SearchWidget #resultsList::item {
-    padding: 8px 12px;
-    border-radius: 4px;
+#searchHistoryPopup::item {
+    padding: 6px 12px;
+    border-radius: 5px;
     color: @text-primary;
 }
 
-SearchWidget #resultsList::item:hover {
-    background-color: @hover-background;
-}
-
-SearchWidget #resultsList::item:selected {
+#searchHistoryPopup::item:selected {
     background-color: @selected-background;
-    font-weight: 600;
-}
-
-/* 无结果提示 */
-SearchWidget #noResultsLabel {
-    color: @text-secondary;
-    font-size: 12px;
-    padding: 8px;
+    color: @text-primary;
 }

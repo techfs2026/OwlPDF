@@ -382,6 +382,7 @@ void PDFDocumentTab::hideSearchBar()
 {
     m_searchWidget->hide();
     m_session->cancelSearch();
+    m_session->clearSearch();          // 清空搜索结果，移除页面高亮标记
     m_pageWidget->clearHighlights();
     m_pageWidget->setFocus();
 }

@@ -71,6 +71,18 @@ cmake -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release
 ```
 
+## 设为默认 PDF 阅读器（macOS）
+
+构建出的 `MuQt.app` 已声明可处理 PDF 文件，支持在「访达」中双击 PDF 直接打开。将其设为系统默认 PDF 程序：
+
+1. 将 `MuQt.app` 拖入「应用程序」文件夹。
+2. 在「访达」中右键任意 PDF 文件 →「显示简介」。
+3. 在「打开方式」中选择 **MuQt**，再点击「全部更改…」并确认。
+
+此后双击任意 PDF 都会用 MuQt 打开。若列表中暂未出现 MuQt，可执行一次
+`/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/MuQt.app`
+刷新启动服务数据库。
+
 ## 依赖库
 
 | 库 | 版本 | 用途 |

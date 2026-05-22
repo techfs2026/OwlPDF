@@ -93,9 +93,10 @@ signals:
 private:
     friend class SearchWorker;
 
-    QVector<SearchResult> searchPage(int pageIndex,
-                                     const QString& query,
-                                     const SearchOptions& options);
+    QVector<SearchResult> searchInPage(int pageIndex,
+                                       const PageTextData& textData,
+                                       const QString& query,
+                                       const SearchOptions& options);
 
     QString getContextFromTextData(const PageTextData& textData,
                                    const TextBlock& currentBlock,
