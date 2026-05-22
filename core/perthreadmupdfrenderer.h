@@ -6,7 +6,7 @@
 #include <QSizeF>
 #include <QVector>
 #include <QMutex>
-#include "papereffectenhancer.h"
+#include "scanenhancer.h"
 #include "datastructure.h"
 
 extern "C" {
@@ -76,7 +76,7 @@ private:
     mutable QVector<QSizeF> m_pageSizeCache;
     mutable QString m_lastError;
 
-    PaperEffectEnhancer m_paperEffectEnhancer;
+    ScanEnhancer m_scanEnhancer;
     bool m_paperEffectEnabled;
 };
 

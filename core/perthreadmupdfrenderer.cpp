@@ -356,7 +356,7 @@ RenderResult PerThreadMuPDFRenderer::renderPage(int pageIndex, double zoom, int 
         result.image = pixmapToQImage(m_context, pixmap);
 
         if (applyPaperEffect && !result.image.isNull()) {
-            result.image = m_paperEffectEnhancer.enhance(result.image);
+            result.image = m_scanEnhancer.enhance(result.image);
         }
 
         // 标记 dpr：位图含物理像素，绘制时 Qt 才会按逻辑尺寸正确显示。
