@@ -12,7 +12,7 @@ PageCacheManager::PageCacheManager(int maxSize, CacheStrategy strategy)
 {
 }
 
-bool PageCacheManager::addPage(int pageIndex, double zoom, int rotation, const QImage& image)
+bool PageCacheManager::addPage(int pageIndex, double zoom, int rotation, double dpr, const QImage& image)
 {
     if (image.isNull()) {
         return false;
@@ -20,7 +20,7 @@ bool PageCacheManager::addPage(int pageIndex, double zoom, int rotation, const Q
 
     QMutexLocker locker(&m_mutex);
 
-    PageCacheKey key(pageIndex, zoom, rotation);
+    PageCacheKey key(pageIndex, zoom, rotation, dpr);
 
     if (m_cache.contains(key)) {
         m_cache[key] = image;
@@ -38,11 +38,11 @@ bool PageCacheManager::addPage(int pageIndex, double zoom, int rotation, const Q
     return true;
 }
 
-QImage PageCacheManager::getPage(int pageIndex, double zoom, int rotation)
+QImage PageCacheManager::getPage(int pageIndex, double zoom, int rotation, double dpr)
 {
     QMutexLocker locker(&m_mutex);
 
-    PageCacheKey key(pageIndex, zoom, rotation);
+    PageCacheKey key(pageIndex, zoom, rotation, dpr);
 
     if (!m_cache.contains(key)) {
         m_missCount++;
@@ -55,17 +55,17 @@ QImage PageCacheManager::getPage(int pageIndex, double zoom, int rotation)
     return m_cache.value(key);
 }
 
-bool PageCacheManager::contains(int pageIndex, double zoom, int rotation) const
+bool PageCacheManager::contains(int pageIndex, double zoom, int rotation, double dpr) const
 {
     QMutexLocker locker(&m_mutex);
-    PageCacheKey key(pageIndex, zoom, rotation);
+    PageCacheKey key(pageIndex, zoom, rotation, dpr);
     return m_cache.contains(key);
 }
 
-void PageCacheManager::removePage(int pageIndex, double zoom, int rotation)
+void PageCacheManager::removePage(int pageIndex, double zoom, int rotation, double dpr)
 {
     QMutexLocker locker(&m_mutex);
-    PageCacheKey key(pageIndex, zoom, rotation);
+    PageCacheKey key(pageIndex, zoom, rotation, dpr);
     m_cache.remove(key);
     m_accessTime.remove(key);
 }

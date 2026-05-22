@@ -44,7 +44,9 @@ public:
 
     QSizeF pageSize(int pageIndex) const;
 
-    RenderResult renderPage(int pageIndex, double zoom, int rotation, RenderScene scene = RenderScene::Page);
+    RenderResult renderPage(int pageIndex, double zoom, int rotation,
+                            RenderScene scene = RenderScene::Page,
+                            double devicePixelRatio = 1.0);
 
     bool extractText(int pageIndex, PageTextData& outData, QString* errorMsg = nullptr);
 

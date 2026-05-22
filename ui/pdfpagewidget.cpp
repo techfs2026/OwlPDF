@@ -15,6 +15,15 @@
 #include <QMouseEvent>
 #include <QDebug>
 
+namespace {
+// 渲染图带有 devicePixelRatio 标记后，width()/height() 仍返回物理像素。
+// 控件布局、命中测试、绘制定位一律使用逻辑尺寸（物理像素 / dpr）。
+inline QSize logicalImageSize(const QImage& img)
+{
+    return img.deviceIndependentSize().toSize();
+}
+}
+
 PDFPageWidget::PDFPageWidget(PDFDocumentSession* session, QWidget* parent)
     : QWidget(parent)
     , m_session(session)
@@ -115,10 +124,11 @@ int PDFPageWidget::getPageAtPos(const QPoint& pos, int* pageX, int* pageY) const
     }
     else {
         int currentPage = state->currentPage();
-        int contentX = (width() - m_currentImage.width()) / 2;
-        int contentY = (height() - m_currentImage.height()) / 2;
+        QSize firstSize = logicalImageSize(m_currentImage);
+        int contentX = (width() - firstSize.width()) / 2;
+        int contentY = (height() - firstSize.height()) / 2;
 
-        QRect firstPageRect(contentX, contentY, m_currentImage.width(), m_currentImage.height());
+        QRect firstPageRect(QPoint(contentX, contentY), firstSize);
         if (firstPageRect.contains(pos)) {
             if (pageX) *pageX = contentX;
             if (pageY) *pageY = contentY;
@@ -126,11 +136,12 @@ int PDFPageWidget::getPageAtPos(const QPoint& pos, int* pageX, int* pageY) const
         }
 
         if (state->currentDisplayMode() == PageDisplayMode::DoublePage && !m_secondImage.isNull()) {
-            int secondX = contentX + m_currentImage.width() + AppConfig::DOUBLE_PAGE_SPACING;
-            int maxHeight = qMax(m_currentImage.height(), m_secondImage.height());
-            int secondY = contentY + (maxHeight - m_secondImage.height()) / 2;
+            QSize secondSize = logicalImageSize(m_secondImage);
+            int secondX = contentX + firstSize.width() + AppConfig::DOUBLE_PAGE_SPACING;
+            int maxHeight = qMax(firstSize.height(), secondSize.height());
+            int secondY = contentY + (maxHeight - secondSize.height()) / 2;
 
-            QRect secondPageRect(secondX, secondY, m_secondImage.width(), m_secondImage.height());
+            QRect secondPageRect(QPoint(secondX, secondY), secondSize);
             if (secondPageRect.contains(pos)) {
                 if (pageX) *pageX = secondX;
                 if (pageY) *pageY = secondY;
@@ -205,12 +216,14 @@ QSize PDFPageWidget::sizeHint() const
         return QSize(maxWidth + 2 * margin, totalHeight + 2 * margin);
     }
 
-    int contentWidth = m_currentImage.width();
-    int contentHeight = m_currentImage.height();
+    QSize firstSize = logicalImageSize(m_currentImage);
+    int contentWidth = firstSize.width();
+    int contentHeight = firstSize.height();
 
     if (state->currentDisplayMode() == PageDisplayMode::DoublePage && !m_secondImage.isNull()) {
-        contentWidth = m_currentImage.width() + m_secondImage.width() + AppConfig::DOUBLE_PAGE_SPACING;
-        contentHeight = qMax(m_currentImage.height(), m_secondImage.height());
+        QSize secondSize = logicalImageSize(m_secondImage);
+        contentWidth = firstSize.width() + secondSize.width() + AppConfig::DOUBLE_PAGE_SPACING;
+        contentHeight = qMax(firstSize.height(), secondSize.height());
     }
 
     return QSize(contentWidth + 2 * margin, contentHeight + 2 * margin);
@@ -250,8 +263,9 @@ void PDFPageWidget::paintEvent(QPaintEvent* event)
 
 void PDFPageWidget::paintSinglePageMode(QPainter& painter)
 {
-    int x = (width() - m_currentImage.width()) / 2;
-    int y = (height() - m_currentImage.height()) / 2;
+    QSize imgSize = logicalImageSize(m_currentImage);
+    int x = (width() - imgSize.width()) / 2;
+    int y = (height() - imgSize.height()) / 2;
 
     drawPageImage(painter, m_currentImage, x, y);
 
@@ -261,8 +275,10 @@ void PDFPageWidget::paintSinglePageMode(QPainter& painter)
 
 void PDFPageWidget::paintDoublePageMode(QPainter& painter)
 {
-    int totalWidth = m_currentImage.width() + m_secondImage.width() + AppConfig::DOUBLE_PAGE_SPACING;
-    int maxHeight = qMax(m_currentImage.height(), m_secondImage.height());
+    QSize firstSize = logicalImageSize(m_currentImage);
+    QSize secondSize = logicalImageSize(m_secondImage);
+    int totalWidth = firstSize.width() + secondSize.width() + AppConfig::DOUBLE_PAGE_SPACING;
+    int maxHeight = qMax(firstSize.height(), secondSize.height());
 
     int startX = (width() - totalWidth) / 2;
     int startY = (height() - maxHeight) / 2;
@@ -272,12 +288,12 @@ void PDFPageWidget::paintDoublePageMode(QPainter& painter)
     double actualZoom = state->currentZoom();
 
     int x1 = startX;
-    int y1 = startY + (maxHeight - m_currentImage.height()) / 2;
+    int y1 = startY + (maxHeight - firstSize.height()) / 2;
     drawPageImage(painter, m_currentImage, x1, y1);
     drawOverlays(painter, currentPage, x1, y1, actualZoom);
 
-    int x2 = startX + m_currentImage.width() + AppConfig::DOUBLE_PAGE_SPACING;
-    int y2 = startY + (maxHeight - m_secondImage.height()) / 2;
+    int x2 = startX + firstSize.width() + AppConfig::DOUBLE_PAGE_SPACING;
+    int y2 = startY + (maxHeight - secondSize.height()) / 2;
     drawPageImage(painter, m_secondImage, x2, y2);
 
     if (!m_secondImage.isNull()) {
@@ -294,13 +310,15 @@ void PDFPageWidget::paintContinuousMode(QPainter& painter, const QRect& visibleR
     const PDFDocumentState* state = m_session->state();
     double actualZoom = state->currentZoom();
     int rotation = state->currentRotation();
+    double dpr = devicePixelRatioF();
 
     QList<PageCacheKey> cachedKeys = m_cacheManager->cachedKeys();
 
     for (const PageCacheKey& key : cachedKeys) {
         int pageIndex = key.pageIndex;
 
-        if (qAbs(key.zoom - actualZoom) >= 0.001 || key.rotation != rotation) {
+        if (qAbs(key.zoom - actualZoom) >= 0.001 || key.rotation != rotation
+            || qAbs(key.dpr - dpr) >= 0.001) {
             continue;
         }
 
@@ -308,15 +326,16 @@ void PDFPageWidget::paintContinuousMode(QPainter& painter, const QRect& visibleR
             continue;
         }
 
-        QImage pageImage = m_cacheManager->getPage(pageIndex, actualZoom, rotation);
+        QImage pageImage = m_cacheManager->getPage(pageIndex, actualZoom, rotation, dpr);
         if (pageImage.isNull()) {
             continue;
         }
 
+        QSize imgSize = logicalImageSize(pageImage);
         int pageY = state->pageYPositions()[pageIndex] + margin;
-        int pageX = (width() - pageImage.width()) / 2;
+        int pageX = (width() - imgSize.width()) / 2;
 
-        int pageBottom = pageY + pageImage.height();
+        int pageBottom = pageY + imgSize.height();
         if (pageBottom >= visibleRect.top() && pageY <= visibleRect.bottom()) {
             drawPageImage(painter, pageImage, pageX, pageY);
             drawOverlays(painter, pageIndex, pageX, pageY, actualZoom);
@@ -332,7 +351,7 @@ void PDFPageWidget::paintContinuousMode(QPainter& painter, const QRect& visibleR
     const QVector<int>& heights = state->pageHeights();
 
     for (int i = 0; i < positions.size(); ++i) {
-        if (!m_cacheManager->contains(i, actualZoom, rotation)) {
+        if (!m_cacheManager->contains(i, actualZoom, rotation, dpr)) {
             int pageY = positions[i] + margin;
             int pageHeight = heights[i];
 
@@ -346,9 +365,12 @@ void PDFPageWidget::paintContinuousMode(QPainter& painter, const QRect& visibleR
 
 void PDFPageWidget::drawPageImage(QPainter& painter, const QImage& image, int x, int y)
 {
-    QRect shadowRect = image.rect().translated(x + AppConfig::SHADOW_OFFSET, y + AppConfig::SHADOW_OFFSET);
+    // 阴影按逻辑尺寸绘制；image.rect() 是物理像素，Retina 下会偏大一倍。
+    QRect shadowRect(QPoint(x + AppConfig::SHADOW_OFFSET, y + AppConfig::SHADOW_OFFSET),
+                     logicalImageSize(image));
     painter.fillRect(shadowRect, QColor(0, 0, 0, 100));
 
+    // image 已标记 devicePixelRatio，drawImage 会自动按逻辑尺寸绘制。
     painter.drawImage(x, y, image);
 }
 
@@ -637,25 +659,33 @@ QImage PDFPageWidget::extractHoverRegion(const QPoint& pos)
 
     double zoom = state->currentZoom();
     int rotation = state->currentRotation();
+    double dpr = devicePixelRatioF();
 
-    QImage pageImage = m_cacheManager->getPage(pageIndex, zoom, rotation);
+    QImage pageImage = m_cacheManager->getPage(pageIndex, zoom, rotation, dpr);
 
     if (pageImage.isNull()) {
-        auto result = m_renderer->renderPage(pageIndex, zoom, rotation, RenderScene::Page);
+        auto result = m_renderer->renderPage(pageIndex, zoom, rotation, RenderScene::Page, dpr);
         if (!result.success) {
             return QImage();
         }
         pageImage = result.image;
     }
 
-    QRect imageRect = hoverRect.translated(-pageX, -pageY);
+    // hoverRect 是逻辑坐标，pageImage 含物理像素；按图像 dpr 换算到物理矩形。
+    qreal imgDpr = pageImage.devicePixelRatio();
+    QRectF logicalRect = QRectF(hoverRect).translated(-pageX, -pageY);
+    QRect imageRect = QRectF(logicalRect.x() * imgDpr, logicalRect.y() * imgDpr,
+                             logicalRect.width() * imgDpr, logicalRect.height() * imgDpr).toRect();
     imageRect = imageRect.intersected(pageImage.rect());
 
     if (imageRect.isEmpty()) {
         return QImage();
     }
 
-    return pageImage.copy(imageRect);
+    // 裁出的子图交给 OCR 作原始像素使用，dpr 归 1.0。
+    QImage region = pageImage.copy(imageRect);
+    region.setDevicePixelRatio(1.0);
+    return region;
 }
 
 QRect PDFPageWidget::calculateHoverRect(const QPoint& centerPos)

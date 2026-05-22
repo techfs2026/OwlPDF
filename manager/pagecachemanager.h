@@ -11,14 +11,16 @@ struct PageCacheKey {
     int pageIndex;
     double zoom;
     int rotation;
+    double dpr;   // devicePixelRatio：同一逻辑缩放下 Retina(2.0) 与普通屏(1.0) 的位图不可混用
 
-    PageCacheKey(int page = -1, double z = 1.0, int rot = 0)
-        : pageIndex(page), zoom(z), rotation(rot) {}
+    PageCacheKey(int page = -1, double z = 1.0, int rot = 0, double devicePixelRatio = 1.0)
+        : pageIndex(page), zoom(z), rotation(rot), dpr(devicePixelRatio) {}
 
     bool operator==(const PageCacheKey& other) const {
         return pageIndex == other.pageIndex &&
                qAbs(zoom - other.zoom) < 0.001 &&
-               rotation == other.rotation;
+               rotation == other.rotation &&
+               qAbs(dpr - other.dpr) < 0.001;
     }
 
     bool operator<(const PageCacheKey& other) const {
@@ -26,16 +28,21 @@ struct PageCacheKey {
             return pageIndex < other.pageIndex;
         if (qAbs(zoom - other.zoom) >= 0.001)
             return zoom < other.zoom;
-        return rotation < other.rotation;
+        if (rotation != other.rotation)
+            return rotation < other.rotation;
+        if (qAbs(dpr - other.dpr) >= 0.001)
+            return dpr < other.dpr;
+        return false;
     }
 
     uint hash() const {
-        return qHash(pageIndex) ^ qHash(qRound(zoom * 1000)) ^ qHash(rotation);
+        return qHash(pageIndex) ^ qHash(qRound(zoom * 1000))
+               ^ qHash(rotation) ^ qHash(qRound(dpr * 1000));
     }
 
     QString toString() const {
-        return QString("Page:%1,Zoom:%2,Rot:%3")
-        .arg(pageIndex).arg(zoom, 0, 'f', 2).arg(rotation);
+        return QString("Page:%1,Zoom:%2,Rot:%3,DPR:%4")
+        .arg(pageIndex).arg(zoom, 0, 'f', 2).arg(rotation).arg(dpr, 0, 'f', 2);
     }
 };
 
@@ -55,13 +62,13 @@ public:
     explicit PageCacheManager(int maxSize = 10,
                               CacheStrategy strategy = CacheStrategy::NearCurrent);
 
-    bool addPage(int pageIndex, double zoom, int rotation, const QImage& image);
+    bool addPage(int pageIndex, double zoom, int rotation, double dpr, const QImage& image);
 
-    QImage getPage(int pageIndex, double zoom, int rotation);
+    QImage getPage(int pageIndex, double zoom, int rotation, double dpr);
 
-    bool contains(int pageIndex, double zoom, int rotation) const;
+    bool contains(int pageIndex, double zoom, int rotation, double dpr) const;
 
-    void removePage(int pageIndex, double zoom, int rotation);
+    void removePage(int pageIndex, double zoom, int rotation, double dpr);
 
     void clear();
 

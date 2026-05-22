@@ -279,7 +279,8 @@ static QImage pixmapToQImage(fz_context* ctx, fz_pixmap* pixmap)
     return image;
 }
 
-RenderResult PerThreadMuPDFRenderer::renderPage(int pageIndex, double zoom, int rotation, RenderScene scene)
+RenderResult PerThreadMuPDFRenderer::renderPage(int pageIndex, double zoom, int rotation,
+                                                RenderScene scene, double devicePixelRatio)
 {
     RenderResult result;
 
@@ -319,6 +320,12 @@ RenderResult PerThreadMuPDFRenderer::renderPage(int pageIndex, double zoom, int 
         break;
     }
 
+    // HiDPI 适配：按物理像素渲染。Retina 屏 dpr=2 时位图分辨率翻倍，
+    // 配合下方 setDevicePixelRatio，避免 QPainter 把图二次放大导致文字发虚。
+    if (devicePixelRatio > 1.0) {
+        actualZoom *= devicePixelRatio;
+    }
+
     // 指针提到 fz_try 外声明并置空，fz_always 才能访问到它们。
     fz_page*   page   = nullptr;
     fz_device* device = nullptr;
@@ -350,6 +357,12 @@ RenderResult PerThreadMuPDFRenderer::renderPage(int pageIndex, double zoom, int 
 
         if (applyPaperEffect && !result.image.isNull()) {
             result.image = m_paperEffectEnhancer.enhance(result.image);
+        }
+
+        // 标记 dpr：位图含物理像素，绘制时 Qt 才会按逻辑尺寸正确显示。
+        // enhance() 会生成新 QImage，故必须放在它之后。
+        if (!result.image.isNull() && devicePixelRatio > 0.0) {
+            result.image.setDevicePixelRatio(devicePixelRatio);
         }
 
         result.success = true;

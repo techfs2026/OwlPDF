@@ -765,19 +765,20 @@ QImage PDFDocumentTab::renderPage(int pageIndex)
     const PDFDocumentState* state = m_session->state();
     double zoom = state->currentZoom();
     int rotation = state->currentRotation();
+    double dpr = devicePixelRatioF();   // Retina 屏为 2.0，普通屏为 1.0
 
     PageCacheManager* cache = m_session->pageCache();
     PerThreadMuPDFRenderer* renderer = m_session->renderer();
 
 
-    if (cache->contains(pageIndex, zoom, rotation)) {
-        return cache->getPage(pageIndex, zoom, rotation);
+    if (cache->contains(pageIndex, zoom, rotation, dpr)) {
+        return cache->getPage(pageIndex, zoom, rotation, dpr);
     }
 
 
-    auto result = renderer->renderPage(pageIndex, zoom, rotation);
+    auto result = renderer->renderPage(pageIndex, zoom, rotation, RenderScene::Page, dpr);
     if (result.success) {
-        cache->addPage(pageIndex, zoom, rotation, result.image);
+        cache->addPage(pageIndex, zoom, rotation, dpr, result.image);
         return result.image;
     }
 
@@ -815,10 +816,11 @@ void PDFDocumentTab::refreshVisiblePages()
 
     double zoom = state->currentZoom();
     int rotation = state->currentRotation();
+    double dpr = devicePixelRatioF();
 
     bool anyRendered = false;
     for (int pageIndex : visiblePages) {
-        if (!cache->contains(pageIndex, zoom, rotation)) {
+        if (!cache->contains(pageIndex, zoom, rotation, dpr)) {
             renderPage(pageIndex);
             anyRendered = true;
         }
