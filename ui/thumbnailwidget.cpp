@@ -87,6 +87,14 @@ void ThumbnailWidget::initializeThumbnails(int pageCount)
         auto* item = new ThumbnailItem(i, m_thumbnailWidth, m_container);
         item->setPlaceholder(tr("Page %1").arg(i + 1));
 
+        // 切回已浏览过的文档时，manager 仍持有该页缓存，直接回填避免空白占位
+        if (m_manager && m_manager->hasThumbnail(i)) {
+            QImage cached = m_manager->getThumbnail(i);
+            if (!cached.isNull()) {
+                item->setThumbnail(cached);
+            }
+        }
+
         connect(item, &ThumbnailItem::clicked,
                 this, &ThumbnailWidget::onThumbnailClicked);
 

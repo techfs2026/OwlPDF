@@ -68,6 +68,10 @@ private:
 
     void setLastError(const QString& error) const;
 
+    // 扫描 PDF 原始字节判断是否含 JPEG2000(JPX) 图像（滤镜名 "JPXDecode"）。
+    // 仅含 JPX 的文档才需要串行化 fz_run_page，普通文档可全速并行（详见 .cpp 顶部说明）。
+    static bool documentUsesJpx(const QString& filePath);
+
 private:
     QString m_documentPath;
     fz_context* m_context;
@@ -78,6 +82,10 @@ private:
 
     ScanEnhancer m_scanEnhancer;
     bool m_paperEffectEnabled;
+
+    // 文档级标志：该文档是否含 JPX，决定 fz_run_page 是否需要进程级串行化。
+    // 打开文档时检测一次，之后只读、不再变化。
+    bool m_serializePageRun = false;
 };
 
 #endif // PERTHREADMUPDFRENDERER_H

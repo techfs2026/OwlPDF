@@ -1,7 +1,22 @@
 #include "perthreadmupdfrenderer.h"
 #include <QDebug>
 #include <QThread>
+#include <QMutex>
+#include <QFile>
 #include <cstring>
+
+namespace {
+    // 每个 PerThreadMuPDFRenderer 拥有独立的 fz_context / fz_document，常规对象互不共享，
+    // 但 MuPDF 仍有进程级共享状态。最危险的是 JPEG2000(JPX) 解码：它走 OpenJPEG，
+    // 而 MuPDF 的锁只覆盖 FZ_LOCK_ALLOC/FREETYPE/GLYPHCACHE（无 JPX 锁），
+    // OpenJPEG 回调用于分配内存的 fz_context 是进程级共享且未加锁的。
+    // 多个工作线程（TextCacheManager 的批量提取任务）同时解码含 JPX 图像的页面时会竞争，
+    // 某线程读到 NULL context，在 fz_calloc_no_throw 处触发 EXC_BAD_ACCESS 崩溃。
+    // 用进程级互斥量串行化 fz_run_page 即可规避该竞争。
+    // 为避免拖慢不含 JPX 的普通文档，这把锁只在 m_serializePageRun==true（打开时检测到 JPX）
+    // 的文档上启用；普通文档完全不加锁，保持原有的多线程并行。
+    QMutex g_mupdfPageRunMutex;
+}
 
 
 PerThreadMuPDFRenderer::PerThreadMuPDFRenderer()
@@ -26,6 +41,9 @@ PerThreadMuPDFRenderer::PerThreadMuPDFRenderer(const QString& documentPath)
 
     QByteArray pathUtf8 = m_documentPath.toUtf8();
 
+    // 仅含 JPX 的文档才需要串行化 fz_run_page；普通文档保持并行，不受性能影响。
+    m_serializePageRun = documentUsesJpx(m_documentPath);
+
     fz_try(m_context) {
         m_document = fz_open_document(m_context, pathUtf8.constData());
         m_pageCount = fz_count_pages(m_context, m_document);
@@ -37,6 +55,7 @@ PerThreadMuPDFRenderer::PerThreadMuPDFRenderer(const QString& documentPath)
 
         qInfo() << "PerThreadMuPDFRenderer: Successfully initialized with"
                 << m_pageCount << "pages"
+                << "JPX serialize:" << m_serializePageRun
                 << "Thread:" << QThread::currentThreadId();
     }
     fz_catch(m_context) {
@@ -115,6 +134,33 @@ void PerThreadMuPDFRenderer::destroyContext()
     m_context = nullptr;
 }
 
+bool PerThreadMuPDFRenderer::documentUsesJpx(const QString& filePath)
+{
+    QFile f(filePath);
+    if (!f.open(QIODevice::ReadOnly)) {
+        // 打不开就当作不含 JPX：真正的打开失败会在 fz_open_document 处报错。
+        return false;
+    }
+
+    static const QByteArray needle = QByteArrayLiteral("JPXDecode");
+    const int overlap = needle.size() - 1;     // 跨块边界需要保留的尾部字节数
+    const qint64 chunkSize = 1 << 20;          // 每次读 1MB，避免一次性载入大文件
+
+    QByteArray window;
+    while (!f.atEnd()) {
+        const QByteArray chunk = f.read(chunkSize);
+        if (chunk.isEmpty())
+            break;
+        window.append(chunk);
+        if (window.contains(needle))
+            return true;
+        // 只保留尾部 overlap 字节，既防内存膨胀，又不漏掉跨两块边界的匹配。
+        if (window.size() > overlap)
+            window = window.right(overlap);
+    }
+    return false;
+}
+
 bool PerThreadMuPDFRenderer::loadDocument(const QString& filePath, QString* errorMsg)
 {
     if (isDocumentLoaded()) {
@@ -138,6 +184,9 @@ bool PerThreadMuPDFRenderer::loadDocument(const QString& filePath, QString* erro
 
     QByteArray pathUtf8 = filePath.toUtf8();
 
+    // 仅含 JPX 的文档才需要串行化 fz_run_page；普通文档保持并行，不受性能影响。
+    m_serializePageRun = documentUsesJpx(filePath);
+
     fz_try(m_context) {
         m_document = fz_open_document(m_context, pathUtf8.constData());
         m_pageCount = fz_count_pages(m_context, m_document);
@@ -150,7 +199,8 @@ bool PerThreadMuPDFRenderer::loadDocument(const QString& filePath, QString* erro
         m_documentPath = filePath;
 
         qInfo() << "PerThreadMuPDFRenderer: Document loaded successfully -"
-                << m_pageCount << "pages";
+                << m_pageCount << "pages"
+                << "JPX serialize:" << m_serializePageRun;
     }
     fz_catch(m_context) {
         QString err = QString("Failed to open document: %1")
@@ -348,7 +398,21 @@ RenderResult PerThreadMuPDFRenderer::renderPage(int pageIndex, double zoom, int 
         fz_clear_pixmap_with_value(m_context, pixmap, 0xff);
 
         device = fz_new_draw_device(m_context, fz_identity, pixmap);
-        fz_run_page(m_context, page, device, matrix, nullptr);
+        // 仅当文档含 JPX 时才串行化页面运行，规避 OpenJPEG/JPX 的进程级竞争（详见文件顶部说明）；
+        // 普通文档 m_serializePageRun=false，保持并行、无锁开销。
+        // 注意：fz_run_page 通过 setjmp/longjmp 抛错，longjmp 会跳过 C++ 析构，因此不能用
+        // QMutexLocker，必须用 fz_always 保证解锁恰好一次。m_serializePageRun 打开后固定不变，
+        // lock/unlock 读到的值一致，配对始终正确。
+        if (m_serializePageRun) g_mupdfPageRunMutex.lock();
+        fz_try(m_context) {
+            fz_run_page(m_context, page, device, matrix, nullptr);
+        }
+        fz_always(m_context) {
+            if (m_serializePageRun) g_mupdfPageRunMutex.unlock();
+        }
+        fz_catch(m_context) {
+            fz_rethrow(m_context);
+        }
 
         // close 可能抛异常（flush 操作），留在 try 内；drop 移到 always。
         fz_close_device(m_context, device);
@@ -423,7 +487,19 @@ bool PerThreadMuPDFRenderer::extractText(int pageIndex, PageTextData& outData, Q
         opts.flags = 0;
 
         dev = fz_new_stext_device(m_context, stext, &opts);
-        fz_run_page(m_context, page, dev, fz_identity, nullptr);
+        // 文本提取不需要图像像素：跳过图像解码，既能加速，也能尽量避开 JPX 解码路径
+        fz_enable_device_hints(m_context, dev, FZ_DONT_DECODE_IMAGES);
+        // 仅当文档含 JPX 时才串行化（普通文档保持并行、无锁开销）。详见上方 renderPage 内的说明。
+        if (m_serializePageRun) g_mupdfPageRunMutex.lock();
+        fz_try(m_context) {
+            fz_run_page(m_context, page, dev, fz_identity, nullptr);
+        }
+        fz_always(m_context) {
+            if (m_serializePageRun) g_mupdfPageRunMutex.unlock();
+        }
+        fz_catch(m_context) {
+            fz_rethrow(m_context);
+        }
         fz_close_device(m_context, dev);   // close 留在 try
 
         for (fz_stext_block* block = stext->first_block; block; block = block->next) {
@@ -513,7 +589,17 @@ bool PerThreadMuPDFRenderer::isTextPDF(int samplePages)
             memset(&options, 0, sizeof(options));
 
             device = fz_new_stext_device(m_context, stext, &options);
-            fz_run_page(m_context, page, device, fz_identity, nullptr);
+            // 仅当文档含 JPX 时才串行化（普通文档保持并行、无锁开销）。详见上方 renderPage 内的说明。
+            if (m_serializePageRun) g_mupdfPageRunMutex.lock();
+            fz_try(m_context) {
+                fz_run_page(m_context, page, device, fz_identity, nullptr);
+            }
+            fz_always(m_context) {
+                if (m_serializePageRun) g_mupdfPageRunMutex.unlock();
+            }
+            fz_catch(m_context) {
+                fz_rethrow(m_context);
+            }
             fz_close_device(m_context, device);
 
             for (fz_stext_block* block = stext->first_block; block; block = block->next) {

@@ -246,6 +246,7 @@ public:
     explicit OutlineWidget(PDFContentHandler* contentHandler, QWidget* parent = nullptr);
     ~OutlineWidget();
 
+    void setContentHandler(PDFContentHandler* contentHandler);
     bool loadOutline();
     void clear();
     void highlightCurrentPage(int pageIndex);

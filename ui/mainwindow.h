@@ -15,6 +15,7 @@ class QComboBox;
 class QLabel;
 class QActionGroup;
 class PDFDocumentTab;
+class NavigationPanel;
 class OCRStatusIndicator;
 struct SessionTabState;
 
@@ -132,6 +133,7 @@ private:
 private:
     QTabWidget* m_tabWidget;
     QDockWidget* m_navigationDock;
+    NavigationPanel* m_navigationPanel;   // 公共侧边栏（单例），常驻于 dock
     QToolBar* m_toolBar;
     QSpinBox* m_pageSpinBox;
     QComboBox* m_zoomComboBox;

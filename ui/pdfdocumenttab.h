@@ -7,7 +7,6 @@
 #include "datastructure.h"
 #include "iocrengine.h"
 #include "ocrmanager.h"
-#include "navigationpanel.h"
 
 class PDFDocumentSession;
 class PDFPageWidget;
@@ -71,7 +70,8 @@ public:
     bool isTextPDF() const;
 
 
-    NavigationPanel* navigationPanel() const { return m_navigationPanel; }
+    // 文档会话：供 MainWindow 把公共侧边栏挂载到当前文档
+    PDFDocumentSession* session() const { return m_session; }
 
 
     SearchWidget* searchWidget() const { return m_searchWidget; }
@@ -153,7 +153,6 @@ private:
 private:
     PDFDocumentSession* m_session;
     PDFPageWidget* m_pageWidget;
-    NavigationPanel* m_navigationPanel;
     SearchWidget* m_searchWidget;
 
     QScrollArea* m_scrollArea;

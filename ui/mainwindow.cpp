@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "themedicon.h"
 #include "pdfdocumenttab.h"
+#include "navigationpanel.h"
 #include "dictionaryconnector.h"
 #include "ocrstatusindicator.h"
 #include "ocrmanager.h"
@@ -39,6 +40,7 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
     , m_tabWidget(nullptr)
     , m_navigationDock(nullptr)
+    , m_navigationPanel(nullptr)
     , m_toolBar(nullptr)
     , m_pageSpinBox(nullptr)
     , m_zoomComboBox(nullptr)
@@ -79,6 +81,11 @@ MainWindow::MainWindow(QWidget* parent)
     m_navigationDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     m_navigationDock->setFeatures(QDockWidget::NoDockWidgetFeatures);
     addDockWidget(Qt::LeftDockWidgetArea, m_navigationDock);
+
+    // 公共侧边栏：单例常驻于 dock，切换文档时通过 attachSession 重绑定数据
+    m_navigationPanel = new NavigationPanel(this);
+    m_navigationPanel->setObjectName("navigationPanel");
+    m_navigationDock->setWidget(m_navigationPanel);
     m_navigationDock->setVisible(false);
 
     m_welcomeLabel = new QLabel(this);
@@ -185,8 +192,10 @@ void MainWindow::closeTab(int index)
 
     disconnectTabSignals(tab);
 
-    if (tab == currentTab() && m_navigationDock) {
-        m_navigationDock->setWidget(nullptr);
+    // 关闭的是当前文档：先卸载公共侧边栏，避免悬挂到即将销毁的 session
+    // （removeTab 后若仍有其它 tab，会触发 onTabChanged 重新挂载）
+    if (tab == currentTab() && m_navigationPanel) {
+        m_navigationPanel->detachSession();
         m_navigationDock->setVisible(false);
     }
 
@@ -293,13 +302,12 @@ void MainWindow::onTabChanged(int index)
     PDFDocumentTab* tab = currentTab();
 
     if (tab && tab->isDocumentLoaded()) {
-        if (tab->navigationPanel()) {
-            m_navigationDock->setWidget(tab->navigationPanel());
+        // 公共侧边栏重绑定到当前文档；显示/折叠遵循全局意图，不随切换重置
+        m_navigationPanel->attachSession(tab->session());
 
-            bool shouldShow = m_showNavigationAction->isChecked();
-            m_navigationDock->setVisible(shouldShow);
-            m_navPanelAction->setChecked(shouldShow);
-        }
+        bool shouldShow = m_showNavigationAction->isChecked();
+        m_navigationDock->setVisible(shouldShow);
+        m_navPanelAction->setChecked(shouldShow);
 
         bool canEnhance = !tab->isTextPDF();
         m_paperEffectAction->setEnabled(canEnhance);
@@ -310,9 +318,9 @@ void MainWindow::onTabChanged(int index)
             m_paperEffectAction->setToolTip(tr("Paper texture enhancement"));
         }
     } else {
-        m_navigationDock->setWidget(nullptr);
+        // 无文档：卸载侧边栏数据并隐藏（保留用户的显隐意图，不改 m_showNavigationAction）
+        m_navigationPanel->detachSession();
         m_navigationDock->setVisible(false);
-        m_showNavigationAction->setChecked(false);
         m_navPanelAction->setChecked(false);
     }
 
@@ -484,10 +492,6 @@ void MainWindow::toggleNavigationPanel()
 
     bool visible = !m_navigationDock->isVisible();
 
-    if (visible && tab->navigationPanel()) {
-        m_navigationDock->setWidget(tab->navigationPanel());
-    }
-
     m_navigationDock->setVisible(visible);
     m_navPanelAction->setChecked(visible);
     m_showNavigationAction->setChecked(visible);
@@ -637,8 +641,9 @@ void MainWindow::onCurrentTabDocumentLoaded(const QString& filePath, int pageCou
         updateWindowTitle();
         updateUIState();
 
-        if (tab->isDocumentLoaded() && tab->navigationPanel()) {
-            m_navigationDock->setWidget(tab->navigationPanel());
+        if (tab->isDocumentLoaded()) {
+            // 文档首次加载完成：挂载公共侧边栏并自动展开
+            m_navigationPanel->attachSession(tab->session());
 
             m_navigationDock->setVisible(true);
             m_showNavigationAction->setChecked(true);

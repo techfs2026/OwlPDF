@@ -8,6 +8,7 @@
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QScrollBar>
 #include <QDesktopServices>
 #include <QUrl>
 #include <QMessageBox>
@@ -103,9 +104,9 @@ private:
     IconTabBar* m_iconBar;
 };
 
-NavigationPanel::NavigationPanel(PDFDocumentSession* session, QWidget* parent)
+NavigationPanel::NavigationPanel(QWidget* parent)
     : QWidget(parent)
-    , m_session(session)
+    , m_session(nullptr)
     , m_tabWidget(nullptr)
     , m_outlineWidget(nullptr)
     , m_thumbnailWidget(nullptr)
@@ -114,11 +115,7 @@ NavigationPanel::NavigationPanel(PDFDocumentSession* session, QWidget* parent)
     , m_thumbnailStatusLabel(nullptr)
     , m_thumbnailProgressBar(nullptr)
 {
-    if (!m_session) {
-        qCritical() << "NavigationPanel: session is null!";
-        return;
-    }
-
+    // 公共面板：UI 与子控件常驻，数据源由 attachSession 动态绑定
     setupUI();
     setupConnections();
 }
@@ -128,10 +125,200 @@ NavigationPanel::~NavigationPanel()
     clear();
 }
 
+void NavigationPanel::attachSession(PDFDocumentSession* session)
+{
+    if (m_session == session) {
+        return;
+    }
+
+    // 切走旧文档：保存其视图状态、断开连接、清空 UI
+    detachSession();
+
+    m_session = session;
+    if (!m_session) {
+        return;
+    }
+
+    // session 销毁时清除其残留的视图状态记录（防止指针复用读到旧值）。
+    // 注意：Qt::UniqueConnection 不支持 lambda，这里用 m_trackedSessions 自行去重，
+    // 该连接随 session 生命周期存在，不放入 m_sessionConns（detach 时不断开）。
+    if (!m_trackedSessions.contains(m_session)) {
+        m_trackedSessions.insert(m_session);
+        connect(m_session, &QObject::destroyed, this, [this](QObject* obj) {
+            PDFDocumentSession* s = static_cast<PDFDocumentSession*>(obj);
+            m_viewStates.remove(s);
+            m_trackedSessions.remove(s);
+        });
+    }
+
+    PDFContentHandler* ch = m_session->contentHandler();
+
+    // 重绑定子控件数据源
+    m_outlineWidget->setContentHandler(ch);
+    if (ch && ch->thumbnailManager()) {
+        m_thumbnailWidget->setThumbnailManager(ch->thumbnailManager());
+    }
+
+    // 建立与当前 session 的连接（detach 时统一断开）
+    m_sessionConns << connect(this, &NavigationPanel::pageJumpRequested,
+                              this, [this](int pageIndex) {
+                                  if (m_session) m_session->goToPage(pageIndex);
+                              });
+
+    m_sessionConns << connect(m_session, &PDFDocumentSession::currentPageChanged,
+                              this, &NavigationPanel::updateCurrentPage);
+
+    m_sessionConns << connect(m_session, &PDFDocumentSession::outlineLoaded,
+                              this, [this](bool success, int itemCount) {
+                                  if (success && m_outlineWidget) {
+                                      m_outlineWidget->loadOutline();
+                                      qInfo() << "NavigationPanel: Outline loaded with" << itemCount << "items";
+                                  }
+                              });
+
+    if (ch) {
+        m_sessionConns << connect(ch, &PDFContentHandler::outlineModified,
+                                  this, &NavigationPanel::outlineModified);
+
+        m_sessionConns << connect(ch, &PDFContentHandler::thumbnailsInitialized,
+                                  this, [this](int pageCount) {
+                                      qInfo() << "NavigationPanel: Initializing" << pageCount << "thumbnail placeholders";
+                                      m_thumbnailWidget->initializeThumbnails(pageCount);
+                                  });
+    }
+
+    m_sessionConns << connect(m_session, &PDFDocumentSession::thumbnailLoaded,
+                              this, [this](int pageIndex, const QImage& thumbnail) {
+                                  m_thumbnailWidget->onThumbnailLoaded(pageIndex, thumbnail);
+                              });
+
+    OutlineEditor* editor = m_session->outlineEditor();
+    if (editor) {
+        m_sessionConns << connect(editor, &OutlineEditor::saveCompleted,
+                                  this, [this](bool success, const QString& errorMsg) {
+                                      if (success) {
+                                          qInfo() << "NavigationPanel: Outline saved successfully";
+                                      } else {
+                                          qWarning() << "NavigationPanel: Failed to save outline:" << errorMsg;
+                                      }
+                                  });
+    }
+
+    if (ch && ch->thumbnailManager()) {
+        ThumbnailManagerV2* manager = ch->thumbnailManager();
+
+        m_sessionConns << connect(manager, &ThumbnailManagerV2::loadingStarted,
+                                  this, [this](int totalPages, const QString& strategy) {
+                                      qInfo() << "Thumbnail loading started:" << strategy << "for" << totalPages << "pages";
+                                      m_thumbnailStatusLabel->setText(tr("Loading started..."));
+                                  });
+
+        m_sessionConns << connect(manager, &ThumbnailManagerV2::loadingStatusChanged,
+                                  this, [this](const QString& status) {
+                                      m_thumbnailStatusLabel->setText(status);
+                                  });
+
+        m_sessionConns << connect(manager, &ThumbnailManagerV2::batchCompleted,
+                                  this, [this](int current, int total) {
+                                      m_thumbnailProgressBar->setVisible(true);
+                                      m_thumbnailProgressBar->setMaximum(total);
+                                      m_thumbnailProgressBar->setValue(current);
+                                      m_thumbnailProgressBar->setFormat(QString("%1/%2").arg(current).arg(total));
+                                  });
+
+        m_sessionConns << connect(manager, &ThumbnailManagerV2::allCompleted,
+                                  this, [this]() {
+                                      m_thumbnailStatusLabel->setText(tr("Loading complete!"));
+                                      m_thumbnailProgressBar->setVisible(false);
+
+                                      QTimer::singleShot(3000, this, [this]() {
+                                          if (m_thumbnailStatusLabel) {
+                                              m_thumbnailStatusLabel->setText(tr("Loaded successfully!"));
+                                          }
+                                      });
+                                  });
+
+        m_sessionConns << connect(manager, &ThumbnailManagerV2::loadProgress,
+                                  this, [this](int current, int total) {
+                                      if (total > 0) {
+                                          int percentage = current * 100 / total;
+                                          m_thumbnailStatusLabel->setText(
+                                              tr("Loading: %1/%2 (%3%)")
+                                                  .arg(current)
+                                                  .arg(total)
+                                                  .arg(percentage)
+                                              );
+                                      }
+                                  });
+    }
+
+    // 文档已加载则立即重建数据并恢复视图状态
+    if (m_session->isDocumentLoaded()) {
+        loadDocument(m_session->pageCount());
+        updateCurrentPage(m_session->state()->currentPage());
+        restoreViewState();
+    }
+}
+
+void NavigationPanel::detachSession()
+{
+    if (m_session) {
+        saveViewState();
+    }
+
+    for (const QMetaObject::Connection& conn : m_sessionConns) {
+        disconnect(conn);
+    }
+    m_sessionConns.clear();
+
+    clear();
+    m_outlineWidget->setContentHandler(nullptr);
+    m_thumbnailWidget->setThumbnailManager(nullptr);
+
+    m_session = nullptr;
+}
+
+void NavigationPanel::saveViewState()
+{
+    if (!m_session) {
+        return;
+    }
+    NavViewState st;
+    st.subTabIndex = m_tabWidget->currentIndex();
+    if (m_thumbnailWidget && m_thumbnailWidget->verticalScrollBar()) {
+        st.thumbScroll = m_thumbnailWidget->verticalScrollBar()->value();
+    }
+    m_viewStates[m_session] = st;
+}
+
+void NavigationPanel::restoreViewState()
+{
+    if (!m_session) {
+        return;
+    }
+
+    NavViewState st = m_viewStates.value(m_session);
+
+    int subTab = st.subTabIndex;
+    if (subTab < 0) {
+        // 无记忆：有目录默认显示目录页(0)，否则缩略图页(1)
+        bool hasOutline = m_session->contentHandler() &&
+                          m_session->contentHandler()->hasOutline();
+        subTab = hasOutline ? 0 : 1;
+    }
+    m_tabWidget->setCurrentIndex(subTab);
+
+    // 缩略图滚动位置需等占位重建/布局完成后再恢复
+    const int thumbScroll = st.thumbScroll;
+    QTimer::singleShot(150, this, [this, thumbScroll]() {
+        if (m_thumbnailWidget && m_thumbnailWidget->verticalScrollBar()) {
+            m_thumbnailWidget->verticalScrollBar()->setValue(thumbScroll);
+        }
+    });
+}
+
 void NavigationPanel::loadDocument(int pageCount)
 {
-    clear();
-
     if (!m_session || pageCount <= 0) {
         return;
     }
@@ -145,13 +332,8 @@ void NavigationPanel::loadDocument(int pageCount)
         qInfo() << "NavigationPanel: No outline available";
     }
 
+    // emit thumbnailsInitialized → initializeThumbnails（含已缓存缩略图回填）
     m_session->loadThumbnails();
-
-    if (hasOutline) {
-        m_tabWidget->setCurrentIndex(0);
-    } else {
-        m_tabWidget->setCurrentIndex(1);
-    }
 }
 
 void NavigationPanel::clear()
@@ -171,7 +353,9 @@ void NavigationPanel::clear()
 }
 
 void NavigationPanel::onTabChanged(int index) {
-    updateCurrentPage(m_session->state()->currentPage());
+    if (m_session) {
+        updateCurrentPage(m_session->state()->currentPage());
+    }
 
     if (index == 1 && m_thumbnailWidget) {
         QTimer::singleShot(50, this, [this]() {
@@ -245,7 +429,8 @@ void NavigationPanel::setupUI()
 
     outlineLayout->addWidget(outlineToolbar);
 
-    m_outlineWidget = new OutlineWidget(m_session->contentHandler(), this);
+    // 数据源延迟绑定（attachSession 时 setContentHandler）
+    m_outlineWidget = new OutlineWidget(nullptr, this);
     m_outlineWidget->setObjectName("outlineWidget");
     m_outlineWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
@@ -312,6 +497,10 @@ void NavigationPanel::setupUI()
 
 void NavigationPanel::setupConnections()
 {
+    // 仅建立与常驻子控件相关的永久连接；
+    // 与具体 session/contentHandler/manager 相关的连接在 attachSession 中建立、
+    // detachSession 中断开。下方 lambda 内对 m_session 运行时判空即可。
+
     connect(m_outlineWidget, &OutlineWidget::pageJumpRequested,
             this, &NavigationPanel::pageJumpRequested);
 
@@ -330,22 +519,11 @@ void NavigationPanel::setupConnections()
                 emit externalLinkRequested(uri);
             });
 
-    if (m_session->contentHandler()) {
-        connect(m_session->contentHandler(), &PDFContentHandler::outlineModified,
-                this, &NavigationPanel::outlineModified);
-    }
-
     connect(m_expandAllBtn, &QToolButton::clicked,
             m_outlineWidget, &OutlineWidget::expandAll);
     connect(m_collapseAllBtn, &QToolButton::clicked,
             m_outlineWidget, &OutlineWidget::collapseAll);
 
-    if (m_session && m_session->contentHandler() &&
-        m_session->contentHandler()->thumbnailManager()) {
-        m_thumbnailWidget->setThumbnailManager(
-            m_session->contentHandler()->thumbnailManager()
-            );
-    }
     connect(m_thumbnailWidget, &ThumbnailWidget::pageJumpRequested,
             this, &NavigationPanel::pageJumpRequested);
 
@@ -376,87 +554,6 @@ void NavigationPanel::setupConnections()
                     m_session->contentHandler()->startInitialThumbnailLoad(initialVisible);
                 }
             });
-
-    if (m_session) {
-        connect(m_session, &PDFDocumentSession::outlineLoaded,
-                this, [this](bool success, int itemCount) {
-                    if (success && m_outlineWidget) {
-                        m_outlineWidget->loadOutline();
-                        qInfo() << "NavigationPanel: Outline loaded with" << itemCount << "items";
-                    }
-                });
-
-        connect(m_session->contentHandler(), &PDFContentHandler::thumbnailsInitialized,
-                this, [this](int pageCount) {
-                    qInfo() << "NavigationPanel: Initializing" << pageCount << "thumbnail placeholders";
-                    m_thumbnailWidget->initializeThumbnails(pageCount);
-                });
-
-        connect(m_session, &PDFDocumentSession::thumbnailLoaded,
-                this, [this](int pageIndex, const QImage& thumbnail) {
-                    m_thumbnailWidget->onThumbnailLoaded(pageIndex, thumbnail);
-                });
-
-        OutlineEditor* editor = m_session->outlineEditor();
-        if (editor) {
-            connect(editor, &OutlineEditor::saveCompleted,
-                    this, [this](bool success, const QString& errorMsg) {
-                        if (success) {
-                            qInfo() << "NavigationPanel: Outline saved successfully";
-                        } else {
-                            qWarning() << "NavigationPanel: Failed to save outline:" << errorMsg;
-                        }
-                    });
-        }
-
-        if (m_session->contentHandler() && m_session->contentHandler()->thumbnailManager()) {
-            ThumbnailManagerV2* manager = m_session->contentHandler()->thumbnailManager();
-
-            connect(manager, &ThumbnailManagerV2::loadingStarted,
-                    this, [this](int totalPages, const QString& strategy) {
-                        qInfo() << "Thumbnail loading started:" << strategy << "for" << totalPages << "pages";
-                        m_thumbnailStatusLabel->setText(tr("Loading started..."));
-                    });
-
-            connect(manager, &ThumbnailManagerV2::loadingStatusChanged,
-                    this, [this](const QString& status) {
-                        m_thumbnailStatusLabel->setText(status);
-                    });
-
-            connect(manager, &ThumbnailManagerV2::batchCompleted,
-                    this, [this](int current, int total) {
-                        m_thumbnailProgressBar->setVisible(true);
-                        m_thumbnailProgressBar->setMaximum(total);
-                        m_thumbnailProgressBar->setValue(current);
-                        m_thumbnailProgressBar->setFormat(QString("%1/%2").arg(current).arg(total));
-                    });
-
-            connect(manager, &ThumbnailManagerV2::allCompleted,
-                    this, [this]() {
-                        m_thumbnailStatusLabel->setText(tr("Loading complete!"));
-                        m_thumbnailProgressBar->setVisible(false);
-
-                        QTimer::singleShot(3000, this, [this]() {
-                            if (m_thumbnailStatusLabel) {
-                                m_thumbnailStatusLabel->setText(tr("Loaded successfully!"));
-                            }
-                        });
-                    });
-
-            connect(manager, &ThumbnailManagerV2::loadProgress,
-                    this, [this](int current, int total) {
-                        if (total > 0) {
-                            int percentage = current * 100 / total;
-                            m_thumbnailStatusLabel->setText(
-                                tr("Loading: %1/%2 (%3%)")
-                                    .arg(current)
-                                    .arg(total)
-                                    .arg(percentage)
-                                );
-                        }
-                    });
-        }
-    }
 }
 
 void NavigationPanel::resizeEvent(QResizeEvent* event)

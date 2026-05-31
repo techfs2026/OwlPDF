@@ -21,8 +21,8 @@
 
 OutlineWidget::OutlineWidget(PDFContentHandler* contentHandler, QWidget* parent)
     : QTreeWidget(parent)
-    , m_contentHandler(contentHandler)
-    , m_outlineEditor(contentHandler->outlineEditor())
+    , m_contentHandler(nullptr)
+    , m_outlineEditor(nullptr)
     , m_currentHighlight(nullptr)
     , m_allExpanded(false)
     , m_editEnabled(true)
@@ -40,12 +40,38 @@ OutlineWidget::OutlineWidget(PDFContentHandler* contentHandler, QWidget* parent)
 
     connect(this, &QTreeWidget::itemClicked,
             this, &OutlineWidget::onItemClicked);
-    connect(m_contentHandler, &PDFContentHandler::outlineModified,
-            this, &OutlineWidget::refreshTree);
+
+    // contentHandler 可为空：面板单例化后由 setContentHandler 在切换文档时重新绑定
+    setContentHandler(contentHandler);
 }
 
 OutlineWidget::~OutlineWidget()
 {
+}
+
+void OutlineWidget::setContentHandler(PDFContentHandler* contentHandler)
+{
+    if (m_contentHandler == contentHandler) {
+        return;
+    }
+
+    // 断开旧 contentHandler 的所有 →this 连接（含 outlineModified）
+    if (m_contentHandler) {
+        disconnect(m_contentHandler, nullptr, this, nullptr);
+    }
+
+    m_contentHandler = contentHandler;
+    m_outlineEditor = contentHandler ? contentHandler->outlineEditor() : nullptr;
+
+    // 清空旧文档的目录树
+    QTreeWidget::clear();
+    m_currentHighlight = nullptr;
+    m_currentPageIndex = 0;
+
+    if (m_contentHandler) {
+        connect(m_contentHandler, &PDFContentHandler::outlineModified,
+                this, &OutlineWidget::refreshTree);
+    }
 }
 
 void OutlineWidget::setupUI()

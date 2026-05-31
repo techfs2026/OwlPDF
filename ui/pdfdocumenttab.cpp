@@ -2,7 +2,6 @@
 #include "pdfdocumentsession.h"
 #include "pdfdocumentstate.h"
 #include "pdfpagewidget.h"
-#include "navigationpanel.h"
 #include "searchwidget.h"
 #include "ocrfloatingwidget.h"
 #include "perthreadmupdfrenderer.h"
@@ -33,7 +32,6 @@ PDFDocumentTab::PDFDocumentTab(QWidget* parent)
     : QWidget(parent)
     , m_session(nullptr)
     , m_pageWidget(nullptr)
-    , m_navigationPanel(nullptr)
     , m_searchWidget(nullptr)
     , m_splitter(nullptr)
     , m_scrollArea(nullptr)
@@ -59,11 +57,6 @@ void PDFDocumentTab::setupUI()
 
 
     m_session = new PDFDocumentSession(this);
-
-
-    m_navigationPanel = new NavigationPanel(m_session, this);
-    m_navigationPanel->setVisible(false);
-    m_navigationPanel->setObjectName("navigationPanel");
 
 
     m_scrollArea = new QScrollArea(this);
@@ -220,11 +213,6 @@ void PDFDocumentTab::setupConnections()
             this, [this](const SearchResult& result) {
 
                 m_pageWidget->update();
-            });
-
-    connect(m_navigationPanel, &NavigationPanel::pageJumpRequested,
-            this, [this](int pageIndex) {
-                m_session->goToPage(pageIndex);
             });
 
     connect(m_session, &PDFDocumentSession::paperEffectChanged,
@@ -499,9 +487,7 @@ void PDFDocumentTab::findPrevious()
 
 void PDFDocumentTab::onDocumentLoaded(const QString& filePath, int pageCount)
 {
-    if (m_navigationPanel) {
-        m_navigationPanel->loadDocument(pageCount);
-    }
+    // 侧边栏已改为公共单例，由 MainWindow 在 documentLoaded 后挂载/刷新
 
     if (m_session->state()->isTextPDF()) {
         m_session->textCache()->startPreload();
@@ -524,11 +510,7 @@ void PDFDocumentTab::onDocumentLoaded(const QString& filePath, int pageCount)
 
 void PDFDocumentTab::onPageChanged(int pageIndex)
 {
-
-    if (m_navigationPanel) {
-        m_navigationPanel->updateCurrentPage(pageIndex);
-    }
-
+    // 侧边栏当前页高亮由公共面板监听 session::currentPageChanged 完成
 
     renderAndUpdatePages();
 
@@ -1022,15 +1004,15 @@ void PDFDocumentTab::onOCRCompleted(const QVector<TokenWithPosition>& tokens, co
 
     qDebug() << "onOCRCompleted TokenWithPosition size:" << tokens.size();
 
+    // token.estimatedRect 是 OCR 输入图（zoom*dpr 物理像素）上的坐标。
+    // lastHoverPos / regionRect 都是控件逻辑像素，Retina 下需乘 dpr 才能对齐。
     QPoint posInRegion = lastHoverPos - regionRect.topLeft();
-    double scale = m_session->state()->currentZoom();
-    QPoint posInRegionScaled(posInRegion.x()/scale, posInRegion.y()/scale);
-    qDebug() << "posInRegion:" << posInRegion
-             << "scale:" << scale
-             << "posInRegionScaled:" << posInRegionScaled;
+    qreal dpr = m_pageWidget ? m_pageWidget->devicePixelRatioF() : devicePixelRatioF();
+    QPoint posInRegionPx(qRound(posInRegion.x() * dpr),
+                         qRound(posInRegion.y() * dpr));
 
     TokenWithPosition closestToken =
-        ChineseTokenizer::instance().findClosestToken(tokens, posInRegion);
+        ChineseTokenizer::instance().findClosestToken(tokens, posInRegionPx);
 
     QString targetWord = closestToken.isValid() ? closestToken.word : QString();
     if (closestToken.isValid()) {
