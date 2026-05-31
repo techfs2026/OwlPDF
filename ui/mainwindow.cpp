@@ -45,8 +45,6 @@ MainWindow::MainWindow(QWidget* parent)
     , m_pageSpinBox(nullptr)
     , m_zoomComboBox(nullptr)
     , m_statusLabel(nullptr)
-    , m_pageLabel(nullptr)
-    , m_zoomLabel(nullptr)
     , m_ocrInitialized(false)
 {
     setWindowTitle(tr("MuQt"));
@@ -1012,18 +1010,6 @@ void MainWindow::createStatusBar()
     m_statusLabel->setObjectName("statusLabel");
     statusBar()->addWidget(m_statusLabel, 1);
 
-    m_pageLabel = new QLabel();
-    m_pageLabel->setObjectName("pageLabel");
-    m_pageLabel->setMinimumWidth(120);
-    m_pageLabel->setAlignment(Qt::AlignCenter);
-    statusBar()->addPermanentWidget(m_pageLabel);
-
-    m_zoomLabel = new QLabel();
-    m_zoomLabel->setObjectName("zoomLabel");
-    m_zoomLabel->setMinimumWidth(100);
-    m_zoomLabel->setAlignment(Qt::AlignCenter);
-    statusBar()->addPermanentWidget(m_zoomLabel);
-
     m_ocrIndicator = new OCRStatusIndicator(this);
     statusBar()->addPermanentWidget(m_ocrIndicator);
     m_ocrIndicator->setState(OCREngineState::Uninitialized);
@@ -1246,29 +1232,9 @@ void MainWindow::updateStatusBar()
     PDFDocumentTab* tab = currentTab();
 
     if (!tab || !tab->isDocumentLoaded()) {
-        m_pageLabel->setText("");
-        m_zoomLabel->setText("");
         m_statusLabel->setText(tr("Please open a PDF file"));
         return;
     }
-
-    int currentPage = tab->currentPage() + 1;
-    int pageCount = tab->pageCount();
-    m_pageLabel->setText(tr("Page %1 / %2").arg(currentPage).arg(pageCount));
-
-    double zoom = tab->zoom();
-    QString zoomMode;
-    switch (tab->zoomMode()) {
-    case ZoomMode::FitPage:
-        zoomMode = tr(" (Fit Page)");
-        break;
-    case ZoomMode::FitWidth:
-        zoomMode = tr(" (Fit Width)");
-        break;
-    default:
-        break;
-    }
-    m_zoomLabel->setText(tr("Zoom %1%%2").arg(qRound(zoom * 100)).arg(zoomMode));
 
     if (tab->hasTextSelection()) {
         m_statusLabel->setText(tr("Text selected"));

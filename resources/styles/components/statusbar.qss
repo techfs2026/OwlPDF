@@ -25,28 +25,6 @@ QStatusBar #statusLabel {
     font-weight: 500;
 }
 
-/* 页码标签 */
-QStatusBar #pageLabel {
-    background-color: @hover-background;
-    border: 1px solid @border-light;
-    border-radius: 4px;
-    padding: 4px 12px;
-    color: @text-primary;
-    font-weight: 600;
-    margin: 0px 4px;
-}
-
-/* 缩放标签 */
-QStatusBar #zoomLabel {
-    background-color: @hover-background;
-    border: 1px solid @border-light;
-    border-radius: 4px;
-    padding: 4px 12px;
-    color: @text-primary;
-    font-weight: 600;
-    margin: 0px 4px;
-}
-
 /* 文件大小标签 */
 QStatusBar #fileSizeLabel {
     color: @text-secondary;

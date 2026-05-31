@@ -142,8 +142,6 @@ private:
     QComboBox* m_zoomComboBox;
 
     QLabel* m_statusLabel;
-    QLabel* m_pageLabel;
-    QLabel* m_zoomLabel;
 
     QAction* m_openAction;
     QAction* m_closeAction;

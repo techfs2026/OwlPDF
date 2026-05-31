@@ -107,6 +107,10 @@ file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
 list(FILTER PROJECT_SOURCES EXCLUDE REGEX "${CMAKE_CURRENT_BINARY_DIR}")
 list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*_autogen.*")
 list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*/CMakeFiles/.*")
+# 源码树内任何构建目录（build/、build-release/ 等）及 Qt 生成文件都不算源文件，
+# 否则同时存在多个构建目录时，旧目录里的 qrc_*.cpp 会被重复编入导致 duplicate symbol
+list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*/build[^/]*/.*")
+list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*/\\.qt/.*")
 
 # 平台相关源文件过滤：
 if(APPLE)
@@ -227,7 +231,9 @@ if(WIN32)
         onnxruntime.lib
     )
 elseif(APPLE)
-    find_package(OpenCV REQUIRED)
+    # 仅链接实际用到的模块（core + imgproc）。链全量 ${OpenCV_LIBS} 会把 viz→VTK、
+    # dnn、gapi 等一并拖入，打包时 Frameworks 暴涨到 245MB+ 且引入 57 个 VTK 库。
+    find_package(OpenCV REQUIRED COMPONENTS core imgproc)
 
     # mupdf 编译时依赖的系统库
     find_package(ZLIB REQUIRED)

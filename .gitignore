@@ -4,6 +4,7 @@
 
 # ── 构建 & 部署产物 ──────────────────────────────────────────
 build/
+build-release/
 deploy/
 cmake*/                  # Qt Creator 生成的 cmake-build-* 等目录
 
