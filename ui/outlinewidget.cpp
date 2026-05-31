@@ -356,10 +356,7 @@ void OutlineWidget::onAddChildOutline()
         return;
     }
 
-    int maxPage = 100;
-    if (m_contentHandler && m_contentHandler->outlineRoot()) {
-        maxPage = 100;
-    }
+    int maxPage = m_contentHandler ? m_contentHandler->pageCount() : 1;
 
     OutlineDialog dialog(OutlineDialog::AddMode, maxPage, this);
     dialog.setPageIndex(m_currentPageIndex);
@@ -381,12 +378,10 @@ void OutlineWidget::onAddChildOutline()
         OutlineItem* newItem = m_outlineEditor->addOutline(
             parentItem, title, pageIndex);
 
+        // 成功后不再弹窗打扰：未保存状态由 tab 标题标记与侧栏保存按钮表达
         if (newItem) {
             clearSelection();
             setCurrentItem(nullptr);
-
-            QMessageBox::information(this, tr("Success"),
-                                     tr("Outline item added!\nRemember to save to PDF."));
         } else {
             QMessageBox::warning(this, tr("Failed"),
                                  tr("Failed to add outline item!"));
@@ -413,7 +408,7 @@ void OutlineWidget::onAddSiblingOutline()
         return;
     }
 
-    int maxPage = 100;
+    int maxPage = m_contentHandler ? m_contentHandler->pageCount() : 1;
 
     OutlineDialog dialog(OutlineDialog::AddMode, maxPage, this);
     dialog.setPageIndex(m_currentPageIndex);
@@ -430,13 +425,19 @@ void OutlineWidget::onAddSiblingOutline()
             parentItem = m_contentHandler->outlineRoot();
         }
 
-        OutlineItem* newItem = m_outlineEditor->addOutline(
-            parentItem, title, pageIndex);
+        // 在选中项之后插入，作为它的同级兄弟
+        int insertIndex = -1;
+        if (parentItem && currentOutlineItem) {
+            insertIndex = parentItem->indexOf(currentOutlineItem);
+            if (insertIndex >= 0) {
+                insertIndex += 1;
+            }
+        }
 
-        if (newItem) {
-            QMessageBox::information(this, tr("Success"),
-                                     tr("Outline item added!\nRemember to save to PDF."));
-        } else {
+        OutlineItem* newItem = m_outlineEditor->addOutline(
+            parentItem, title, pageIndex, insertIndex);
+
+        if (!newItem) {
             QMessageBox::warning(this, tr("Failed"),
                                  tr("Failed to add outline item!"));
         }
@@ -465,7 +466,7 @@ void OutlineWidget::onEditOutline()
         return;
     }
 
-    int maxPage = 100;
+    int maxPage = m_contentHandler ? m_contentHandler->pageCount() : 1;
 
     OutlineDialog dialog(OutlineDialog::EditMode, maxPage, this);
     dialog.setTitle(outlineItem->title());
@@ -486,10 +487,6 @@ void OutlineWidget::onEditOutline()
             m_outlineEditor->updatePageIndex(outlineItem, newPageIndex);
         }
 
-        if (titleChanged || pageChanged) {
-            QMessageBox::information(this, tr("Success"),
-                                     tr("Outline item modified!\nRemember to save to PDF."));
-        }
     }
 }
 
@@ -529,10 +526,7 @@ void OutlineWidget::onDeleteOutline()
         QMessageBox::Yes | QMessageBox::No);
 
     if (reply == QMessageBox::Yes) {
-        if (m_outlineEditor->deleteOutline(outlineItem)) {
-            QMessageBox::information(this, tr("Success"),
-                                     tr("Outline item deleted!\nRemember to save to PDF."));
-        } else {
+        if (!m_outlineEditor->deleteOutline(outlineItem)) {
             QMessageBox::warning(this, tr("Failed"),
                                  tr("Failed to delete outline item!"));
         }

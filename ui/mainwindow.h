@@ -112,6 +112,9 @@ private:
     void closeTab(int index);
     void updateTabTitle(int index);
 
+    // 关闭/退出前处理未保存的目录修改：返回 true 表示可继续，false 表示用户取消
+    bool maybeSaveTab(PDFDocumentTab* tab);
+
     void initOCREngine();
     void shutdownOCREngine();
     QString getEngineStateText(OCREngineState state) const;

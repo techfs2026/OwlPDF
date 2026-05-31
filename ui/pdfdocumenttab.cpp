@@ -33,7 +33,6 @@ PDFDocumentTab::PDFDocumentTab(QWidget* parent)
     , m_session(nullptr)
     , m_pageWidget(nullptr)
     , m_searchWidget(nullptr)
-    , m_splitter(nullptr)
     , m_scrollArea(nullptr)
     , m_textPreloadProgress(nullptr)
     , m_lastClickTime(0)
@@ -218,6 +217,9 @@ void PDFDocumentTab::setupConnections()
     connect(m_session, &PDFDocumentSession::paperEffectChanged,
             this, &PDFDocumentTab::paperEffectChanged);
 
+    connect(m_session, &PDFDocumentSession::unsavedOutlineChangesChanged,
+            this, &PDFDocumentTab::unsavedChangesChanged);
+
 
 
     connect(m_pageWidget, &PDFPageWidget::ocrHoverTriggered,
@@ -257,6 +259,16 @@ bool PDFDocumentTab::isDocumentLoaded() const
 QString PDFDocumentTab::documentPath() const
 {
     return m_session->documentPath();
+}
+
+bool PDFDocumentTab::hasUnsavedChanges() const
+{
+    return m_session && m_session->hasUnsavedOutlineChanges();
+}
+
+bool PDFDocumentTab::saveOutline()
+{
+    return m_session && m_session->saveOutlineChanges();
 }
 
 QString PDFDocumentTab::documentTitle() const

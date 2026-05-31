@@ -35,7 +35,6 @@ public:
 signals:
     void pageJumpRequested(int pageIndex);
     void externalLinkRequested(const QString& uri);
-    void outlineModified();
 
 protected:
     void resizeEvent(QResizeEvent* event) override;

@@ -97,19 +97,19 @@ OCRResult RapidOcrEngine::recognize(const QImage& image)
     OCRResult result;
 
     if (m_isProcessing) {
-        result.error = tr("OCR正在处理中，请稍候");
+        result.error = tr("OCR is busy, please wait");
         qDebug() << "OCR busy, request rejected";
         return result;
     }
 
     if (m_state != OCREngineState::Ready) {
-        result.error = tr("OCR引擎未就绪");
+        result.error = tr("OCR engine is not ready");
         qDebug() << "OCR not ready, current state:" << static_cast<int>(m_state);
         return result;
     }
 
     if (image.isNull() || image.width() < 10 || image.height() < 10) {
-        result.error = tr("输入图像无效");
+        result.error = tr("Invalid input image");
         return result;
     }
 
@@ -133,13 +133,13 @@ OCRResult RapidOcrEngine::recognize(const QImage& image)
             qInfo() << "  Text:" << result.text;
             qInfo() << "  Confidence:" << result.confidence;
         } else {
-            result.error = tr("未识别到文本");
+            result.error = tr("No text recognized");
         }
 
         emit recognitionCompleted(result);
 
     } catch (const std::exception& e) {
-        result.error = tr("识别异常: %1").arg(QString::fromStdString(e.what()));
+        result.error = tr("Recognition failed: %1").arg(QString::fromStdString(e.what()));
         qWarning() << result.error;
 
         setState(OCREngineState::Ready);
@@ -154,12 +154,12 @@ OCRResult RapidOcrEngine::recognizeDetailed(const QImage& image)
     OCRResult result;
 
     if (m_state != OCREngineState::Ready) {
-        result.error = tr("OCR引擎未就绪");
+        result.error = tr("OCR engine is not ready");
         return result;
     }
 
     if (image.isNull() || image.width() < 10 || image.height() < 10) {
-        result.error = tr("输入图像无效");
+        result.error = tr("Invalid input image");
         return result;
     }
 
@@ -190,13 +190,13 @@ OCRResult RapidOcrEngine::recognizeDetailed(const QImage& image)
             qInfo() << "  Total text:" << result.text;
             qInfo() << "  Elapsed time:" << result.elapsedTime << "seconds";
         } else {
-            result.error = tr("未识别到文本");
+            result.error = tr("No text recognized");
         }
 
         emit recognitionCompleted(result);
 
     } catch (const std::exception& e) {
-        result.error = tr("识别异常: %1").arg(QString::fromStdString(e.what()));
+        result.error = tr("Recognition failed: %1").arg(QString::fromStdString(e.what()));
         qWarning() << result.error;
         setState(OCREngineState::Ready);
     }

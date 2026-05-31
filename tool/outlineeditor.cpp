@@ -24,6 +24,15 @@ OutlineEditor::~OutlineEditor()
 {
 }
 
+void OutlineEditor::setModified(bool modified)
+{
+    if (m_modified == modified) {
+        return;
+    }
+    m_modified = modified;
+    emit unsavedChangesChanged(m_modified);
+}
+
 void OutlineEditor::setRoot(OutlineItem* root)
 {
     if (!root) {
@@ -33,7 +42,7 @@ void OutlineEditor::setRoot(OutlineItem* root)
         m_root = root;
     }
 
-    m_modified = false;
+    setModified(false);
 }
 
 OutlineItem* OutlineEditor::addOutline(OutlineItem* parentItem,
@@ -64,13 +73,14 @@ OutlineItem* OutlineEditor::addOutline(OutlineItem* parentItem,
 
     OutlineItem* newItem = new OutlineItem(title, pageIndex);
 
-    if (insertIndex >= 0 && insertIndex < parent->childCount()) {
-        parent->addChild(newItem);
+    // insertIndex 有效时按位置插入（用于"添加兄弟节点"），否则追加到末尾
+    if (insertIndex >= 0 && insertIndex <= parent->childCount()) {
+        parent->insertChild(insertIndex, newItem);
     } else {
         parent->addChild(newItem);
     }
 
-    m_modified = true;
+    setModified(true);
     emit outlineModified();
 
     qInfo() << "OutlineEditor: Added outline:" << title << "at page" << (pageIndex + 1);
@@ -99,7 +109,7 @@ bool OutlineEditor::deleteOutline(OutlineItem* item)
 
     delete item;
 
-    m_modified = true;
+    setModified(true);
     emit outlineModified();
     qInfo() << "OutlineEditor: Deleted outline";
     return true;
@@ -126,7 +136,7 @@ bool OutlineEditor::deleteAllOutlines()
         delete child;
     }
 
-    m_modified = true;
+    setModified(true);
     emit outlineModified();
 
     qInfo() << "OutlineEditor::deleteAllOutlines: All outlines deleted";
@@ -145,7 +155,7 @@ bool OutlineEditor::renameOutline(OutlineItem* item, const QString& newTitle)
     QString oldTitle = item->title();
     item->setTitle(newTitle);
 
-    m_modified = true;
+    setModified(true);
     emit outlineModified();
 
     qInfo() << "OutlineEditor: Renamed outline from" << oldTitle << "to" << newTitle;
@@ -179,7 +189,7 @@ bool OutlineEditor::updatePageIndex(OutlineItem* item, int newPageIndex)
 
     item->setPageIndex(newPageIndex);
 
-    m_modified = true;
+    setModified(true);
     emit outlineModified();
 
     qInfo() << "OutlineEditor: Updated page index from" << (oldPageIndex + 1)
@@ -224,7 +234,7 @@ bool OutlineEditor::moveOutline(OutlineItem* item,
 
     targetParent->insertChild(newIndex, item);
 
-    m_modified = true;
+    setModified(true);
     emit outlineModified();
 
     qInfo() << "OutlineEditor: Moved outline successfully";
@@ -467,7 +477,7 @@ bool OutlineEditor::saveToDocument(const QString& filePath)
         pdf_save_document(ctx, pdfDoc, pathBytes.constData(), &opts);
 
         success = true;
-        m_modified = false;
+        setModified(false);
         qInfo() << "OutlineEditor: saveToDocument completed successfully";
     }
     fz_catch(ctx) {
@@ -478,22 +488,6 @@ bool OutlineEditor::saveToDocument(const QString& filePath)
 
     emit saveCompleted(success, errorMsg);
     return success;
-}
-
-void* OutlineEditor::createPdfOutline(void* ctx_ptr, void* doc_ptr, OutlineItem* item)
-{
-    if (!ctx_ptr || !doc_ptr || !item) return nullptr;
-    fz_context* ctx = static_cast<fz_context*>(ctx_ptr);
-    pdf_document* doc = static_cast<pdf_document*>(doc_ptr);
-
-    pdf_obj* obj = buildPdfOutlineRecursive(ctx, doc, m_renderer, item);
-    return static_cast<void*>(obj);
-}
-
-void* OutlineEditor::buildPdfOutlineTree(void* ctx_ptr, void* doc_ptr,
-                                         OutlineItem* item, void* parent_ptr)
-{
-    return createPdfOutline(ctx_ptr, doc_ptr, item);
 }
 
 bool OutlineEditor::validateOutline(const QString& title, int pageIndex) const

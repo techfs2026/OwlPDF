@@ -268,6 +268,19 @@ OutlineEditor* PDFDocumentSession::outlineEditor() const
     return m_contentHandler->outlineEditor();
 }
 
+bool PDFDocumentSession::hasUnsavedOutlineChanges() const
+{
+    return m_contentHandler && m_contentHandler->hasUnsavedOutlineChanges();
+}
+
+bool PDFDocumentSession::saveOutlineChanges()
+{
+    if (!m_contentHandler) {
+        return false;
+    }
+    return m_contentHandler->saveOutlineChanges(QString());
+}
+
 void PDFDocumentSession::loadThumbnails()
 {
     if (m_contentHandler) {
@@ -588,6 +601,9 @@ void PDFDocumentSession::setupConnections()
 
         connect(m_contentHandler.get(), &PDFContentHandler::outlineLoaded,
                 this, &PDFDocumentSession::outlineLoaded);
+
+        connect(m_contentHandler.get(), &PDFContentHandler::unsavedOutlineChangesChanged,
+                this, &PDFDocumentSession::unsavedOutlineChangesChanged);
 
         connect(m_contentHandler.get(), &PDFContentHandler::thumbnailLoaded,
                 this, &PDFDocumentSession::thumbnailLoaded);

@@ -71,6 +71,8 @@ public:
     bool loadOutline();
     OutlineItem* outlineRoot() const;
     OutlineEditor* outlineEditor() const;
+    bool hasUnsavedOutlineChanges() const;
+    bool saveOutlineChanges();
 
     void loadThumbnails();
     QImage getThumbnail(int pageIndex, bool preferHighRes = false) const;
@@ -132,6 +134,7 @@ signals:
     void textSelectionChanged(bool hasSelection);
     void searchStateChanged(bool searching, int totalMatches, int currentIndex);
     void outlineLoaded(bool success, int itemCount);
+    void unsavedOutlineChangesChanged(bool hasUnsaved);
     void thumbnailLoaded(int pageIndex, const QImage& thumbnail);
     void thumbnailLoadProgress(int current, int total);
     void searchProgressUpdated(int currentPage, int totalPages, int matchCount);

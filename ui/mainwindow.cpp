@@ -123,8 +123,8 @@ MainWindow::MainWindow(QWidget* parent)
 
     setAcceptDrops(true);
 
-    if (!DictionaryConnector::instance().isGoldenDictAvailable()) {
-        qWarning() << "GoldenDict not found, lookup feature will not work";
+    if (!DictionaryConnector::instance().isConfigured()) {
+        qWarning() << "Dictionary command not configured, lookup feature will not work";
     }
 }
 
@@ -179,6 +179,35 @@ void MainWindow::closeCurrentTab()
     }
 }
 
+bool MainWindow::maybeSaveTab(PDFDocumentTab* tab)
+{
+    if (!tab || !tab->hasUnsavedChanges()) {
+        return true;
+    }
+
+    QMessageBox box(this);
+    box.setWindowTitle(tr("Unsaved Outline Changes"));
+    box.setText(tr("\"%1\" has unsaved outline changes.").arg(tab->documentTitle()));
+    box.setInformativeText(tr("Do you want to save them to the PDF?"));
+    box.setIcon(QMessageBox::Warning);
+    box.setStandardButtons(QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+    box.setDefaultButton(QMessageBox::Save);
+
+    int ret = box.exec();
+    if (ret == QMessageBox::Cancel) {
+        return false;
+    }
+    if (ret == QMessageBox::Save) {
+        if (!tab->saveOutline()) {
+            // 保存失败时不继续关闭，避免静默丢失修改
+            QMessageBox::critical(this, tr("Save Failed"),
+                                  tr("Failed to save outline.\nPlease check file permissions and disk space."));
+            return false;
+        }
+    }
+    return true;
+}
+
 void MainWindow::closeTab(int index)
 {
     if (index < 0 || index >= m_tabWidget->count()) {
@@ -187,6 +216,11 @@ void MainWindow::closeTab(int index)
 
     PDFDocumentTab* tab = qobject_cast<PDFDocumentTab*>(m_tabWidget->widget(index));
     if (!tab) {
+        return;
+    }
+
+    // 有未保存的目录修改时先询问
+    if (!maybeSaveTab(tab)) {
         return;
     }
 
@@ -285,6 +319,18 @@ void MainWindow::connectTabSignals(PDFDocumentTab* tab)
     connect(tab, &PDFDocumentTab::textSelectionChanged,
             this, &MainWindow::onCurrentTabTextSelectionChanged);
 
+    // 未保存状态变化：刷新该 tab 标题标记，当前 tab 还要刷新窗口标题
+    connect(tab, &PDFDocumentTab::unsavedChangesChanged,
+            this, [this, tab](bool) {
+                int idx = m_tabWidget->indexOf(tab);
+                if (idx >= 0) {
+                    updateTabTitle(idx);
+                }
+                if (tab == currentTab()) {
+                    updateWindowTitle();
+                }
+            });
+
     connect(tab, &PDFDocumentTab::searchCompleted,
             this, &MainWindow::onCurrentTabSearchCompleted);
 }
@@ -340,7 +386,12 @@ void MainWindow::updateTabTitle(int index)
         QString fullTitle = tab->documentTitle();
 
         const int maxLength = 20;
-        m_tabWidget->setTabText(index, elideTabTitle(fullTitle, maxLength));
+        QString text = elideTabTitle(fullTitle, maxLength);
+        // 未保存的目录修改：标题尾部加圆点标记
+        if (tab->hasUnsavedChanges()) {
+            text += QStringLiteral("  •");
+        }
+        m_tabWidget->setTabText(index, text);
         m_tabWidget->setTabToolTip(index, tab->documentPath());
     }
 }
@@ -889,7 +940,7 @@ void MainWindow::createMenuBar()
 
 void MainWindow::createToolBar()
 {
-    m_toolBar = addToolBar(tr(""));
+    m_toolBar = addToolBar(QString());
     m_toolBar->setMovable(false);
     m_toolBar->setFloatable(false);
     m_toolBar->setIconSize(QSize(20, 20));
@@ -957,7 +1008,7 @@ void MainWindow::createStatusBar()
     statusBar()->setObjectName("modernStatusBar");
     statusBar()->setSizeGripEnabled(true);
 
-    m_statusLabel = new QLabel(tr(""));
+    m_statusLabel = new QLabel();
     m_statusLabel->setObjectName("statusLabel");
     statusBar()->addWidget(m_statusLabel, 1);
 
@@ -1182,6 +1233,11 @@ void MainWindow::updateWindowTitle()
         }
     }
 
+    // 当前文档有未保存的目录修改：窗口标题前加圆点
+    if (tab && tab->hasUnsavedChanges()) {
+        title = QStringLiteral("• ") + title;
+    }
+
     setWindowTitle(title);
 }
 
@@ -1217,7 +1273,7 @@ void MainWindow::updateStatusBar()
     if (tab->hasTextSelection()) {
         m_statusLabel->setText(tr("Text selected"));
     } else {
-        m_statusLabel->setText(tr(""));
+        m_statusLabel->setText(QString());
     }
 }
 
@@ -1244,6 +1300,18 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event)
 
 void MainWindow::closeEvent(QCloseEvent* event)
 {
+    // 先逐个处理未保存的目录修改（切到对应 tab 让用户看清是哪个文档）
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        PDFDocumentTab* tab = qobject_cast<PDFDocumentTab*>(m_tabWidget->widget(i));
+        if (tab && tab->hasUnsavedChanges()) {
+            m_tabWidget->setCurrentIndex(i);
+            if (!maybeSaveTab(tab)) {
+                event->ignore();
+                return;
+            }
+        }
+    }
+
     int tabCount = m_tabWidget->count();
     int loadedCount = 0;
 

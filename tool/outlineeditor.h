@@ -28,17 +28,19 @@ public:
     bool saveToDocument(const QString& filePath = QString());
 
     bool hasUnsavedChanges() const { return m_modified; }
-    void resetModifiedFlag() { m_modified = false; }
     OutlineItem* root() const { return m_root; }
     void setRoot(OutlineItem* root);
 
 signals:
     void outlineModified();
     void saveCompleted(bool success, const QString& errorMsg);
+    // 仅在脏标记真正翻转时发出，供上层维护"未保存"提示
+    void unsavedChangesChanged(bool hasUnsaved);
 
 private:
-    void* createPdfOutline(void* ctx, void* doc, OutlineItem* item);
-    void* buildPdfOutlineTree(void* ctx, void* doc, OutlineItem* item, void* pdfParent);
+    // 脏标记唯一写入口：仅值变化时通知
+    void setModified(bool modified);
+
     bool validateOutline(const QString& title, int pageIndex) const;
     int findItemIndex(OutlineItem* item) const;
     bool removeFromParent(OutlineItem* item);

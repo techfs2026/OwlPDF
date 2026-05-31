@@ -252,6 +252,8 @@ void PDFContentHandler::setupConnections()
                 this, &PDFContentHandler::outlineModified);
         connect(m_outlineEditor.get(), &OutlineEditor::saveCompleted,
                 this, &PDFContentHandler::outlineSaveCompleted);
+        connect(m_outlineEditor.get(), &OutlineEditor::unsavedChangesChanged,
+                this, &PDFContentHandler::unsavedOutlineChangesChanged);
     }
 }
 

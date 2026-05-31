@@ -171,7 +171,7 @@ void OCRManager::performOCR()
                 if (!tokens.isEmpty()) {
                     emit ocrCompleted(tokens, regionRect, lastHoverPos);
                 } else {
-                    emit ocrFailed(tr("未识别到文本"));
+                    emit ocrFailed(tr("No text recognized"));
                 }
 
                 watcher->deleteLater();

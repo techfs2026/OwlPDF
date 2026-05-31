@@ -5,6 +5,7 @@
 
 class QCheckBox;
 class QSpinBox;
+class QLineEdit;
 
 // 应用设置对话框：把 AppConfig 里的可调项暴露给用户。
 // macOS 经 QAction::PreferencesRole 进应用菜单，其它平台进 Tools 菜单。
@@ -27,6 +28,7 @@ private:
     QSpinBox*  m_resizeDebounce   = nullptr;
     QSpinBox*  m_ocrDebounce      = nullptr;
     QSpinBox*  m_ocrRegionSize    = nullptr;
+    QLineEdit* m_dictionaryCommand = nullptr;
 };
 
 #endif // SETTINGSDIALOG_H

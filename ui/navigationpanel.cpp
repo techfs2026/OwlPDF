@@ -177,9 +177,6 @@ void NavigationPanel::attachSession(PDFDocumentSession* session)
                               });
 
     if (ch) {
-        m_sessionConns << connect(ch, &PDFContentHandler::outlineModified,
-                                  this, &NavigationPanel::outlineModified);
-
         m_sessionConns << connect(ch, &PDFContentHandler::thumbnailsInitialized,
                                   this, [this](int pageCount) {
                                       qInfo() << "NavigationPanel: Initializing" << pageCount << "thumbnail placeholders";
@@ -325,11 +322,18 @@ void NavigationPanel::loadDocument(int pageCount)
 
     qInfo() << "NavigationPanel: Loading document with" << pageCount << "pages";
 
-    bool hasOutline = m_session->loadOutline();
-    if (hasOutline) {
-        qInfo() << "NavigationPanel: Outline available";
+    PDFContentHandler* ch = m_session->contentHandler();
+
+    // 关键：区分「首次加载」与「切回」。
+    // OutlineManager::loadOutline() 每次都会 delete 整棵树并重新从 PDF 解析，
+    // 会丢掉未保存的目录编辑。因此切回已解析过目录的文档时，只用内存中的树
+    // 重建侧栏 widget，绝不重新解析。
+    bool outlineAlreadyParsed = ch && ch->outlineRoot() != nullptr;
+    if (outlineAlreadyParsed) {
+        m_outlineWidget->loadOutline();
     } else {
-        qInfo() << "NavigationPanel: No outline available";
+        // 首次：解析 PDF 目录（emit outlineLoaded → 触发 widget 重建）
+        m_session->loadOutline();
     }
 
     // emit thumbnailsInitialized → initializeThumbnails（含已缓存缩略图回填）
@@ -345,7 +349,7 @@ void NavigationPanel::clear()
         m_thumbnailWidget->clear();
     }
     if (m_thumbnailStatusLabel) {
-        m_thumbnailStatusLabel->setText(tr(""));
+        m_thumbnailStatusLabel->setText(QString());
     }
     if (m_thumbnailProgressBar) {
         m_thumbnailProgressBar->setVisible(false);
@@ -454,7 +458,7 @@ void NavigationPanel::setupUI()
     statusLayout->setContentsMargins(12, 4, 12, 4);
     statusLayout->setSpacing(8);
 
-    m_thumbnailStatusLabel = new QLabel(tr(""), this);
+    m_thumbnailStatusLabel = new QLabel(QString(), this);
     m_thumbnailStatusLabel->setObjectName("thumbnailStatusLabel");
     QFont statusFont = m_thumbnailStatusLabel->font();
     statusFont.setPointSize(9);

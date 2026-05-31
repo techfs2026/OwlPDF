@@ -31,6 +31,13 @@ void AppConfig::loadDefaults()
     m_debugMode = false;
     m_ocrDebounceDelay = 300;
     m_ocrHoverRegionSize = 200;
+#ifdef Q_OS_MAC
+    // macOS 开箱默认：GoldenDict-ng 常见安装路径；未安装时用户可在设置中改
+    m_dictionaryCommand =
+        "/Applications/GoldenDict-ng.app/Contents/MacOS/GoldenDict-ng {word}";
+#else
+    m_dictionaryCommand = QString();
+#endif
 }
 
 void AppConfig::load()
@@ -43,6 +50,7 @@ void AppConfig::load()
                                           m_rememberLastFile).toBool();
     m_ocrDebounceDelay = m_settings.value("OCR/DebounceDelay", m_ocrDebounceDelay).toInt();
     m_ocrHoverRegionSize = m_settings.value("OCR/HoverRegionSize", m_ocrHoverRegionSize).toInt();
+    m_dictionaryCommand = m_settings.value("Dictionary/Command", m_dictionaryCommand).toString();
     m_debugMode = m_settings.value("Debug/Enabled", m_debugMode).toBool();
 }
 
@@ -54,6 +62,7 @@ void AppConfig::save()
     m_settings.setValue("Preferences/RememberLastFile", m_rememberLastFile);
     m_settings.setValue("OCR/DebounceDelay", m_ocrDebounceDelay);
     m_settings.setValue("OCR/HoverRegionSize", m_ocrHoverRegionSize);
+    m_settings.setValue("Dictionary/Command", m_dictionaryCommand);
     m_settings.setValue("Debug/Enabled", m_debugMode);
     m_settings.sync();
 }
@@ -65,6 +74,7 @@ void AppConfig::resetToDefaults()
     m_settings.remove("Performance");
     m_settings.remove("Preferences");
     m_settings.remove("OCR");
+    m_settings.remove("Dictionary");
     m_settings.remove("Debug");
 
     loadDefaults();

@@ -84,6 +84,10 @@ public:
     int ocrHoverRegionSize() const { return m_ocrHoverRegionSize; }
     void setOcrHoverRegionSize(int size) { m_ocrHoverRegionSize = size; }
 
+    // 外部词典调用命令模板：用 {word} 占位查询词，经 shell 执行
+    QString dictionaryCommand() const { return m_dictionaryCommand; }
+    void setDictionaryCommand(const QString& cmd) { m_dictionaryCommand = cmd; }
+
     QString jiebaDictDir() const { return m_jiebaDictDir; }
 
     bool debugMode() const { return m_debugMode; }
@@ -122,6 +126,8 @@ private:
 
     int m_ocrDebounceDelay = 300;
     int m_ocrHoverRegionSize = 200;
+
+    QString m_dictionaryCommand;
 
     QString m_ocrModelDir = QDir::cleanPath(
         QCoreApplication::applicationDirPath() +

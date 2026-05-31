@@ -7,49 +7,46 @@
 /**
  * @brief 词典连接器 - 调用外部词典程序
  *
- * 全局单例，与OCR功能配合使用
+ * 全局单例，与 OCR 查词配合使用。调用命令来自 AppConfig 的
+ * dictionaryCommand 模板：用 {word} 占位查询词，经系统 shell 执行。
  */
 class DictionaryConnector : public QObject
 {
     Q_OBJECT
 
 public:
-    /**
-     * @brief 获取单例实例
-     */
     static DictionaryConnector& instance();
 
     /**
-     * @brief 查词（调用GoldenDict）
+     * @brief 查词：用配置的命令模板调用外部词典
      * @param word 要查的单词
-     * @return 是否成功启动词典
+     * @return 是否成功启动外部进程
      */
     bool lookup(const QString& word);
 
     /**
-     * @brief 设置GoldenDict路径
+     * @brief 是否已配置词典命令
      */
-    void setGoldenDictPath(const QString& path);
+    bool isConfigured() const;
 
     /**
-     * @brief 检查GoldenDict是否可用
+     * @brief 用给定命令模板与查询词执行一次（供设置里的"测试"使用）
+     * @param commandTemplate 命令模板（含 {word} 占位，缺省则把词追加到末尾）
+     * @param word 查询词
+     * @param errorMessage 失败原因（可选）
+     * @return 是否成功启动外部进程
      */
-    bool isGoldenDictAvailable() const;
+    static bool runCommand(const QString& commandTemplate,
+                           const QString& word,
+                           QString* errorMessage = nullptr);
 
     /**
-     * @brief 查找GoldenDict程序
+     * @brief 把命令模板与查询词组装成最终 shell 命令（word 已做 shell 转义）
      */
-    static QString findGoldenDict();
+    static QString buildCommand(const QString& commandTemplate, const QString& word);
 
 signals:
-    /**
-     * @brief 词典启动成功
-     */
     void lookupStarted(const QString& word);
-
-    /**
-     * @brief 词典启动失败
-     */
     void lookupFailed(const QString& error);
 
 private:
@@ -57,9 +54,6 @@ private:
     ~DictionaryConnector();
     DictionaryConnector(const DictionaryConnector&) = delete;
     DictionaryConnector& operator=(const DictionaryConnector&) = delete;
-
-private:
-    QString m_goldenDictPath;
 };
 
 #endif // DICTIONARYCONNECTOR_H

@@ -68,6 +68,7 @@ signals:
     void outlineLoaded(bool success, int itemCount);
     void outlineModified();
     void outlineSaveCompleted(bool success, const QString& errorMsg);
+    void unsavedOutlineChangesChanged(bool hasUnsaved);
 
     void thumbnailsInitialized(int pageCount);
     void thumbnailLoaded(int pageIndex, const QImage& thumbnail);

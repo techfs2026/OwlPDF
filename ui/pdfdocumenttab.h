@@ -12,7 +12,6 @@ class PDFDocumentSession;
 class PDFPageWidget;
 class SearchWidget;
 class QScrollArea;
-class QSplitter;
 class QProgressBar;
 class OCRFloatingWidget;
 
@@ -73,6 +72,10 @@ public:
     // 文档会话：供 MainWindow 把公共侧边栏挂载到当前文档
     PDFDocumentSession* session() const { return m_session; }
 
+    // 目录是否有未保存修改；保存目录到 PDF
+    bool hasUnsavedChanges() const;
+    bool saveOutline();
+
 
     SearchWidget* searchWidget() const { return m_searchWidget; }
 
@@ -106,6 +109,7 @@ signals:
     void searchCompleted(const QString& query, int totalMatches);
     void textSelectionChanged();
     void paperEffectChanged(bool enabled);
+    void unsavedChangesChanged(bool hasUnsaved);
 
 private slots:
 
@@ -156,7 +160,6 @@ private:
     SearchWidget* m_searchWidget;
 
     QScrollArea* m_scrollArea;
-    QSplitter* m_splitter;
     QProgressBar* m_textPreloadProgress;
 
     qint64 m_lastClickTime;
