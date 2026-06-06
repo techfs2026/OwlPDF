@@ -210,7 +210,7 @@ void PDFDocumentTab::setupConnections()
 
     connect(m_searchWidget, &SearchWidget::searchResultNavigated,
             this, [this](const SearchResult& result) {
-
+                scrollToSearchResult(result);
                 m_pageWidget->update();
             });
 
@@ -480,7 +480,7 @@ void PDFDocumentTab::findNext()
     if (m_session) {
         SearchResult result = m_session->findNext();
         if (result.isValid()) {
-
+            scrollToSearchResult(result);
             m_pageWidget->update();
         }
     }
@@ -491,10 +491,73 @@ void PDFDocumentTab::findPrevious()
     if (m_session) {
         SearchResult result = m_session->findPrevious();
         if (result.isValid()) {
-
+            scrollToSearchResult(result);
             m_pageWidget->update();
         }
     }
+}
+
+void PDFDocumentTab::scrollToSearchResult(const SearchResult& result)
+{
+    if (!m_session || !result.isValid()) {
+        return;
+    }
+
+    const PDFDocumentState* state = m_session->state();
+
+    // 非连续滚动模式下，先确保切到命中所在页（整页显示，无需页内滚动）
+    if (!state->isContinuousScroll()) {
+        if (result.pageIndex != state->currentPage()) {
+            m_session->goToPage(result.pageIndex);
+        }
+        return;
+    }
+
+    const QVector<int>& pageYPositions = state->pageYPositions();
+    if (result.pageIndex < 0 || result.pageIndex >= pageYPositions.size()) {
+        return;
+    }
+
+    const double zoom = state->currentZoom();
+    const int margin = AppConfig::PAGE_MARGIN;
+
+    // 取该命中所有 quad 的包围盒（一个匹配可能跨多行/多个矩形）
+    QRectF bounds = result.quads.first();
+    for (const QRectF& quad : result.quads) {
+        bounds = bounds.united(quad);
+    }
+
+    // 命中词在滚动内容坐标系中的上/下沿（像素）
+    const int pageTop = pageYPositions[result.pageIndex] + margin;
+    const int matchTop = pageTop + qRound(bounds.top() * zoom);
+    const int matchBottom = pageTop + qRound(bounds.bottom() * zoom);
+
+    QScrollBar* vBar = m_scrollArea->verticalScrollBar();
+    const int viewTop = vBar->value();
+    const int viewportH = m_scrollArea->viewport()->height();
+
+    // 命中相对当前视口顶部的位置
+    const int relTop = matchTop - viewTop;
+    const int relBottom = matchBottom - viewTop;
+
+    // 仅当命中已完整落在视口的「居中舒适带」内才不动，避免逐个切换时画面抖动；
+    // 落在偏上/偏下（含 goToPage 后被晾在页顶）的情况都重新摆位，否则体验割裂。
+    const int comfortTop = viewportH / 5;        // 20%
+    const int comfortBottom = viewportH * 13 / 20; // 65%
+    if (relTop >= comfortTop && relBottom <= comfortBottom) {
+        return;
+    }
+
+    // 把命中词放到视口约 1/3 高度处，上下都留出上下文
+    int targetY = matchTop - viewportH / 3;
+
+    // 标记搜索定位进行中：goToPage 触发的重排会排一个"回到页顶"的延迟滚动，
+    // 这里抑制它，并在其之后清除标记，确保本次精确定位是最终生效的滚动。
+    m_inSearchScroll = true;
+    vBar->setValue(qBound(vBar->minimum(), targetY, vBar->maximum()));
+    QTimer::singleShot(0, this, [this]() {
+        m_inSearchScroll = false;
+    });
 }
 
 void PDFDocumentTab::onDocumentLoaded(const QString& filePath, int pageCount)
@@ -587,6 +650,10 @@ void PDFDocumentTab::onPagePositionsChanged(const QVector<int>& positions, const
 
             if (targetY >= 0) {
                 QTimer::singleShot(0, this, [this, targetY]() {
+                    // 搜索定位正在进行时，别把滚动拉回页顶，否则会覆盖命中词的精确位置
+                    if (m_inSearchScroll) {
+                        return;
+                    }
                     m_scrollArea->verticalScrollBar()->setValue(targetY);
                 });
             }
@@ -897,6 +964,16 @@ void PDFDocumentTab::showContextMenu(int pageIndex, const QPointF& pagePos, cons
         copyAction->setShortcut(QKeySequence::Copy);
         connect(copyAction, &QAction::triggered, this, &PDFDocumentTab::copySelectedText);
 
+        QString selectedText = m_session->interactionHandler()
+                                   ? m_session->interactionHandler()->getSelectedText().trimmed()
+                                   : QString();
+        if (!selectedText.isEmpty()) {
+            QAction* lookupAction = menu.addAction(tr("Lookup"));
+            connect(lookupAction, &QAction::triggered, this, [this, selectedText]() {
+                onLookupRequested(selectedText);
+            });
+        }
+
         menu.addSeparator();
     }
 
@@ -1062,11 +1139,15 @@ void PDFDocumentTab::triggerOCRAtCurrentPosition()
 
 void PDFDocumentTab::onLookupRequested(const QString& text)
 {
-
-    DictionaryConnector::instance().lookup(text);
-
-
     if (m_ocrFloatingWidget) {
         m_ocrFloatingWidget->hideFloating();
+    }
+
+    if (!DictionaryConnector::instance().lookup(text)) {
+        QMessageBox::warning(
+            this, tr("Lookup Failed"),
+            DictionaryConnector::instance().isConfigured()
+                ? tr("Failed to launch the external dictionary. Please check the dictionary command in Settings.")
+                : tr("Dictionary command is not configured. Please set the external dictionary command in Settings."));
     }
 }

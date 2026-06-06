@@ -37,6 +37,9 @@ public:
 
     SearchResult findPrevious();
 
+    // 搜索完成后的初始定位：跳到发起搜索那一页及之后的第一个匹配
+    SearchResult findFirstFromStartPage();
+
     void clearSearchResults();
 
     QVector<SearchResult> getPageSearchResults(int pageIndex) const;

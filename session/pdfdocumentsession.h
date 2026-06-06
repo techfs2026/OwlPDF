@@ -87,6 +87,7 @@ public:
     void clearSearch();
     SearchResult findNext();
     SearchResult findPrevious();
+    SearchResult findFirstFromStartPage();
 
     void startTextSelection(int pageIndex, const QPointF& pagePos, double zoom);
     void updateTextSelection(int pageIndex, const QPointF& pagePos, double zoom);

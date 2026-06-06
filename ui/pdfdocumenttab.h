@@ -154,6 +154,9 @@ private:
     void updateCursorForPage(int pageIndex, const QPointF& pagePos);
     void showContextMenu(int pageIndex, const QPointF& pagePos, const QPoint& globalPos);
 
+    // 搜索导航后把命中词滚动到视野内合适的位置
+    void scrollToSearchResult(const SearchResult& result);
+
 private:
     PDFDocumentSession* m_session;
     PDFPageWidget* m_pageWidget;
@@ -167,6 +170,9 @@ private:
     int m_clickCount;
 
     bool m_isUserScrolling;
+
+    // 搜索定位滚动期间为 true，用于抑制 onPagePositionsChanged 把滚动拉回页顶
+    bool m_inSearchScroll = false;
 
     OCRFloatingWidget* m_ocrFloatingWidget;
     QImage m_lastOCRImage;

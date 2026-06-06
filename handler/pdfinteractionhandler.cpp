@@ -98,6 +98,23 @@ SearchResult PDFInteractionHandler::findPrevious()
     return result;
 }
 
+SearchResult PDFInteractionHandler::findFirstFromStartPage()
+{
+    if (!m_searchManager) {
+        return SearchResult();
+    }
+
+    SearchResult result = m_searchManager->firstMatchFromStartPage();
+
+    if (result.isValid()) {
+        int currentIndex = m_searchManager->currentMatchIndex();
+        int totalMatches = m_searchManager->totalMatches();
+        emit searchNavigationCompleted(result, currentIndex, totalMatches);
+    }
+
+    return result;
+}
+
 void PDFInteractionHandler::clearSearchResults()
 {
     if (m_searchManager) {

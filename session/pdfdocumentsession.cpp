@@ -343,6 +343,11 @@ SearchResult PDFDocumentSession::findPrevious()
     return m_interactionHandler ? m_interactionHandler->findPrevious() : SearchResult();
 }
 
+SearchResult PDFDocumentSession::findFirstFromStartPage()
+{
+    return m_interactionHandler ? m_interactionHandler->findFirstFromStartPage() : SearchResult();
+}
+
 void PDFDocumentSession::startTextSelection(int pageIndex, const QPointF& pagePos, double zoom)
 {
     if (m_interactionHandler) {

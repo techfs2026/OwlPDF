@@ -252,7 +252,8 @@ void SearchWidget::onSearchCompleted(const QString& query, int totalMatches)
     updateUI();
 
     if (totalMatches > 0) {
-        const SearchResult result = m_session->findNext();
+        // 结果按文档顺序编号，初始定位到当前页及之后的第一个匹配
+        const SearchResult result = m_session->findFirstFromStartPage();
         if (result.isValid()) {
             navigateToResult(result);
             updateUI();

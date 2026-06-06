@@ -419,11 +419,13 @@ void PDFPageWidget::drawSearchHighlights(QPainter& painter, int pageIndex, int p
             scaledQuad.translate(pageX, pageY);
 
             if (isCurrent) {
-                painter.fillRect(scaledQuad, QColor(255, 165, 0, 120));
-                painter.setPen(QPen(QColor(255, 140, 0), 2));
+                // 当前项：高饱和橙 + 深橙描边，与其它命中明显区分
+                painter.fillRect(scaledQuad, QColor(255, 122, 0, 180));
+                painter.setPen(QPen(QColor(214, 92, 0), 2));
                 painter.drawRect(scaledQuad);
             } else {
-                painter.fillRect(scaledQuad, QColor(255, 255, 0, 80));
+                // 其它命中：淡黄
+                painter.fillRect(scaledQuad, QColor(255, 235, 59, 90));
             }
         }
     }

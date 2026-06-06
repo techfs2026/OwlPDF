@@ -68,9 +68,10 @@ void SearchManager::startSearch(const QString& query,
     if (startPage < 0 || !m_renderer || startPage >= m_renderer->pageCount()) {
         startPage = 0;
     }
+    m_startPage = startPage;
 
     QThread* thread = new QThread;
-    SearchWorker* worker = new SearchWorker(this, query, options, startPage);
+    SearchWorker* worker = new SearchWorker(this, query, options);
 
     m_workerThread = thread;
     m_worker = worker;
@@ -202,6 +203,29 @@ SearchResult SearchManager::previousMatch()
         m_currentMatchIndex = m_results.size() - 1;
     }
 
+    return m_results[m_currentMatchIndex];
+}
+
+SearchResult SearchManager::firstMatchFromStartPage()
+{
+    QMutexLocker locker(&m_mutex);
+
+    if (m_results.isEmpty()) {
+        m_currentMatchIndex = -1;
+        return SearchResult();
+    }
+
+    // m_results 按页码升序排列：取第一个 pageIndex >= 起始页的匹配；
+    // 若起始页及之后都没有，则回绕到全文第一个匹配（下标 0）。
+    int index = 0;
+    for (int i = 0; i < m_results.size(); ++i) {
+        if (m_results[i].pageIndex >= m_startPage) {
+            index = i;
+            break;
+        }
+    }
+
+    m_currentMatchIndex = index;
     return m_results[m_currentMatchIndex];
 }
 
@@ -354,13 +378,11 @@ QString SearchManager::getContextFromTextData(const PageTextData& textData,
 
 SearchWorker::SearchWorker(SearchManager* manager,
                            const QString& query,
-                           const SearchOptions& options,
-                           int startPage)
+                           const SearchOptions& options)
     : QObject(nullptr)
     , m_manager(manager)
     , m_query(query)
     , m_options(options)
-    , m_startPage(startPage)
     , m_cancelRequested(false)
 {
 }
@@ -392,13 +414,7 @@ void SearchWorker::process()
         return;
     }
 
-    int startPage = m_startPage;
-    if (startPage < 0 || startPage >= totalPages) {
-        startPage = 0;
-    }
-
-    qDebug() << "SearchWorker started -" << totalPages
-             << "pages, from page" << startPage;
+    qDebug() << "SearchWorker started -" << totalPages << "pages";
 
     // 仅当某页文本未命中缓存时才惰性创建（打开整篇 PDF 有开销）
     std::unique_ptr<PerThreadMuPDFRenderer> ownRenderer;
@@ -407,7 +423,8 @@ void SearchWorker::process()
     int totalMatches = 0;
     bool reachedLimit = false;
 
-    // 从 startPage 起回绕遍历全文，使"下一个匹配"自当前页向后走
+    // 按页码升序遍历全文，使 m_results 始终按文档顺序排列（高亮序号、x/总数 编号
+    // 都以全文为准）。"自当前页向后跳"的体验由搜索完成后的初始定位负责。
     for (int processed = 0; processed < totalPages; ++processed) {
         if (isCancelled()) {
             qDebug() << "SearchWorker: cancelled at" << processed << "/" << totalPages;
@@ -415,7 +432,7 @@ void SearchWorker::process()
             return;
         }
 
-        const int pageIndex = (startPage + processed) % totalPages;
+        const int pageIndex = processed;
 
         // 取页面文本：优先缓存；未缓存则当场提取并回填缓存
         PageTextData textData;

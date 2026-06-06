@@ -32,8 +32,7 @@ class SearchWorker : public QObject
 public:
     SearchWorker(SearchManager* manager,
                  const QString& query,
-                 const SearchOptions& options,
-                 int startPage);
+                 const SearchOptions& options);
 
 public slots:
     void process();
@@ -49,7 +48,6 @@ private:
     SearchManager* m_manager;
     QString m_query;
     SearchOptions m_options;
-    int m_startPage;
     std::atomic_bool m_cancelRequested;
 };
 
@@ -77,6 +75,10 @@ public:
     void setCurrentMatchIndex(int index);
     SearchResult nextMatch();
     SearchResult previousMatch();
+
+    // 结果按页码升序存储；本方法把当前项定位到"发起搜索那一页及之后"的第一个匹配
+    // （若该页之后无匹配则回绕到全文第一个），用于搜索完成后的初始跳转。
+    SearchResult firstMatchFromStartPage();
 
     void clearResults();
 
@@ -109,6 +111,7 @@ private:
 
     QVector<SearchResult> m_results;
     int m_currentMatchIndex;
+    int m_startPage = 0;  // 本次搜索发起时所在页，用于初始跳转
 
     QString m_currentQuery;
     SearchOptions m_currentOptions;
