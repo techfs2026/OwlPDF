@@ -7,17 +7,17 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>MuQt</string>
+	<string>OwlPDF</string>
 	<key>CFBundleIconFile</key>
 	<string>app.icns</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.techfs2026.MuQt</string>
+	<string>com.techfs2026.OwlPDF</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>MuQt</string>
+	<string>OwlPDF</string>
 	<key>CFBundleDisplayName</key>
-	<string>MuQt</string>
+	<string>OwlPDF</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -27,7 +27,7 @@
 	<key>LSMinimumSystemVersion</key>
 	<string>12.0</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>© 2026 MuQt</string>
+	<string>© 2026 OwlPDF</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
@@ -35,8 +35,8 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<!--
-	  声明 MuQt 可作为 PDF 阅读器：
-	  注册后 MuQt 会出现在「打开方式」列表中，可被设为默认 PDF 程序。
+	  声明 OwlPDF 可作为 PDF 阅读器：
+	  注册后 OwlPDF 会出现在「打开方式」列表中，可被设为默认 PDF 程序。
 	  macOS 通过 Apple Event 投递文件，由 main.cpp 的 QFileOpenEvent 处理。
 	-->
 	<key>CFBundleDocumentTypes</key>

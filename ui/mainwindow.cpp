@@ -47,7 +47,7 @@ MainWindow::MainWindow(QWidget* parent)
     , m_statusLabel(nullptr)
     , m_ocrInitialized(false)
 {
-    setWindowTitle(tr("MuQt"));
+    setWindowTitle(tr("OwlPDF"));
 
     // 优先恢复上次窗口几何（大小+位置+最大化状态）；
     // 无记录（首次运行）则用默认尺寸，并在主屏可用区域居中。
@@ -93,14 +93,14 @@ MainWindow::MainWindow(QWidget* parent)
     m_welcomeLabel->raise();
 
     QString welcomeText = tr(
-        "<div style='text-align: center; color: #666;'>"
-        "<p style='font-size: 18px; font-weight: bold; margin-bottom: 20px;'>📄 No PDF File Opened</p>"
-        "<p style='font-size: 14px; line-height: 1.8;'>"
+        "<div style='color: #666;'>"
+        "<p style='font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 18px;'>No PDF File Opened</p>"
+        "<table align='center' cellspacing='6'><tr><td style='font-size: 14px;'>"
         "• Drag and drop PDF files here<br>"
         "• Press <b>Ctrl+O</b> to open file dialog<br>"
         "• Use <b>File</b> menu to browse documents<br>"
         "• Press <b>F11</b> to toggle toolbar"
-        "</p>"
+        "</td></tr></table>"
         "</div>"
         );
     m_welcomeLabel->setText(welcomeText);
@@ -1208,7 +1208,7 @@ void MainWindow::updateUIState()
 
 void MainWindow::updateWindowTitle()
 {
-    QString title = tr("MuQt");
+    QString title = tr("OwlPDF");
 
     PDFDocumentTab* tab = currentTab();
     if (tab && tab->isDocumentLoaded()) {
@@ -1707,7 +1707,7 @@ QStringList MainWindow::getSupportedExtensions() const
 
 QString MainWindow::getFileTypeName() const
 {
-    return "MuQt.PDFDocument";
+    return "OwlPDF.PDFDocument";
 }
 
 #endif

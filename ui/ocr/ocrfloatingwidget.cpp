@@ -260,7 +260,7 @@ void OCRFloatingWidget::showRecognizing(const QImage& sourceImage, const QRect& 
         m_imageLabel->show();
     }
 
-    m_statusLabel->setText(tr("🔍 Recognizing..."));
+    m_statusLabel->setText(tr("Recognizing..."));
     m_statusLabel->show();
 
     m_textLabel->hide();

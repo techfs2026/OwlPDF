@@ -15,7 +15,7 @@
 #include <utility>
 
 // macOS 通过 Apple Event（而非 argv）投递文件打开请求：
-// 在「访达」中双击 PDF、或选择「打开方式 → MuQt」时，
+// 在「访达」中双击 PDF、或选择「打开方式 → OwlPDF」时，
 // 系统会向 QApplication 发送 QFileOpenEvent。
 // 此过滤器捕获该事件并转交主窗口打开；若窗口尚未就绪则先缓存。
 class MacFileOpenFilter : public QObject
@@ -61,8 +61,8 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-    app.setOrganizationName("MuQt");
-    app.setApplicationName("MuQt");
+    app.setOrganizationName("OwlPDF");
+    app.setApplicationName("OwlPDF");
     app.setWindowIcon(QIcon(":/resources/windows.ico"));
 
 #ifdef Q_OS_MACOS
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
     QTranslator translator;
     QString locale = QLocale::system().name();
 
-    if (translator.load(":/translations/muqt_" + locale)) {
+    if (translator.load(":/translations/owlpdf_" + locale)) {
         app.installTranslator(&translator);
     }
 

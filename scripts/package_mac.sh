@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 #
-# MuQt macOS 一键打包：Release 构建 → macdeployqt → 修复依赖路径 → 自检 → 签名 → dmg
+# OwlPDF macOS 一键打包：Release 构建 → macdeployqt → 修复依赖路径 → 自检 → 签名 → dmg
 #
 # 用法：
 #   scripts/package_mac.sh                                          # adhoc 签名
 #   scripts/package_mac.sh --sign "Developer ID Application: 名字 (TEAMID)"
 #   QT_PATH=/path/to/Qt/6.11.1/macos scripts/package_mac.sh         # 指定 Qt（默认从 CMakeCache 推断）
 #
-# 可选环境变量：QT_PATH、BUILD_DIR（默认 build-release）、APP_NAME（默认 MuQt）
+# 可选环境变量：QT_PATH、BUILD_DIR（默认 build-release）、APP_NAME（默认 OwlPDF）
 #
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_NAME="${APP_NAME:-MuQt}"
+APP_NAME="${APP_NAME:-OwlPDF}"
 BUILD_DIR="${BUILD_DIR:-${PROJECT_ROOT}/build-release}"
 SIGN_IDENTITY="-"   # adhoc；--sign 覆盖
 

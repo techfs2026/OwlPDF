@@ -54,8 +54,8 @@
     </message>
     <message>
         <location filename="../ui/firstrundialog.cpp" line="24"/>
-        <source>Thank you for using MuQt!</source>
-        <translation>感谢使用 MuQt!</translation>
+        <source>Thank you for using OwlPDF!</source>
+        <translation>感谢使用 OwlPDF!</translation>
     </message>
     <message>
         <location filename="../ui/firstrundialog.cpp" line="34"/>
@@ -89,8 +89,8 @@ You can change this setting at any time from the Tools menu.</source>
     <message>
         <location filename="../ui/mainwindow.cpp" line="50"/>
         <location filename="../ui/mainwindow.cpp" line="1211"/>
-        <source>MuQt</source>
-        <translation>MuQt</translation>
+        <source>OwlPDF</source>
+        <translation>OwlPDF</translation>
     </message>
     <message>
         <location filename="../ui/mainwindow.cpp" line="78"/>
@@ -769,8 +769,8 @@ OCR取词功能将同时被关闭。</translation>
     </message>
     <message>
         <location filename="../ui/mainwindow.cpp" line="95"/>
-        <source>&lt;div style=&apos;text-align: center; color: #666;&apos;&gt;&lt;p style=&apos;font-size: 18px; font-weight: bold; margin-bottom: 20px;&apos;&gt;📄 No PDF File Opened&lt;/p&gt;&lt;p style=&apos;font-size: 14px; line-height: 1.8;&apos;&gt;• Drag and drop PDF files here&lt;br&gt;• Press &lt;b&gt;Ctrl+O&lt;/b&gt; to open file dialog&lt;br&gt;• Use &lt;b&gt;File&lt;/b&gt; menu to browse documents&lt;br&gt;• Press &lt;b&gt;F11&lt;/b&gt; to toggle toolbar&lt;/p&gt;&lt;/div&gt;</source>
-        <translation>&lt;div style=&apos;text-align: center; color: #666;&apos;&gt;&lt;p style=&apos;font-size: 18px; font-weight: bold; margin-bottom: 20px;&apos;&gt;📄 未打开 PDF 文件&lt;/p&gt;&lt;p style=&apos;font-size: 14px; line-height: 1.8;&apos;&gt;• 拖拽 PDF 文件到此处&lt;br&gt;• 按 &lt;b&gt;Ctrl+O&lt;/b&gt; 打开文件对话框&lt;br&gt;• 使用&lt;b&gt;文件&lt;/b&gt;菜单浏览文档&lt;br&gt;• 按 &lt;b&gt;F11&lt;/b&gt; 切换工具栏显示&lt;/p&gt;&lt;/div&gt;</translation>
+        <source>&lt;div style=&apos;color: #666;&apos;&gt;&lt;p style=&apos;font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 18px;&apos;&gt;No PDF File Opened&lt;/p&gt;&lt;table align=&apos;center&apos; cellspacing=&apos;6&apos;&gt;&lt;tr&gt;&lt;td style=&apos;font-size: 14px;&apos;&gt;• Drag and drop PDF files here&lt;br&gt;• Press &lt;b&gt;Ctrl+O&lt;/b&gt; to open file dialog&lt;br&gt;• Use &lt;b&gt;File&lt;/b&gt; menu to browse documents&lt;br&gt;• Press &lt;b&gt;F11&lt;/b&gt; to toggle toolbar&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;</source>
+        <translation>&lt;div style=&apos;color: #666;&apos;&gt;&lt;p style=&apos;font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 18px;&apos;&gt;未打开 PDF 文件&lt;/p&gt;&lt;table align=&apos;center&apos; cellspacing=&apos;6&apos;&gt;&lt;tr&gt;&lt;td style=&apos;font-size: 14px;&apos;&gt;• 拖拽 PDF 文件到此处&lt;br&gt;• 按 &lt;b&gt;Ctrl+O&lt;/b&gt; 打开文件对话框&lt;br&gt;• 使用&lt;b&gt;文件&lt;/b&gt;菜单浏览文档&lt;br&gt;• 按 &lt;b&gt;F11&lt;/b&gt; 切换工具栏显示&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;</translation>
     </message>
     <message>
         <location filename="../ui/mainwindow.cpp" line="880"/>

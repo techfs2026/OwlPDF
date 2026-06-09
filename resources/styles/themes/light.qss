@@ -189,6 +189,42 @@ QTabBar::close-button:hover {
     background-color: @pressed-background;
 }
 
+/* Tab 溢出时的左右滚动按钮：默认箭头太小、用户常注意不到，这里加宽并加上
+   背景/边框/清晰箭头，让它明显可见；到头不可滚动时变淡作提示。 */
+QTabBar::scroller {
+    width: 48px;
+}
+
+QTabBar QToolButton {
+    background-color: @hover-background;
+    border: 1px solid @border-medium;
+    border-radius: @radius-sm;
+    margin: 4px 2px;
+    width: 20px;
+}
+
+QTabBar QToolButton:hover {
+    background-color: @pressed-background;
+    border-color: @primary-color;
+}
+
+QTabBar QToolButton:disabled {
+    background-color: @surface-color;
+    border-color: @border-light;
+}
+
+QTabBar QToolButton::right-arrow {
+    image: url(:/icons/resources/icons/right-arrow.svg);
+    width: 12px;
+    height: 12px;
+}
+
+QTabBar QToolButton::left-arrow {
+    image: url(:/icons/resources/icons/left-arrow.svg);
+    width: 12px;
+    height: 12px;
+}
+
 /* ==================== Dock 窗口 ==================== */
 QDockWidget {
     titlebar-close-icon: url(:/icons/close.png);

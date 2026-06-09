@@ -35,7 +35,7 @@
     </message>
     <message>
         <location filename="../ui/firstrundialog.cpp" line="24"/>
-        <source>Thank you for using MuQt!</source>
+        <source>Thank you for using OwlPDF!</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -67,7 +67,7 @@ You can change this setting at any time from the Tools menu.</source>
     <message>
         <location filename="../ui/mainwindow.cpp" line="50"/>
         <location filename="../ui/mainwindow.cpp" line="1211"/>
-        <source>MuQt</source>
+        <source>OwlPDF</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -77,7 +77,7 @@ You can change this setting at any time from the Tools menu.</source>
     </message>
     <message>
         <location filename="../ui/mainwindow.cpp" line="95"/>
-        <source>&lt;div style=&apos;text-align: center; color: #666;&apos;&gt;&lt;p style=&apos;font-size: 18px; font-weight: bold; margin-bottom: 20px;&apos;&gt;📄 No PDF File Opened&lt;/p&gt;&lt;p style=&apos;font-size: 14px; line-height: 1.8;&apos;&gt;• Drag and drop PDF files here&lt;br&gt;• Press &lt;b&gt;Ctrl+O&lt;/b&gt; to open file dialog&lt;br&gt;• Use &lt;b&gt;File&lt;/b&gt; menu to browse documents&lt;br&gt;• Press &lt;b&gt;F11&lt;/b&gt; to toggle toolbar&lt;/p&gt;&lt;/div&gt;</source>
+        <source>&lt;div style=&apos;color: #666;&apos;&gt;&lt;p style=&apos;font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 18px;&apos;&gt;No PDF File Opened&lt;/p&gt;&lt;table align=&apos;center&apos; cellspacing=&apos;6&apos;&gt;&lt;tr&gt;&lt;td style=&apos;font-size: 14px;&apos;&gt;• Drag and drop PDF files here&lt;br&gt;• Press &lt;b&gt;Ctrl+O&lt;/b&gt; to open file dialog&lt;br&gt;• Use &lt;b&gt;File&lt;/b&gt; menu to browse documents&lt;br&gt;• Press &lt;b&gt;F11&lt;/b&gt; to toggle toolbar&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

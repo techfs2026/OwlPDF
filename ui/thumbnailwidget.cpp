@@ -100,10 +100,16 @@ void ThumbnailWidget::initializeThumbnails(int pageCount)
 
         int row = i / m_columnsPerRow;
         int col = i % m_columnsPerRow;
-        m_layout->addWidget(item, row, col);
+        // 顶部对齐：否则页数少时（尤其只有 1 页）整行会被拉伸填满视口高度，
+        // item 自身的背景被撑大，看起来"外框比缩略图大"。
+        m_layout->addWidget(item, row, col, Qt::AlignTop);
 
         m_thumbnailItems[i] = item;
     }
+
+    // 末行之后留一个可伸展的空行吸收多余高度，让 item 顶部紧凑排列而不被拉伸
+    int lastRow = (pageCount - 1) / m_columnsPerRow;
+    m_layout->setRowStretch(lastRow + 1, 1);
 
     qInfo() << "ThumbnailWidget: Created" << pageCount << "placeholder items";
 
@@ -234,7 +240,7 @@ void ThumbnailWidget::resizeEvent(QResizeEvent* event)
             QLayoutItem* layoutItem = m_layout->itemAtPosition(row, col);
             if (!layoutItem || layoutItem->widget() != m_thumbnailItems[i]) {
                 m_layout->removeWidget(m_thumbnailItems[i]);
-                m_layout->addWidget(m_thumbnailItems[i], row, col);
+                m_layout->addWidget(m_thumbnailItems[i], row, col, Qt::AlignTop);
             }
         }
 
@@ -485,9 +491,10 @@ void ThumbnailItem::setThumbnail(const QImage& image)
     m_hasImage = true;
 
     // 关键：按"物理像素"缩放，并保持 devicePixelRatio。
-    // m_imageLabel->size() 是逻辑尺寸；乘上图自带的 dpr 得到目标物理像素。
+    // 以固定缩略图框（m_width × m_height，A4 比例）为上界按页面真实比例缩放；
+    // 用 m_width/m_height 而非当前 label 尺寸，避免多次回填时 label 逐渐缩小。
     const qreal dpr = image.devicePixelRatio();   // Mac=2.0, Win=1.0
-    const QSize targetPhysical = QSize(m_imageLabel->width(), m_imageLabel->height()) * dpr;
+    const QSize targetPhysical = QSize(m_width, m_height) * dpr;
 
     QImage scaled = image.scaled(
         targetPhysical,                 // 目标用物理像素
@@ -495,6 +502,11 @@ void ThumbnailItem::setThumbnail(const QImage& image)
         Qt::SmoothTransformation
         );
     scaled.setDevicePixelRatio(dpr);    // scaled() 会重置 dpr，这里补回来
+
+    // 外框（边框画在 m_imageLabel 上）按缩放后图片的真实逻辑尺寸收紧，
+    // 否则非 A4 比例的页面会在固定 A4 框内留白、外框比缩略图大。
+    const QSize logicalSize(qRound(scaled.width() / dpr), qRound(scaled.height() / dpr));
+    m_imageLabel->setFixedSize(logicalSize);
 
     QPixmap pixmap = createRoundedPixmap(scaled);
     m_imageLabel->setPixmap(pixmap);

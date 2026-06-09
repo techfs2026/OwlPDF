@@ -21,7 +21,7 @@ void FirstRunDialog::setupUI()
     mainLayout->setSpacing(10);
     mainLayout->setContentsMargins(20, 20, 20, 20);
 
-    QLabel* welcomeLabel = new QLabel(tr("Thank you for using MuQt!"), this);
+    QLabel* welcomeLabel = new QLabel(tr("Thank you for using OwlPDF!"), this);
     QFont font = welcomeLabel->font();
     font.setPointSize(12);
     font.setBold(true);

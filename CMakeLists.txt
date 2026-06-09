@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
-project(MuQt LANGUAGES CXX)
+project(OwlPDF LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -129,8 +129,8 @@ endif()
 # ============================================================
 
 set(TS_FILES
-    translations/muqt_zh_CN.ts
-    translations/muqt_en_US.ts
+    translations/owlpdf_zh_CN.ts
+    translations/owlpdf_en_US.ts
 )
 
 qt_standard_project_setup()
@@ -139,27 +139,27 @@ qt_standard_project_setup()
 # 可执行目标
 # ============================================================
 
-qt_add_executable(MuQt
+qt_add_executable(OwlPDF
     WIN32 MACOSX_BUNDLE
     ${PROJECT_SOURCES}
     $<$<BOOL:${WIN32}>:${APP_ICON_RESOURCE_WINDOWS}>
     $<$<BOOL:${APPLE}>:${APP_ICON_MACOS}>
 )
 
-qt_add_translations(MuQt
+qt_add_translations(OwlPDF
     TS_FILES ${TS_FILES}
     RESOURCE_PREFIX "/translations"
 )
 
 # ============================================================
 # macOS 应用包 Info.plist
-#   使用自定义 Info.plist，声明 MuQt 可处理 PDF 文件
+#   使用自定义 Info.plist，声明 OwlPDF 可处理 PDF 文件
 #   （CFBundleDocumentTypes），使其能被设为默认 PDF 程序。
 #   设置该属性后 Qt 不会再生成默认 plist。
 # ============================================================
 
 if(APPLE)
-    set_target_properties(MuQt PROPERTIES
+    set_target_properties(OwlPDF PROPERTIES
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist"
     )
 endif()
@@ -168,7 +168,7 @@ endif()
 # 头文件目录
 # ============================================================
 
-target_include_directories(MuQt PRIVATE
+target_include_directories(OwlPDF PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/ui
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/ocr
@@ -189,7 +189,7 @@ target_include_directories(MuQt PRIVATE
 
 # onnxruntime 头文件目录仅非 APPLE 平台需要
 if(NOT APPLE)
-    target_include_directories(MuQt PRIVATE ${ONNXRUNTIME_INCLUDE_DIR})
+    target_include_directories(OwlPDF PRIVATE ${ONNXRUNTIME_INCLUDE_DIR})
 endif()
 
 # ============================================================
@@ -197,7 +197,7 @@ endif()
 # ============================================================
 
 if(WIN32)
-    target_link_directories(MuQt PRIVATE
+    target_link_directories(OwlPDF PRIVATE
         "$<$<CONFIG:Debug>:${MUPDF_LIB_DEBUG}>"
         "$<$<CONFIG:Release>:${MUPDF_LIB_RELEASE}>"
         "$<$<CONFIG:Debug>:${OPENCV_LIB_DEBUG}>"
@@ -205,7 +205,7 @@ if(WIN32)
         ${ONNXRUNTIME_LIB_DIR}
     )
 elseif(APPLE)
-    target_link_directories(MuQt PRIVATE
+    target_link_directories(OwlPDF PRIVATE
         ${MUPDF_LIB_DIR}
         ${OPENCV_LIB_DIR}
     )
@@ -215,7 +215,7 @@ endif()
 # 链接库
 # ============================================================
 
-target_link_libraries(MuQt PRIVATE
+target_link_libraries(OwlPDF PRIVATE
     Qt::Core
     Qt::Widgets
     Qt6::Concurrent
@@ -223,7 +223,7 @@ target_link_libraries(MuQt PRIVATE
 )
 
 if(WIN32)
-    target_link_libraries(MuQt PRIVATE
+    target_link_libraries(OwlPDF PRIVATE
         libmupdf.lib
         libthirdparty.lib
         "$<$<CONFIG:Debug>:opencv_world4120d.lib>"
@@ -248,7 +248,7 @@ elseif(APPLE)
     find_library(GUMBO_LIB         gumbo        HINTS "${HOMEBREW_PREFIX}/lib" REQUIRED)
     find_library(MUPDF_THIRD_LIB   mupdf-third  HINTS "${MUPDF_LIB_DIR}" REQUIRED)
 
-    target_link_libraries(MuQt PRIVATE
+    target_link_libraries(OwlPDF PRIVATE
         ${OpenCV_LIBS}
 
         mupdf
@@ -279,22 +279,22 @@ endif()
 # ============================================================
 
 if(WIN32)
-    add_custom_command(TARGET MuQt POST_BUILD
+    add_custom_command(TARGET OwlPDF POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E echo "Copying OpenCV DLL for $<CONFIG>..."
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "$<IF:$<CONFIG:Debug>,${OPENCV_BIN_DEBUG}/opencv_world4120d.dll,${OPENCV_BIN_RELEASE}/opencv_world4120.dll>"
-            "$<TARGET_FILE_DIR:MuQt>/"
+            "$<TARGET_FILE_DIR:OwlPDF>/"
         VERBATIM
     )
 
-    add_custom_command(TARGET MuQt POST_BUILD
+    add_custom_command(TARGET OwlPDF POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E echo "Copying ONNX Runtime DLLs..."
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${ONNXRUNTIME_BIN_DIR}/onnxruntime.dll"
-            "$<TARGET_FILE_DIR:MuQt>/"
+            "$<TARGET_FILE_DIR:OwlPDF>/"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${ONNXRUNTIME_BIN_DIR}/onnxruntime_providers_shared.dll"
-            "$<TARGET_FILE_DIR:MuQt>/"
+            "$<TARGET_FILE_DIR:OwlPDF>/"
         VERBATIM
     )
 # macOS 不需要拷贝 onnxruntime.dylib（已不使用）
@@ -310,16 +310,16 @@ set(OCR_MODELS_SRC "${CMAKE_SOURCE_DIR}/ocr/models")
 set(JIEBA_DICT_SRC "${CMAKE_SOURCE_DIR}/ocr/dict")
 
 if(WIN32)
-    set(OCR_MODELS_DST "$<TARGET_FILE_DIR:MuQt>/ocr/models")
-    set(JIEBA_DICT_DST "$<TARGET_FILE_DIR:MuQt>/ocr/dict")
+    set(OCR_MODELS_DST "$<TARGET_FILE_DIR:OwlPDF>/ocr/models")
+    set(JIEBA_DICT_DST "$<TARGET_FILE_DIR:OwlPDF>/ocr/dict")
 elseif(APPLE)
-    set(JIEBA_DICT_DST "$<TARGET_BUNDLE_CONTENT_DIR:MuQt>/Resources/ocr/dict")
+    set(JIEBA_DICT_DST "$<TARGET_BUNDLE_CONTENT_DIR:OwlPDF>/Resources/ocr/dict")
 endif()
 
 # OCR 模型：仅非 APPLE 拷贝
 if(NOT APPLE)
     if(EXISTS "${OCR_MODELS_SRC}")
-        add_custom_command(TARGET MuQt POST_BUILD
+        add_custom_command(TARGET OwlPDF POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory "${OCR_MODELS_DST}"
             COMMAND ${CMAKE_COMMAND} -E copy_directory "${OCR_MODELS_SRC}" "${OCR_MODELS_DST}"
             COMMENT "Copying OCR models"
@@ -331,7 +331,7 @@ endif()
 
 # Jieba 词典：所有平台都需要
 if(EXISTS "${JIEBA_DICT_SRC}")
-    add_custom_command(TARGET MuQt POST_BUILD
+    add_custom_command(TARGET OwlPDF POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory "${JIEBA_DICT_DST}"
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${JIEBA_DICT_SRC}" "${JIEBA_DICT_DST}"
         COMMENT "Copying Jieba dict"
@@ -347,14 +347,14 @@ endif()
 if(WIN32)
     find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${CMAKE_PREFIX_PATH}/bin")
     if(WINDEPLOYQT_EXECUTABLE)
-        add_custom_command(TARGET MuQt POST_BUILD
+        add_custom_command(TARGET OwlPDF POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E echo "Running windeployqt..."
             COMMAND "${WINDEPLOYQT_EXECUTABLE}"
                 --no-translations
                 --no-system-d3d-compiler
                 --no-opengl-sw
                 --no-compiler-runtime
-                "$<TARGET_FILE:MuQt>"
+                "$<TARGET_FILE:OwlPDF>"
             VERBATIM
         )
         message(STATUS "Found windeployqt: ${WINDEPLOYQT_EXECUTABLE}")
@@ -368,8 +368,8 @@ elseif(APPLE)
         add_custom_target(deploy
             COMMAND ${CMAKE_COMMAND} -E echo "Running macdeployqt..."
             COMMAND "${MACDEPLOYQT_EXECUTABLE}"
-                "$<TARGET_BUNDLE_DIR:MuQt>"
-            DEPENDS MuQt
+                "$<TARGET_BUNDLE_DIR:OwlPDF>"
+            DEPENDS OwlPDF
             VERBATIM
         )
         message(STATUS "Found macdeployqt: ${MACDEPLOYQT_EXECUTABLE}. Run 'cmake --build . --target deploy' to package.")
@@ -384,7 +384,7 @@ endif()
 
 include(GNUInstallDirs)
 
-install(TARGETS MuQt
+install(TARGETS OwlPDF
     BUNDLE  DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -398,7 +398,7 @@ if(NOT APPLE)
 endif()
 
 qt_generate_deploy_app_script(
-    TARGET MuQt
+    TARGET OwlPDF
     OUTPUT_SCRIPT deploy_script
 )
 install(SCRIPT ${deploy_script})
