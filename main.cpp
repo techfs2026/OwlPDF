@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "stylemanager.h"
 #include "appconfig.h"
+#include "outlineeditor.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -64,6 +65,9 @@ int main(int argc, char *argv[])
     app.setOrganizationName("OwlPDF");
     app.setApplicationName("OwlPDF");
     app.setWindowIcon(QIcon(":/resources/windows.ico"));
+
+    // 启动时清理一次目录备份（按时间/总体积），依赖上面的应用名设置 AppDataLocation
+    OutlineEditor::cleanupBackups();
 
 #ifdef Q_OS_MACOS
     // 尽早安装，以捕获启动阶段（冷启动打开文件）投递的 QFileOpenEvent

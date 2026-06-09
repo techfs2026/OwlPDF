@@ -6,6 +6,9 @@
 #include <mupdf/pdf.h>
 #include <QFile>
 #include <QFileInfo>
+#include <QFileInfoList>
+#include <QDir>
+#include <QStandardPaths>
 #include <QDateTime>
 #include <QDebug>
 #include <QMetaObject>
@@ -312,11 +315,31 @@ pdf_obj* buildPdfOutlineRecursive(fz_context* ctx, pdf_document* doc,
             pdf_obj* pageObj = pdf_lookup_page_obj(ctx, doc, pg);
             if (pageObj) {
                 pdf_obj* dest = pdf_new_array(ctx, doc, 5);
-                pdf_array_push(ctx, dest, pageObj);
+
+                // 目标页必须以“间接引用”(N G R) 写入 Dest：若把已解析的页字典
+                // 直接 inline 进数组，宽容的 MuPDF 仍能跳，但严格的其它阅读器
+                // 无法按对象引用匹配到正确的页 → 目录与页面错位。
+                int num = pdf_to_num(ctx, pageObj);
+                if (num > 0) {
+                    pdf_array_push_drop(ctx, dest,
+                        pdf_new_indirect(ctx, doc, num, pdf_to_gen(ctx, pageObj)));
+                } else {
+                    pdf_array_push(ctx, dest, pageObj);  // 兜底：拿不到对象号时维持原样
+                }
+
+                // /XYZ 的 top 取页面顶端（MediaBox 上边 y），落在页顶而非页底；
+                // top=0 会被严格阅读器理解为页面底部，看着像跳到了下一页。
+                float top = 0.0f;
+                pdf_obj* mb = pdf_dict_get_inheritable(ctx, pageObj, PDF_NAME(MediaBox));
+                if (mb) {
+                    fz_rect r = pdf_to_rect(ctx, mb);
+                    top = (r.y1 > r.y0) ? r.y1 : r.y0;
+                }
+
                 pdf_array_push(ctx, dest, PDF_NAME(XYZ));
-                pdf_array_push_real(ctx, dest, 0);
-                pdf_array_push_real(ctx, dest, 0);
-                pdf_array_push_real(ctx, dest, 0);
+                pdf_array_push_real(ctx, dest, 0);     // left
+                pdf_array_push_real(ctx, dest, top);   // top（页顶）
+                pdf_array_push_real(ctx, dest, 0);     // zoom：0 = 保持当前缩放
 
                 pdf_dict_put(ctx, item_obj, PDF_NAME(Dest), dest);
                 pdf_drop_obj(ctx, dest);
@@ -542,21 +565,71 @@ bool OutlineEditor::removeFromParent(OutlineItem* item)
     return true;
 }
 
+// 备份统一存放目录：AppDataLocation/backups（不再污染原 PDF 同级目录）
+static QString backupDirPath()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+           + "/backups";
+}
+
 QString OutlineEditor::createBackup(const QString& filePath) const
 {
     if (filePath.isEmpty() || !QFile::exists(filePath)) {
         return QString();
     }
 
+    QString dir = backupDirPath();
+    if (!QDir().mkpath(dir)) {
+        qWarning() << "OutlineEditor: Failed to create backup dir:" << dir;
+        return QString();
+    }
+
     QFileInfo fileInfo(filePath);
     QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
-    QString backupPath = fileInfo.absolutePath() + "/" +
-                         fileInfo.baseName() + "_backup_" + timestamp + "." +
-                         fileInfo.completeSuffix();
+    // 用 completeBaseName + suffix，避免 "a.b.pdf" 被错误拆分
+    QString backupPath = dir + "/" +
+                         fileInfo.completeBaseName() + "_backup_" + timestamp + "." +
+                         fileInfo.suffix();
 
     if (QFile::copy(filePath, backupPath)) {
         return backupPath;
     }
 
     return QString();
+}
+
+void OutlineEditor::cleanupBackups()
+{
+    // 双保险：① 超过 kMaxAgeDays 天的删除；② 总体积超 kMaxTotalBytes 时从最旧删起
+    const int   kMaxAgeDays    = 30;
+    const qint64 kMaxTotalBytes = 500LL * 1024 * 1024;  // 500 MB
+
+    QDir dir(backupDirPath());
+    if (!dir.exists()) {
+        return;
+    }
+
+    // QDir::Time：按修改时间排序，最新在前 → 最旧在末尾
+    QFileInfoList files = dir.entryInfoList(
+        QStringList() << "*_backup_*", QDir::Files, QDir::Time);
+
+    const QDateTime now = QDateTime::currentDateTime();
+    QFileInfoList remaining;
+    for (const QFileInfo& fi : files) {
+        if (fi.lastModified().daysTo(now) > kMaxAgeDays) {
+            QFile::remove(fi.absoluteFilePath());
+        } else {
+            remaining.append(fi);
+        }
+    }
+
+    qint64 total = 0;
+    for (const QFileInfo& fi : remaining) {
+        total += fi.size();
+    }
+    // 从最旧（末尾）开始删，直到总体积低于上限
+    for (int i = remaining.size() - 1; i >= 0 && total > kMaxTotalBytes; --i) {
+        total -= remaining[i].size();
+        QFile::remove(remaining[i].absoluteFilePath());
+    }
 }

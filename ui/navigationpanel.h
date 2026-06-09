@@ -56,6 +56,9 @@ private:
     QTabWidget* m_tabWidget;
     OutlineWidget* m_outlineWidget;
     ThumbnailWidget* m_thumbnailWidget;
+    QToolButton* m_addOutlineBtn;
+    QToolButton* m_deleteOutlineBtn;
+    QToolButton* m_deleteAllOutlineBtn;
     QToolButton* m_expandAllBtn;
     QToolButton* m_collapseAllBtn;
 

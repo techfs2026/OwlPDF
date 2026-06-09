@@ -177,6 +177,21 @@ void MainWindow::closeCurrentTab()
     }
 }
 
+void MainWindow::saveCurrentTab()
+{
+    // Cmd+S：把当前文档的目录修改写回 PDF。无改动则静默忽略；
+    // 成功不打扰（标签页圆点会自动消失），仅失败时弹错。
+    PDFDocumentTab* tab = currentTab();
+    if (!tab || !tab->hasUnsavedChanges()) {
+        return;
+    }
+    if (!tab->saveOutline()) {
+        QMessageBox::critical(this, tr("Save Failed"),
+                              tr("Failed to save outline.\n"
+                                 "Please check file permissions and disk space."));
+    }
+}
+
 bool MainWindow::maybeSaveTab(PDFDocumentTab* tab)
 {
     if (!tab || !tab->hasUnsavedChanges()) {
@@ -326,6 +341,7 @@ void MainWindow::connectTabSignals(PDFDocumentTab* tab)
                 }
                 if (tab == currentTab()) {
                     updateWindowTitle();
+                    updateUIState();  // 同步刷新 Save 动作可用态
                 }
             });
 
@@ -738,6 +754,12 @@ void MainWindow::createActions()
     m_closeAction->setShortcut(QKeySequence::Close);
     connect(m_closeAction, &QAction::triggered, this, &MainWindow::closeCurrentTab);
 
+    // 保存目录修改到 PDF：并入标准 Cmd+S，与“保存文档”同一手势
+    m_saveAction = new QAction(tr("Save"), this);
+    m_saveAction->setShortcut(QKeySequence::Save);
+    m_saveAction->setToolTip(tr("Save outline changes to PDF (Ctrl+S)"));
+    connect(m_saveAction, &QAction::triggered, this, &MainWindow::saveCurrentTab);
+
     m_quitAction = new QAction(tr("Quit"), this);
     m_quitAction->setShortcut(QKeySequence::Quit);
     connect(m_quitAction, &QAction::triggered, this, &MainWindow::quit);
@@ -892,6 +914,7 @@ void MainWindow::createMenuBar()
 
     QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
     fileMenu->addAction(m_openAction);
+    fileMenu->addAction(m_saveAction);
     fileMenu->addAction(m_closeAction);
     fileMenu->addSeparator();
     fileMenu->addAction(m_quitAction);
@@ -1089,6 +1112,9 @@ void MainWindow::updateUIState()
     }
 
     m_closeAction->setEnabled(hasDocument);
+
+    // 保存仅在有未保存的目录修改时可用
+    m_saveAction->setEnabled(hasDocument && tab->hasUnsavedChanges());
 
     if (m_copyAction) {
         bool hasSelection = hasDocument && tab->hasTextSelection();

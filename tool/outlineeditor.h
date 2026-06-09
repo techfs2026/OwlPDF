@@ -31,6 +31,10 @@ public:
     OutlineItem* root() const { return m_root; }
     void setRoot(OutlineItem* root);
 
+    // 启动时清理备份目录：删除超期备份，并在总体积超限时从最旧删起。
+    // 备份统一落在 AppDataLocation/backups（见 createBackup）。
+    static void cleanupBackups();
+
 signals:
     void outlineModified();
     void saveCompleted(bool success, const QString& errorMsg);

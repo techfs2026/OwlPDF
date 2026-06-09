@@ -413,6 +413,28 @@ void NavigationPanel::setupUI()
     toolbarLayout->setContentsMargins(12, 8, 12, 8);
     toolbarLayout->setSpacing(8);
 
+    m_addOutlineBtn = new QToolButton(this);
+    m_addOutlineBtn->setIcon(QIcon(":icons/resources/icons/plus.svg"));
+    m_addOutlineBtn->setToolTip(tr("Add Outline Item (at current page)"));
+    m_addOutlineBtn->setObjectName("outlineToolButton");
+    m_addOutlineBtn->setFixedSize(28, 28);
+    m_addOutlineBtn->setIconSize(QSize(16, 16));
+
+    m_deleteOutlineBtn = new QToolButton(this);
+    m_deleteOutlineBtn->setIcon(QIcon(":icons/resources/icons/trash.svg"));
+    m_deleteOutlineBtn->setToolTip(tr("Delete Selected Outline Item"));
+    m_deleteOutlineBtn->setObjectName("outlineToolButton");
+    m_deleteOutlineBtn->setFixedSize(28, 28);
+    m_deleteOutlineBtn->setIconSize(QSize(16, 16));
+
+    m_deleteAllOutlineBtn = new QToolButton(this);
+    m_deleteAllOutlineBtn->setIcon(QIcon(":icons/resources/icons/trash.svg"));
+    m_deleteAllOutlineBtn->setToolTip(tr("Delete All Outline Items"));
+    m_deleteAllOutlineBtn->setObjectName("outlineToolButton");
+    m_deleteAllOutlineBtn->setProperty("variant", "danger");  // 危险操作，留给 qss 差异化
+    m_deleteAllOutlineBtn->setFixedSize(28, 28);
+    m_deleteAllOutlineBtn->setIconSize(QSize(16, 16));
+
     m_expandAllBtn = new QToolButton(this);
     m_expandAllBtn->setIcon(QIcon(":icons/resources/icons/expand.svg"));
     m_expandAllBtn->setToolTip(tr("Expand All"));
@@ -427,6 +449,9 @@ void NavigationPanel::setupUI()
     m_collapseAllBtn->setFixedSize(28, 28);
     m_collapseAllBtn->setIconSize(QSize(16, 16));
 
+    toolbarLayout->addWidget(m_addOutlineBtn);
+    toolbarLayout->addWidget(m_deleteOutlineBtn);
+    toolbarLayout->addWidget(m_deleteAllOutlineBtn);
     toolbarLayout->addStretch();
     toolbarLayout->addWidget(m_expandAllBtn);
     toolbarLayout->addWidget(m_collapseAllBtn);
@@ -523,6 +548,12 @@ void NavigationPanel::setupConnections()
                 emit externalLinkRequested(uri);
             });
 
+    connect(m_addOutlineBtn, &QToolButton::clicked,
+            m_outlineWidget, &OutlineWidget::addNewOutlineItem);
+    connect(m_deleteOutlineBtn, &QToolButton::clicked,
+            m_outlineWidget, &OutlineWidget::onDeleteOutline);
+    connect(m_deleteAllOutlineBtn, &QToolButton::clicked,
+            m_outlineWidget, &OutlineWidget::onDeleteAllOutlines);
     connect(m_expandAllBtn, &QToolButton::clicked,
             m_outlineWidget, &OutlineWidget::expandAll);
     connect(m_collapseAllBtn, &QToolButton::clicked,

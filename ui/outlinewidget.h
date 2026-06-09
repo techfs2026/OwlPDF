@@ -231,6 +231,17 @@ public:
         return size;
     }
 
+    // 行内重命名：editor 仅编辑标题（不含页码后缀），提交后交由
+    // OutlineWidget::commitInlineRename 走 OutlineEditor::renameOutline。
+    // 这些方法体定义在 .cpp 中（此处 OutlineWidget 尚为不完整类型）。
+    QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option,
+                          const QModelIndex& index) const override;
+    void setEditorData(QWidget* editor, const QModelIndex& index) const override;
+    void setModelData(QWidget* editor, QAbstractItemModel* model,
+                      const QModelIndex& index) const override;
+    void updateEditorGeometry(QWidget* editor, const QStyleOptionViewItem& option,
+                              const QModelIndex& index) const override;
+
 private:
     // UriRole 与 OutlineWidget 中的定义保持一致（Qt::UserRole + 2）
     static constexpr int UriRole = Qt::UserRole + 2;
@@ -256,6 +267,18 @@ public:
     void collapseAll();
     void toggleExpandAll();
 
+    // 行内重命名支持：供 OutlineItemDelegate 回调（m_treeWidget 即本控件）
+    QString inlineTitleForIndex(const QModelIndex& index) const;
+    void commitInlineRename(const QModelIndex& index, const QString& newTitle);
+
+public slots:
+    // 工具栏“+”：选中某项→建其子项，未选中→建根项；页码取当前阅读页，
+    // 新建后立即进入行内改名，全程不弹窗。
+    void addNewOutlineItem();
+    // 工具栏“删除选中”/“删除全部”（均带确认弹窗），与右键菜单共用同一逻辑。
+    void onDeleteOutline();
+    void onDeleteAllOutlines();
+
 signals:
     void pageJumpRequested(int pageIndex);
     void externalLinkRequested(const QString& uri);
@@ -269,15 +292,14 @@ protected:
     void dragLeaveEvent(QDragLeaveEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
 
 private slots:
     void onItemClicked(QTreeWidgetItem* item, int column);
     void onAddChildOutline();
     void onAddSiblingOutline();
     void onEditOutline();
-    void onDeleteOutline();
     void onSaveToDocument();
-    void onDeleteAllOutlines();
 
 private:
     void setupUI();
@@ -285,6 +307,7 @@ private:
     void buildTree(OutlineItem* outlineItem, QTreeWidgetItem* treeItem);
     QTreeWidgetItem* createTreeItem(OutlineItem* outlineItem);
     QTreeWidgetItem* findItemByPage(int pageIndex, QTreeWidgetItem* parent = nullptr);
+    QTreeWidgetItem* findItemByOutlineItem(OutlineItem* outlineItem);
     void expandToItem(QTreeWidgetItem* item);
     OutlineItem* getOutlineItem(QTreeWidgetItem* treeItem);
     void setOutlineItem(QTreeWidgetItem* treeItem, OutlineItem* outlineItem);

@@ -38,6 +38,7 @@ protected:
 private slots:
     void openFile();
     void closeCurrentTab();
+    void saveCurrentTab();
     void quit();
 
     void onTabChanged(int index);
@@ -145,6 +146,7 @@ private:
 
     QAction* m_openAction;
     QAction* m_closeAction;
+    QAction* m_saveAction;
     QAction* m_quitAction;
 
     QAction* m_copyAction;

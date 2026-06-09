@@ -17,6 +17,8 @@
 #include <QAbstractButton>
 #include <QElapsedTimer>
 #include <QStyledItemDelegate>
+#include <QLineEdit>
+#include <QPointer>
 
 
 OutlineWidget::OutlineWidget(PDFContentHandler* contentHandler, QWidget* parent)
@@ -88,7 +90,10 @@ void OutlineWidget::setupUI()
     setIndentation(6);   // 每级缩进；paint 与命中判定均从 indentation() 取此值
     setIconSize(QSize(16, 16));
     setMouseTracking(true);
-    setExpandsOnDoubleClick(true);
+    // 双击用于“行内改名”，故不再让双击切换展开（展开仍由点击折叠三角触发）；
+    // 编辑只允许显式入口（双击/“+”后），不开放其它自动触发，避免误进编辑态。
+    setExpandsOnDoubleClick(false);
+    setEditTriggers(QAbstractItemView::NoEditTriggers);
     setUniformRowHeights(false);
     setSelectionMode(QAbstractItemView::SingleSelection);
     setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -109,6 +114,15 @@ void OutlineWidget::setupUI()
 void OutlineWidget::mousePressEvent(QMouseEvent* event)
 {
     QTreeWidgetItem* item = itemAt(event->pos());
+
+    // 点击空白处（没有命中任何条目）即取消当前选中，避免误把后续“+”当成加子项
+    if (!item) {
+        clearSelection();
+        setCurrentItem(nullptr);
+        QTreeWidget::mousePressEvent(event);
+        return;
+    }
+
     if (item && item->childCount() > 0) {
         QRect rect = visualItemRect(item);
         int indent = indentation();
@@ -136,6 +150,19 @@ void OutlineWidget::mousePressEvent(QMouseEvent* event)
 
 
     QTreeWidget::mousePressEvent(event);
+}
+
+void OutlineWidget::mouseDoubleClickEvent(QMouseEvent* event)
+{
+    // 双击标题即就地改名（不弹窗）；点空白处保持默认行为
+    QTreeWidgetItem* item = itemAt(event->pos());
+    if (m_editEnabled && item) {
+        setCurrentItem(item);
+        editItem(item, 0);
+        event->accept();
+        return;
+    }
+    QTreeWidget::mouseDoubleClickEvent(event);
 }
 
 
@@ -347,6 +374,47 @@ void OutlineWidget::onItemClicked(QTreeWidgetItem* item, int column)
             emit externalLinkRequested(uri);
             return;
         }
+    }
+}
+
+void OutlineWidget::addNewOutlineItem()
+{
+    if (!m_outlineEditor) {
+        return;
+    }
+
+    // 页码取当前阅读页，并夹到合法范围内
+    int pageIndex = m_currentPageIndex;
+    int maxPage = m_contentHandler ? m_contentHandler->pageCount() : 1;
+    if (pageIndex < 0) pageIndex = 0;
+    if (pageIndex >= maxPage) pageIndex = maxPage - 1;
+
+    // 选中某项→作为其子项；未选中→作为根项
+    OutlineItem* parentItem = nullptr;
+    QList<QTreeWidgetItem*> sel = selectedItems();
+    if (!sel.isEmpty()) {
+        parentItem = getOutlineItem(sel.first());
+    } else {
+        parentItem = m_contentHandler ? m_contentHandler->outlineRoot() : nullptr;
+    }
+
+    // addOutline 要求标题非空，先给占位名，随即进入行内改名让用户覆盖
+    OutlineItem* newItem = m_outlineEditor->addOutline(
+        parentItem, tr("New Outline"), pageIndex);
+    if (!newItem) {
+        return;
+    }
+
+    // addOutline 已同步触发 refreshTree 整树重建；按指针回找新建的树项，
+    // 展开其父、选中、滚动到位，并立即开启行内编辑（占位名处于全选态）
+    QTreeWidgetItem* treeItem = findItemByOutlineItem(newItem);
+    if (treeItem) {
+        if (treeItem->parent()) {
+            treeItem->parent()->setExpanded(true);
+        }
+        setCurrentItem(treeItem);
+        scrollToItem(treeItem);
+        editItem(treeItem, 0);
     }
 }
 
@@ -588,31 +656,20 @@ void OutlineWidget::onSaveToDocument()
     }
 
     if (!m_outlineEditor->hasUnsavedChanges()) {
-        QMessageBox::information(this, tr("Hint"),
-                                 tr("No unsaved changes!"));
         return;
     }
 
-    QMessageBox::StandardButton reply = QMessageBox::question(
-        this, tr("Confirm Save"),
-        tr("Save outline changes to PDF?\n\nRecommend backing up the file first!"),
-        QMessageBox::Yes | QMessageBox::No);
+    // 静默保存：成功不打扰（自动建备份），失败才弹错。
+    // 备份目录化与定期清理见 OutlineEditor::createBackup / cleanupBackups。
+    bool success = m_outlineEditor->saveToDocument();
 
-    if (reply == QMessageBox::Yes) {
-        bool success = m_outlineEditor->saveToDocument();
-
-        if (success) {
-            QMessageBox::information(this, tr("Success"),
-                                     tr("Outline saved to PDF successfully!"));
-
-
-            if (m_contentHandler) {
-                m_contentHandler->loadOutline();
-            }
-        } else {
-            QMessageBox::critical(this, tr("Failed"),
-                                  tr("Save failed! Please check file permissions and disk space."));
+    if (success) {
+        if (m_contentHandler) {
+            m_contentHandler->loadOutline();
         }
+    } else {
+        QMessageBox::critical(this, tr("Failed"),
+                              tr("Save failed! Please check file permissions and disk space."));
     }
 }
 void OutlineWidget::buildTree(OutlineItem* outlineItem, QTreeWidgetItem* treeItem)
@@ -658,6 +715,9 @@ QTreeWidgetItem* OutlineWidget::createTreeItem(OutlineItem* outlineItem)
     }
 
     item->setText(0, title);
+
+    // 允许行内重命名（双击触发）；编辑器仅改标题，页码由 delegate 保留
+    item->setFlags(item->flags() | Qt::ItemIsEditable);
 
     // 字号统一到 token：@font-size-sm（实际着色与字号由 delegate 统一控制，
     // 这里设置仅作为 fallback，不写死字面值）
@@ -706,6 +766,68 @@ QTreeWidgetItem* OutlineWidget::findItemByPage(int pageIndex, QTreeWidgetItem* p
     }
 
     return nullptr;
+}
+
+QTreeWidgetItem* OutlineWidget::findItemByOutlineItem(OutlineItem* outlineItem)
+{
+    if (!outlineItem) {
+        return nullptr;
+    }
+
+    QTreeWidgetItemIterator it(this);
+    while (*it) {
+        if (getOutlineItem(*it) == outlineItem) {
+            return *it;
+        }
+        ++it;
+    }
+    return nullptr;
+}
+
+QString OutlineWidget::inlineTitleForIndex(const QModelIndex& index) const
+{
+    QTreeWidgetItem* item = itemFromIndex(index);
+    if (!item) {
+        return QString();
+    }
+    // 回到数据源取“纯标题”（不含 "  •  页码" 后缀）；新建占位项也走这里
+    QVariant data = item->data(0, OutlineItemRole);
+    OutlineItem* oi = data.value<OutlineItem*>();
+    return oi ? oi->title() : QString();
+}
+
+void OutlineWidget::commitInlineRename(const QModelIndex& index, const QString& newTitle)
+{
+    if (!m_outlineEditor) {
+        return;
+    }
+
+    QTreeWidgetItem* item = itemFromIndex(index);
+    if (!item) {
+        return;
+    }
+
+    OutlineItem* oi = getOutlineItem(item);
+    if (!oi) {
+        return;
+    }
+
+    QString title = newTitle.trimmed();
+    if (title.isEmpty() || title == oi->title()) {
+        // 空标题不接受（OutlineEditor 也会拒绝）；未改动则跳过，避免无谓重建
+        return;
+    }
+
+    // renameOutline 会触发 outlineModified→refreshTree（整树 clear 重建）。
+    // 此刻仍在 delegate::setModelData 内、编辑器正关闭，若同步重建模型会令
+    // 正在使用的索引/编辑器悬空 → 延后到下一拍执行。OutlineItem* 跨重建仍有效
+    // （重建的只是 QTreeWidgetItem，数据源对象不动）；用 QPointer 防文档已关闭。
+    QPointer<OutlineEditor> editor = m_outlineEditor;
+    QMetaObject::invokeMethod(this, [editor, oi, title]() {
+        if (editor) {
+            editor->renameOutline(oi, title);
+        }
+    }, Qt::QueuedConnection);
 }
 
 void OutlineWidget::expandToItem(QTreeWidgetItem* item)
@@ -1106,6 +1228,74 @@ void OutlineWidget::dropEvent(QDropEvent* event)
     m_overlay->line.valid = false;
     m_overlay->update();
     viewport()->update();
+}
+
+// ===== OutlineItemDelegate：行内重命名编辑器 =====
+// 这些方法在此定义而非头部内联，因为它们要调用 OutlineWidget 的接口
+// （在头部 OutlineWidget 尚为不完整类型）。m_treeWidget 即对应的 OutlineWidget。
+
+QWidget* OutlineItemDelegate::createEditor(QWidget* parent,
+                                           const QStyleOptionViewItem& option,
+                                           const QModelIndex& index) const
+{
+    Q_UNUSED(option);
+    Q_UNUSED(index);
+    QLineEdit* editor = new QLineEdit(parent);
+    editor->setFrame(false);
+    // 字号对齐正文（@font-size-sm），与 delegate 绘制保持一致
+    QFont font = editor->font();
+    font.setPixelSize(StyleManager::instance().currentConfig().fontSizeSm);
+    editor->setFont(font);
+    return editor;
+}
+
+void OutlineItemDelegate::setEditorData(QWidget* editor, const QModelIndex& index) const
+{
+    QLineEdit* le = qobject_cast<QLineEdit*>(editor);
+    if (!le) {
+        return;
+    }
+    OutlineWidget* ow = qobject_cast<OutlineWidget*>(m_treeWidget);
+    QString title = ow ? ow->inlineTitleForIndex(index) : QString();
+    le->setText(title);
+    le->selectAll();  // 占位名/原标题整体选中，输入即覆盖
+}
+
+void OutlineItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* model,
+                                       const QModelIndex& index) const
+{
+    Q_UNUSED(model);
+    QLineEdit* le = qobject_cast<QLineEdit*>(editor);
+    if (!le) {
+        return;
+    }
+    OutlineWidget* ow = qobject_cast<OutlineWidget*>(m_treeWidget);
+    if (ow) {
+        // 不直接写回 model 文本，交由 OutlineWidget 走 OutlineEditor::renameOutline，
+        // 由 outlineModified→refreshTree 统一重建（标题+页码后缀）
+        ow->commitInlineRename(index, le->text());
+    }
+}
+
+void OutlineItemDelegate::updateEditorGeometry(QWidget* editor,
+                                               const QStyleOptionViewItem& option,
+                                               const QModelIndex& index) const
+{
+    // 让编辑框起点对齐 paint() 中的标题起点（跳过缩进+折叠三角装饰区）
+    int leftMargin = 8;
+    if (m_treeWidget) {
+        int indent = m_treeWidget->indentation();
+        int depth = 0;
+        if (QTreeWidgetItem* item = m_treeWidget->itemFromIndex(index)) {
+            for (QTreeWidgetItem* p = item->parent(); p; p = p->parent()) {
+                ++depth;
+            }
+        }
+        leftMargin = 8 + depth * indent + kDecorationWidth;
+    }
+    QRect rect = option.rect;
+    rect.setLeft(leftMargin);
+    editor->setGeometry(rect);
 }
 
 void OutlineWidget::dragLeaveEvent(QDragLeaveEvent* event)
