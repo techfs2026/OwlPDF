@@ -139,7 +139,9 @@ double PDFViewHandler::calculateActualZoom(const QSize& viewportSize,
                                            double customZoom,
                                            int currentPage,
                                            PageDisplayMode displayMode,
-                                           int rotation) const
+                                           int rotation,
+                                           bool isContinuousScroll,
+                                           int verticalScrollBarWidth) const
 {
     double actualZoom = customZoom;
 
@@ -147,7 +149,8 @@ double PDFViewHandler::calculateActualZoom(const QSize& viewportSize,
         actualZoom = calculateFitPageZoom(viewportSize, currentPage, rotation);
     } else if (zoomMode == ZoomMode::FitWidth) {
         actualZoom = calculateFitWidthZoom(viewportSize, currentPage, displayMode,
-                                           rotation, m_renderer->pageCount());
+                                           rotation, m_renderer->pageCount(),
+                                           isContinuousScroll, verticalScrollBarWidth);
     }
 
     return clampZoom(actualZoom);
@@ -188,7 +191,9 @@ double PDFViewHandler::calculateFitWidthZoom(const QSize& viewportSize,
                                              int currentPage,
                                              PageDisplayMode displayMode,
                                              int rotation,
-                                             int pageCount) const
+                                             int pageCount,
+                                             bool isContinuousScroll,
+                                             int verticalScrollBarWidth) const
 {
     if (!m_renderer || !m_renderer->isDocumentLoaded()) {
         return DEFAULT_ZOOM;
@@ -224,7 +229,75 @@ double PDFViewHandler::calculateFitWidthZoom(const QSize& viewportSize,
         return DEFAULT_ZOOM;
     }
 
-    return availableWidth / pageSize.width();
+    double zoom = availableWidth / pageSize.width();
+
+    // 预留竖直滚动条宽度：若按此缩放排版后内容总高度超过视口高度，竖直滚动条
+    // 会出现并挤占可用宽度，导致页面比视口略宽、可以左右移动。这里先按满宽
+    // 算出的缩放预判内容高度，若会出现滚动条则扣掉其宽度后重新计算，从而一次
+    // 性消除“滚动条出现 → 视口变窄 → 页面偏大”的反馈环。
+    if (verticalScrollBarWidth > 0 && viewportSize.height() > 0) {
+        int contentHeight = calculateFitWidthContentHeight(
+            zoom, rotation, pageCount, currentPage, displayMode, isContinuousScroll);
+
+        if (contentHeight > viewportSize.height()) {
+            int adjustedWidth = availableWidth - verticalScrollBarWidth;
+            if (adjustedWidth > 0) {
+                zoom = adjustedWidth / pageSize.width();
+            }
+        }
+    }
+
+    return zoom;
+}
+
+int PDFViewHandler::calculateFitWidthContentHeight(double zoom,
+                                                   int rotation,
+                                                   int pageCount,
+                                                   int currentPage,
+                                                   PageDisplayMode displayMode,
+                                                   bool isContinuousScroll) const
+{
+    if (!m_renderer || !m_renderer->isDocumentLoaded()) {
+        return 0;
+    }
+
+    const int margin = AppConfig::PAGE_MARGIN;
+
+    auto rotatedPageSize = [this, rotation](int page) {
+        QSizeF size = m_renderer->pageSize(page);
+        if (rotation == 90 || rotation == 270) {
+            size.transpose();
+        }
+        return size;
+    };
+
+    // 连续模式：所有页竖向堆叠，与 calculatePagePositions / sizeHint 的布局一致。
+    if (isContinuousScroll) {
+        const int pageGap = AppConfig::PAGE_GAP;
+        int totalHeight = 0;
+        for (int i = 0; i < pageCount; ++i) {
+            QSizeF size = rotatedPageSize(i);
+            totalHeight += qRound(size.height() * zoom);
+            if (i < pageCount - 1) {
+                totalHeight += pageGap;
+            }
+        }
+        return totalHeight + 2 * margin;
+    }
+
+    // 单页/双页模式：只显示当前一屏，高度取所显示页的最大高度。
+    QSizeF size = rotatedPageSize(currentPage);
+    double contentHeight = size.height();
+
+    if (displayMode == PageDisplayMode::DoublePage) {
+        int nextPage = currentPage + 1;
+        if (nextPage < pageCount) {
+            QSizeF secondSize = rotatedPageSize(nextPage);
+            contentHeight = qMax(contentHeight, secondSize.height());
+        }
+    }
+
+    return qRound(contentHeight * zoom) + 2 * margin;
 }
 
 void PDFViewHandler::requestUpdateZoom(const QSize& viewportSize,
@@ -232,14 +305,17 @@ void PDFViewHandler::requestUpdateZoom(const QSize& viewportSize,
                                        double currentZoom,
                                        int currentPage,
                                        PageDisplayMode displayMode,
-                                       int rotation)
+                                       int rotation,
+                                       bool isContinuousScroll,
+                                       int verticalScrollBarWidth)
 {
     if (zoomMode == ZoomMode::Custom) {
         return;
     }
 
     double newZoom = calculateActualZoom(viewportSize, zoomMode, currentZoom,
-                                         currentPage, displayMode, rotation);
+                                         currentPage, displayMode, rotation,
+                                         isContinuousScroll, verticalScrollBarWidth);
     newZoom = clampZoom(newZoom);
 
     if (qAbs(currentZoom - newZoom) > 0.001) {

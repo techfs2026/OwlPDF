@@ -62,7 +62,7 @@ public:
     void actualSize();
     void fitPage();
     void fitWidth();
-    void updateZoom(const QSize& viewportSize);
+    void updateZoom(const QSize& viewportSize, int verticalScrollBarWidth = 0);
 
     void setDisplayMode(PageDisplayMode mode);
     void setContinuousScroll(bool continuous);

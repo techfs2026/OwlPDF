@@ -151,6 +151,8 @@ private:
     void refreshVisiblePages();
 
     void updateScrollBarPolicy();
+    // 适合宽度计算时需要预留的竖直滚动条宽度（按需出现时会挤占视口宽度）
+    int verticalScrollBarReserve() const;
     void updateCursorForPage(int pageIndex, const QPointF& pagePos);
     void showContextMenu(int pageIndex, const QPointF& pagePos, const QPoint& globalPos);
 

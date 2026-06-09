@@ -214,7 +214,7 @@ void PDFDocumentSession::fitWidth()
     setZoomMode(ZoomMode::FitWidth);
 }
 
-void PDFDocumentSession::updateZoom(const QSize& viewportSize)
+void PDFDocumentSession::updateZoom(const QSize& viewportSize, int verticalScrollBarWidth)
 {
     if (m_viewHandler) {
         m_viewHandler->requestUpdateZoom(
@@ -223,7 +223,9 @@ void PDFDocumentSession::updateZoom(const QSize& viewportSize)
             m_state->currentZoom(),
             m_state->currentPage(),
             m_state->currentDisplayMode(),
-            m_state->currentRotation()
+            m_state->currentRotation(),
+            m_state->isContinuousScroll(),
+            verticalScrollBarWidth
             );
     }
 }

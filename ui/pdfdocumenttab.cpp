@@ -125,7 +125,7 @@ void PDFDocumentTab::setupConnections()
                 if (zoom < 0) {
 
                     QSize viewportSize = m_scrollArea->viewport()->size();
-                    m_session->updateZoom(viewportSize);
+                    m_session->updateZoom(viewportSize, verticalScrollBarReserve());
                 } else {
                     onZoomChanged(zoom);
                 }
@@ -468,10 +468,18 @@ QSize PDFDocumentTab::getViewportSize() const
     return QSize(800, 600);
 }
 
+int PDFDocumentTab::verticalScrollBarReserve() const
+{
+    if (m_scrollArea && m_scrollArea->verticalScrollBar()) {
+        return m_scrollArea->verticalScrollBar()->sizeHint().width();
+    }
+    return 0;
+}
+
 void PDFDocumentTab::updateZoom(const QSize& viewportSize)
 {
     if (m_session) {
-        m_session->updateZoom(viewportSize);
+        m_session->updateZoom(viewportSize, verticalScrollBarReserve());
     }
 }
 
@@ -575,7 +583,7 @@ void PDFDocumentTab::onDocumentLoaded(const QString& filePath, int pageCount)
             if (mode == ZoomMode::FitWidth || mode == ZoomMode::FitPage) {
                 QSize viewportSize = m_scrollArea->viewport()->size();
                 qDebug() << "onDocumentLoaded 2, viewport:" << viewportSize;
-                m_session->updateZoom(viewportSize);
+                m_session->updateZoom(viewportSize, verticalScrollBarReserve());
             }
         }
     });
@@ -606,7 +614,7 @@ void PDFDocumentTab::onDisplayModeChanged(PageDisplayMode mode)
 
     if (m_session->state()->currentZoomMode() != ZoomMode::Custom) {
         QSize viewportSize = m_scrollArea->viewport()->size();
-        m_session->updateZoom(viewportSize);
+        m_session->updateZoom(viewportSize, verticalScrollBarReserve());
     }
 
     renderAndUpdatePages();
@@ -620,7 +628,7 @@ void PDFDocumentTab::onContinuousScrollChanged(bool continuous)
 
     if (m_session->state()->currentZoomMode() != ZoomMode::Custom) {
         QSize viewportSize = m_scrollArea->viewport()->size();
-        m_session->updateZoom(viewportSize);
+        m_session->updateZoom(viewportSize, verticalScrollBarReserve());
     }
 
     renderAndUpdatePages();

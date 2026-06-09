@@ -61,7 +61,9 @@ public:
                                double customZoom,
                                int currentPage,
                                PageDisplayMode displayMode,
-                               int rotation) const;
+                               int rotation,
+                               bool isContinuousScroll = false,
+                               int verticalScrollBarWidth = 0) const;
 
     double calculateFitPageZoom(const QSize& viewportSize,
                                 int currentPage,
@@ -71,14 +73,18 @@ public:
                                  int currentPage,
                                  PageDisplayMode displayMode,
                                  int rotation,
-                                 int pageCount) const;
+                                 int pageCount,
+                                 bool isContinuousScroll = false,
+                                 int verticalScrollBarWidth = 0) const;
 
     void requestUpdateZoom(const QSize& viewportSize,
                            ZoomMode zoomMode,
                            double currentZoom,
                            int currentPage,
                            PageDisplayMode displayMode,
-                           int rotation);
+                           int rotation,
+                           bool isContinuousScroll = false,
+                           int verticalScrollBarWidth = 0);
 
     void requestSetDisplayMode(PageDisplayMode mode,
                                bool currentContinuousScroll,
@@ -91,6 +97,14 @@ public:
                                 int pageCount,
                                 QVector<int>& outPositions,
                                 QVector<int>& outHeights);
+
+    // 计算给定缩放下当前显示内容的总高度（用于判断竖直滚动条是否会出现）
+    int calculateFitWidthContentHeight(double zoom,
+                                       int rotation,
+                                       int pageCount,
+                                       int currentPage,
+                                       PageDisplayMode displayMode,
+                                       bool isContinuousScroll) const;
 
     int calculateCurrentPageFromScroll(int scrollY,
                                        int margin,
