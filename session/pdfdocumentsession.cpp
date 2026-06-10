@@ -112,11 +112,6 @@ int PDFDocumentSession::pageCount() const
     return m_state->pageCount();
 }
 
-bool PDFDocumentSession::isTextPDF(int samplePages) const
-{
-    return m_contentHandler->isTextPDF(samplePages);
-}
-
 void PDFDocumentSession::goToPage(int pageIndex, bool adjustForDoublePageMode)
 {
     if (m_viewHandler) {
@@ -253,62 +248,6 @@ void PDFDocumentSession::setRotation(int rotation)
     if (m_viewHandler) {
         m_viewHandler->requestSetRotation(rotation);
     }
-}
-
-bool PDFDocumentSession::loadOutline()
-{
-    return m_contentHandler->loadOutline();
-}
-
-OutlineItem* PDFDocumentSession::outlineRoot() const
-{
-    return m_contentHandler->outlineRoot();
-}
-
-OutlineEditor* PDFDocumentSession::outlineEditor() const
-{
-    return m_contentHandler->outlineEditor();
-}
-
-bool PDFDocumentSession::hasUnsavedOutlineChanges() const
-{
-    return m_contentHandler && m_contentHandler->hasUnsavedOutlineChanges();
-}
-
-bool PDFDocumentSession::saveOutlineChanges()
-{
-    if (!m_contentHandler) {
-        return false;
-    }
-    return m_contentHandler->saveOutlineChanges(QString());
-}
-
-void PDFDocumentSession::loadThumbnails()
-{
-    if (m_contentHandler) {
-        m_contentHandler->loadThumbnails();
-    }
-}
-
-QImage PDFDocumentSession::getThumbnail(int pageIndex, bool preferHighRes) const
-{
-    return m_contentHandler ?
-               m_contentHandler->getThumbnail(pageIndex, preferHighRes) :
-               QImage();
-}
-
-bool PDFDocumentSession::hasThumbnail(int pageIndex) const
-{
-    return m_contentHandler ?
-               m_contentHandler->hasThumbnail(pageIndex) :
-               false;
-}
-
-QString PDFDocumentSession::getThumbnailStatistics() const
-{
-    return m_contentHandler ?
-               m_contentHandler->getThumbnailStatistics() :
-               QString();
 }
 
 void PDFDocumentSession::calculatePagePositions()
@@ -474,21 +413,6 @@ void PDFDocumentSession::setupConnections()
 
                     emit documentLoaded(filePath, pageCount);
                 });
-
-        connect(m_contentHandler.get(), &PDFContentHandler::documentError,
-                this, &PDFDocumentSession::documentError);
-
-        connect(m_contentHandler.get(), &PDFContentHandler::outlineLoaded,
-                this, &PDFDocumentSession::outlineLoaded);
-
-        connect(m_contentHandler.get(), &PDFContentHandler::unsavedOutlineChangesChanged,
-                this, &PDFDocumentSession::unsavedOutlineChangesChanged);
-
-        connect(m_contentHandler.get(), &PDFContentHandler::thumbnailLoaded,
-                this, &PDFDocumentSession::thumbnailLoaded);
-
-        connect(m_contentHandler.get(), &PDFContentHandler::thumbnailLoadProgress,
-                this, &PDFDocumentSession::thumbnailLoadProgress);
     }
 
     if (m_interactionHandler) {

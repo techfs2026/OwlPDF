@@ -47,7 +47,6 @@ public:
     bool isDocumentLoaded() const;
     QString documentPath() const;
     int pageCount() const;
-    bool isTextPDF(int samplePages = 5) const;
 
     void goToPage(int pageIndex, bool adjustForDoublePageMode = true);
     void previousPage();
@@ -68,17 +67,6 @@ public:
     void setContinuousScroll(bool continuous);
     void setRotation(int rotation);
 
-    bool loadOutline();
-    OutlineItem* outlineRoot() const;
-    OutlineEditor* outlineEditor() const;
-    bool hasUnsavedOutlineChanges() const;
-    bool saveOutlineChanges();
-
-    void loadThumbnails();
-    QImage getThumbnail(int pageIndex, bool preferHighRes = false) const;
-    bool hasThumbnail(int pageIndex) const;
-    QString getThumbnailStatistics() const;
-
     void calculatePagePositions();
     void updateCurrentPageFromScroll(int scrollY, int margin = 0);
     int getScrollPositionForPage(int pageIndex, int margin = 0) const;
@@ -94,8 +82,6 @@ public:
 
 signals:
     void documentLoaded(const QString& path, int pageCount);
-    void documentTypeChanged(bool isTextPDF);
-    void documentError(const QString& error);
     void currentPageChanged(int pageIndex);
     void zoomSettingCompleted(double zoom, ZoomMode mode);
     void currentZoomChanged(double zoom);
@@ -108,10 +94,6 @@ signals:
     void scrollToPositionRequested(int scrollY);
     void linksVisibleChanged(bool visible);
     void textSelectionChanged(bool hasSelection);
-    void outlineLoaded(bool success, int itemCount);
-    void unsavedOutlineChangesChanged(bool hasUnsaved);
-    void thumbnailLoaded(int pageIndex, const QImage& thumbnail);
-    void thumbnailLoadProgress(int current, int total);
     void searchCompleted(const QString& query, int totalMatches);
     void searchCancelled();
     void textPreloadProgress(int loaded, int total);

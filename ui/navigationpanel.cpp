@@ -168,7 +168,7 @@ void NavigationPanel::attachSession(PDFDocumentSession* session)
     m_sessionConns << connect(m_session, &PDFDocumentSession::currentPageChanged,
                               this, &NavigationPanel::updateCurrentPage);
 
-    m_sessionConns << connect(m_session, &PDFDocumentSession::outlineLoaded,
+    m_sessionConns << connect(ch, &PDFContentHandler::outlineLoaded,
                               this, [this](bool success, int itemCount) {
                                   if (success && m_outlineWidget) {
                                       m_outlineWidget->loadOutline();
@@ -184,12 +184,12 @@ void NavigationPanel::attachSession(PDFDocumentSession* session)
                                   });
     }
 
-    m_sessionConns << connect(m_session, &PDFDocumentSession::thumbnailLoaded,
+    m_sessionConns << connect(ch, &PDFContentHandler::thumbnailLoaded,
                               this, [this](int pageIndex, const QImage& thumbnail) {
                                   m_thumbnailWidget->onThumbnailLoaded(pageIndex, thumbnail);
                               });
 
-    OutlineEditor* editor = m_session->outlineEditor();
+    OutlineEditor* editor = ch->outlineEditor();
     if (editor) {
         m_sessionConns << connect(editor, &OutlineEditor::saveCompleted,
                                   this, [this](bool success, const QString& errorMsg) {
@@ -333,11 +333,11 @@ void NavigationPanel::loadDocument(int pageCount)
         m_outlineWidget->loadOutline();
     } else {
         // 首次：解析 PDF 目录（emit outlineLoaded → 触发 widget 重建）
-        m_session->loadOutline();
+        ch->loadOutline();
     }
 
     // emit thumbnailsInitialized → initializeThumbnails（含已缓存缩略图回填）
-    m_session->loadThumbnails();
+    ch->loadThumbnails();
 }
 
 void NavigationPanel::clear()

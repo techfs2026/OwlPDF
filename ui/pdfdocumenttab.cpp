@@ -7,6 +7,7 @@
 #include "perthreadmupdfrenderer.h"
 #include "pagecachemanager.h"
 #include "pdfinteractionhandler.h"
+#include "pdfcontenthandler.h"
 #include "textcachemanager.h"
 #include "pdfviewhandler.h"
 #include "linkmanager.h"
@@ -111,7 +112,7 @@ void PDFDocumentTab::setupConnections()
                 onDocumentLoaded(path, pageCount);
             });
 
-    connect(m_session, &PDFDocumentSession::documentError,
+    connect(m_session->contentHandler(), &PDFContentHandler::documentError,
             this, &PDFDocumentTab::documentError);
 
     connect(m_session, &PDFDocumentSession::currentPageChanged,
@@ -217,7 +218,7 @@ void PDFDocumentTab::setupConnections()
     connect(m_session, &PDFDocumentSession::paperEffectChanged,
             this, &PDFDocumentTab::paperEffectChanged);
 
-    connect(m_session, &PDFDocumentSession::unsavedOutlineChangesChanged,
+    connect(m_session->contentHandler(), &PDFContentHandler::unsavedOutlineChangesChanged,
             this, &PDFDocumentTab::unsavedChangesChanged);
 
 
@@ -263,12 +264,12 @@ QString PDFDocumentTab::documentPath() const
 
 bool PDFDocumentTab::hasUnsavedChanges() const
 {
-    return m_session && m_session->hasUnsavedOutlineChanges();
+    return m_session && m_session->contentHandler()->hasUnsavedOutlineChanges();
 }
 
 bool PDFDocumentTab::saveOutline()
 {
-    return m_session && m_session->saveOutlineChanges();
+    return m_session && m_session->contentHandler()->saveOutlineChanges(QString());
 }
 
 QString PDFDocumentTab::documentTitle() const
