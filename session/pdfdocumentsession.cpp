@@ -22,15 +22,15 @@ PDFDocumentSession::PDFDocumentSession(QObject* parent)
 
     m_textCache = std::make_unique<TextCacheManager>(m_renderer.get(), this);
 
-    m_viewHandler = std::make_unique<PDFViewHandler>(m_renderer.get(), this);
+    m_state = std::make_unique<PDFDocumentState>(this);
+
+    m_viewHandler = std::make_unique<PDFViewHandler>(m_renderer.get(), m_state.get(), this);
     m_contentHandler = std::make_unique<PDFContentHandler>(m_renderer.get(), this);
     m_interactionHandler = std::make_unique<PDFInteractionHandler>(
         m_renderer.get(),
         m_textCache.get(),
         this
         );
-
-    m_state = std::make_unique<PDFDocumentState>(this);
 
     setupConnections();
 }
@@ -98,126 +98,59 @@ void PDFDocumentSession::closeDocument()
 
 void PDFDocumentSession::goToPage(int pageIndex, bool adjustForDoublePageMode)
 {
-    if (m_viewHandler) {
-        m_viewHandler->requestGoToPage(
-            pageIndex,
-            adjustForDoublePageMode,
-            m_state->currentDisplayMode(),
-            m_state->currentPage()
-            );
-    }
+    m_viewHandler->requestGoToPage(pageIndex, adjustForDoublePageMode);
 }
 
 void PDFDocumentSession::previousPage()
 {
-    if (m_viewHandler) {
-        m_viewHandler->requestPreviousPage(
-            m_state->currentDisplayMode(),
-            m_state->isContinuousScroll(),
-            m_state->currentPage()
-            );
-    }
+    m_viewHandler->requestPreviousPage();
 }
 
 void PDFDocumentSession::nextPage()
 {
-    if (m_viewHandler) {
-        m_viewHandler->requestNextPage(
-            m_state->currentDisplayMode(),
-            m_state->isContinuousScroll(),
-            m_state->currentPage(),
-            m_state->pageCount()
-            );
-    }
+    m_viewHandler->requestNextPage();
 }
 
 void PDFDocumentSession::firstPage()
 {
-    if (m_viewHandler) {
-        m_viewHandler->requestFirstPage(m_state->currentDisplayMode());
-    }
+    m_viewHandler->requestFirstPage();
 }
 
 void PDFDocumentSession::lastPage()
 {
-    if (m_viewHandler) {
-        m_viewHandler->requestLastPage(
-            m_state->currentDisplayMode(),
-            m_state->pageCount()
-            );
-    }
+    m_viewHandler->requestLastPage();
 }
 
 void PDFDocumentSession::zoomIn()
 {
-    if (m_viewHandler) {
-        m_viewHandler->requestZoomIn(m_state->currentZoom());
-    }
+    m_viewHandler->requestZoomIn();
 }
 
 void PDFDocumentSession::zoomOut()
 {
-    if (m_viewHandler) {
-        m_viewHandler->requestZoomOut(m_state->currentZoom());
-    }
+    m_viewHandler->requestZoomOut();
 }
 
 void PDFDocumentSession::updateZoom(const QSize& viewportSize, int verticalScrollBarWidth)
 {
-    if (m_viewHandler) {
-        m_viewHandler->requestUpdateZoom(
-            viewportSize,
-            m_state->currentZoomMode(),
-            m_state->currentZoom(),
-            m_state->currentPage(),
-            m_state->currentDisplayMode(),
-            m_state->currentRotation(),
-            m_state->isContinuousScroll(),
-            verticalScrollBarWidth
-            );
-    }
+    m_viewHandler->requestUpdateZoom(viewportSize, verticalScrollBarWidth);
 }
 
 void PDFDocumentSession::setDisplayMode(PageDisplayMode mode)
 {
-    if (m_viewHandler) {
-        m_viewHandler->requestSetDisplayMode(
-            mode,
-            m_state->isContinuousScroll(),
-            m_state->currentPage()
-            );
-    }
+    m_viewHandler->requestSetDisplayMode(mode);
 }
 
 void PDFDocumentSession::calculatePagePositions()
 {
-    if (!m_viewHandler) {
-        return;
-    }
-
     QVector<int> positions;
     QVector<int> heights;
-
-    bool success = m_viewHandler->calculatePagePositions(
-        m_state->currentZoom(),
-        m_state->currentRotation(),
-        m_state->pageCount(),
-        positions,
-        heights
-        );
+    m_viewHandler->calculatePagePositions(positions, heights);
 }
 
 void PDFDocumentSession::updateCurrentPageFromScroll(int scrollY, int margin)
 {
-    if (!m_viewHandler) {
-        return;
-    }
-
-    int newPage = m_viewHandler->calculateCurrentPageFromScroll(
-        scrollY,
-        margin,
-        m_state->pageYPositions()
-        );
+    int newPage = m_viewHandler->calculateCurrentPageFromScroll(scrollY, margin);
 
     if (newPage >= 0 && newPage != m_state->currentPage()) {
         m_state->setCurrentPage(newPage);
@@ -227,15 +160,7 @@ void PDFDocumentSession::updateCurrentPageFromScroll(int scrollY, int margin)
 
 int PDFDocumentSession::getScrollPositionForPage(int pageIndex, int margin) const
 {
-    if (!m_viewHandler) {
-        return -1;
-    }
-
-    return m_viewHandler->getScrollPositionForPage(
-        pageIndex,
-        margin,
-        m_state->pageYPositions()
-        );
+    return m_viewHandler->getScrollPositionForPage(pageIndex, margin);
 }
 
 void PDFDocumentSession::saveViewportState(int scrollY)
@@ -257,7 +182,7 @@ void PDFDocumentSession::setupConnections()
                     updateCacheAfterStateChange();
                     if(m_state->isContinuousScroll()) {
                         int targetY = m_viewHandler->getScrollPositionForPage(
-                            newPageIndex, AppConfig::PAGE_MARGIN, m_state->pageYPositions());
+                            newPageIndex, AppConfig::PAGE_MARGIN);
                         emit scrollToPositionRequested(targetY);
                     }
                     emit currentPageChanged(newPageIndex);

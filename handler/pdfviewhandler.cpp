@@ -1,12 +1,16 @@
 #include "pdfviewhandler.h"
 #include "perthreadmupdfrenderer.h"
+#include "pdfdocumentstate.h"
 #include "appconfig.h"
 #include <QDebug>
 #include <algorithm>
 
-PDFViewHandler::PDFViewHandler(PerThreadMuPDFRenderer* renderer, QObject* parent)
+PDFViewHandler::PDFViewHandler(PerThreadMuPDFRenderer* renderer,
+                               const PDFDocumentState* state,
+                               QObject* parent)
     : QObject(parent)
     , m_renderer(renderer)
+    , m_state(state)
 {
 }
 
@@ -14,10 +18,7 @@ PDFViewHandler::~PDFViewHandler()
 {
 }
 
-void PDFViewHandler::requestGoToPage(int pageIndex,
-                                     bool adjustForDoublePageMode,
-                                     PageDisplayMode currentDisplayMode,
-                                     int currentPage)
+void PDFViewHandler::requestGoToPage(int pageIndex, bool adjustForDoublePageMode)
 {
     if (!m_renderer || !m_renderer->isDocumentLoaded()) {
         return;
@@ -29,57 +30,54 @@ void PDFViewHandler::requestGoToPage(int pageIndex,
     }
 
     if (adjustForDoublePageMode &&
-        currentDisplayMode == PageDisplayMode::DoublePage) {
+        m_state->currentDisplayMode() == PageDisplayMode::DoublePage) {
         pageIndex = getDoublePageStartIndex(pageIndex);
     }
 
-    if (currentPage != pageIndex) {
+    if (m_state->currentPage() != pageIndex) {
         emit pageNavigationCompleted(pageIndex);
     }
 }
 
-void PDFViewHandler::requestPreviousPage(PageDisplayMode currentDisplayMode,
-                                         bool isContinuousScroll,
-                                         int currentPage)
+void PDFViewHandler::requestPreviousPage()
 {
-    int prevPage = getPreviousPageIndex(currentDisplayMode, isContinuousScroll, currentPage);
+    int prevPage = getPreviousPageIndex(m_state->currentDisplayMode(),
+                                        m_state->isContinuousScroll(),
+                                        m_state->currentPage());
     if (prevPage >= 0) {
         emit pageNavigationCompleted(prevPage);
     }
 }
 
-void PDFViewHandler::requestNextPage(PageDisplayMode currentDisplayMode,
-                                     bool isContinuousScroll,
-                                     int currentPage,
-                                     int pageCount)
+void PDFViewHandler::requestNextPage()
 {
     if (!m_renderer || !m_renderer->isDocumentLoaded()) {
         return;
     }
 
-    int nextPage = getNextPageIndex(currentDisplayMode, isContinuousScroll, currentPage);
+    int nextPage = getNextPageIndex(m_state->currentDisplayMode(),
+                                    m_state->isContinuousScroll(),
+                                    m_state->currentPage());
 
-    if (nextPage < pageCount) {
+    if (nextPage < m_state->pageCount()) {
         emit pageNavigationCompleted(nextPage);
     }
 }
 
-void PDFViewHandler::requestFirstPage(PageDisplayMode currentDisplayMode)
+void PDFViewHandler::requestFirstPage()
 {
-    int firstPage = 0;
-
-    emit pageNavigationCompleted(firstPage);
+    emit pageNavigationCompleted(0);
 }
 
-void PDFViewHandler::requestLastPage(PageDisplayMode currentDisplayMode, int pageCount)
+void PDFViewHandler::requestLastPage()
 {
     if (!m_renderer || !m_renderer->isDocumentLoaded()) {
         return;
     }
 
-    int lastPage = pageCount - 1;
+    int lastPage = m_state->pageCount() - 1;
 
-    if (currentDisplayMode == PageDisplayMode::DoublePage) {
+    if (m_state->currentDisplayMode() == PageDisplayMode::DoublePage) {
         lastPage = getDoublePageStartIndex(lastPage);
     }
 
@@ -122,15 +120,15 @@ void PDFViewHandler::requestSetZoomMode(ZoomMode mode)
     emit zoomSettingCompleted(-1.0, mode);
 }
 
-void PDFViewHandler::requestZoomIn(double currentZoom)
+void PDFViewHandler::requestZoomIn()
 {
-    double newZoom = clampZoom(currentZoom + ZOOM_STEP);
+    double newZoom = clampZoom(m_state->currentZoom() + ZOOM_STEP);
     emit zoomSettingCompleted(newZoom, ZoomMode::Custom);
 }
 
-void PDFViewHandler::requestZoomOut(double currentZoom)
+void PDFViewHandler::requestZoomOut()
 {
-    double newZoom = clampZoom(currentZoom - ZOOM_STEP);
+    double newZoom = clampZoom(m_state->currentZoom() - ZOOM_STEP);
     emit zoomSettingCompleted(newZoom, ZoomMode::Custom);
 }
 
@@ -301,21 +299,21 @@ int PDFViewHandler::calculateFitWidthContentHeight(double zoom,
 }
 
 void PDFViewHandler::requestUpdateZoom(const QSize& viewportSize,
-                                       ZoomMode zoomMode,
-                                       double currentZoom,
-                                       int currentPage,
-                                       PageDisplayMode displayMode,
-                                       int rotation,
-                                       bool isContinuousScroll,
                                        int verticalScrollBarWidth)
 {
+    const ZoomMode zoomMode = m_state->currentZoomMode();
+    const double currentZoom = m_state->currentZoom();
+
     if (zoomMode == ZoomMode::Custom) {
         return;
     }
 
     double newZoom = calculateActualZoom(viewportSize, zoomMode, currentZoom,
-                                         currentPage, displayMode, rotation,
-                                         isContinuousScroll, verticalScrollBarWidth);
+                                         m_state->currentPage(),
+                                         m_state->currentDisplayMode(),
+                                         m_state->currentRotation(),
+                                         m_state->isContinuousScroll(),
+                                         verticalScrollBarWidth);
     newZoom = clampZoom(newZoom);
 
     if (qAbs(currentZoom - newZoom) > 0.001) {
@@ -323,14 +321,12 @@ void PDFViewHandler::requestUpdateZoom(const QSize& viewportSize,
     }
 }
 
-void PDFViewHandler::requestSetDisplayMode(PageDisplayMode mode,
-                                           bool currentContinuousScroll,
-                                           int currentPage)
+void PDFViewHandler::requestSetDisplayMode(PageDisplayMode mode)
 {
-    int adjustedPage = currentPage;
+    int adjustedPage = m_state->currentPage();
 
     if (mode == PageDisplayMode::DoublePage) {
-        adjustedPage = getDoublePageStartIndex(currentPage);
+        adjustedPage = getDoublePageStartIndex(adjustedPage);
     }
 
     emit displayModeSettingCompleted(mode, adjustedPage);
@@ -341,15 +337,16 @@ void PDFViewHandler::requestSetContinuousScroll(bool continuous)
     emit continuousScrollSettingCompleted(continuous);
 }
 
-bool PDFViewHandler::calculatePagePositions(double zoom,
-                                            int rotation,
-                                            int pageCount,
-                                            QVector<int>& outPositions,
+bool PDFViewHandler::calculatePagePositions(QVector<int>& outPositions,
                                             QVector<int>& outHeights)
 {
     if (!m_renderer || !m_renderer->isDocumentLoaded()) {
         return false;
     }
+
+    const double zoom = m_state->currentZoom();
+    const int rotation = m_state->currentRotation();
+    const int pageCount = m_state->pageCount();
 
     outPositions.clear();
     outPositions.reserve(pageCount);
@@ -378,10 +375,9 @@ bool PDFViewHandler::calculatePagePositions(double zoom,
     return true;
 }
 
-int PDFViewHandler::calculateCurrentPageFromScroll(int scrollY,
-                                                   int margin,
-                                                   const QVector<int>& pageYPositions) const
+int PDFViewHandler::calculateCurrentPageFromScroll(int scrollY, int margin) const
 {
+    const QVector<int>& pageYPositions = m_state->pageYPositions();
     if (pageYPositions.isEmpty()) {
         return -1;
     }
@@ -397,10 +393,9 @@ int PDFViewHandler::calculateCurrentPageFromScroll(int scrollY,
     return 0;
 }
 
-int PDFViewHandler::getScrollPositionForPage(int pageIndex,
-                                             int margin,
-                                             const QVector<int>& pageYPositions) const
+int PDFViewHandler::getScrollPositionForPage(int pageIndex, int margin) const
 {
+    const QVector<int>& pageYPositions = m_state->pageYPositions();
     if (pageYPositions.isEmpty()) {
         return -1;
     }
@@ -414,12 +409,12 @@ int PDFViewHandler::getScrollPositionForPage(int pageIndex,
 
 QSet<int> PDFViewHandler::getVisiblePages(const QRect& visibleRect,
                                           int preloadMargin,
-                                          int margin,
-                                          const QVector<int>& pageYPositions,
-                                          const QVector<int>& pageHeights) const
+                                          int margin) const
 {
     QSet<int> visiblePages;
 
+    const QVector<int>& pageYPositions = m_state->pageYPositions();
+    const QVector<int>& pageHeights = m_state->pageHeights();
     if (pageYPositions.isEmpty()) {
         return visiblePages;
     }

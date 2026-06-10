@@ -11,32 +11,27 @@
 #include "datastructure.h"
 
 class PerThreadMuPDFRenderer;
+class PDFDocumentState;
 
 class PDFViewHandler : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit PDFViewHandler(PerThreadMuPDFRenderer* renderer, QObject* parent = nullptr);
+    explicit PDFViewHandler(PerThreadMuPDFRenderer* renderer,
+                            const PDFDocumentState* state,
+                            QObject* parent = nullptr);
     ~PDFViewHandler();
 
-    void requestGoToPage(int pageIndex,
-                         bool adjustForDoublePageMode,
-                         PageDisplayMode currentDisplayMode,
-                         int currentPage);
+    void requestGoToPage(int pageIndex, bool adjustForDoublePageMode);
 
-    void requestPreviousPage(PageDisplayMode currentDisplayMode,
-                             bool isContinuousScroll,
-                             int currentPage);
+    void requestPreviousPage();
 
-    void requestNextPage(PageDisplayMode currentDisplayMode,
-                         bool isContinuousScroll,
-                         int currentPage,
-                         int pageCount);
+    void requestNextPage();
 
-    void requestFirstPage(PageDisplayMode currentDisplayMode);
+    void requestFirstPage();
 
-    void requestLastPage(PageDisplayMode currentDisplayMode, int pageCount);
+    void requestLastPage();
 
     int getPreviousPageIndex(PageDisplayMode displayMode,
                              bool continuousScroll,
@@ -52,9 +47,9 @@ public:
 
     void requestSetZoomMode(ZoomMode mode);
 
-    void requestZoomIn(double currentZoom);
+    void requestZoomIn();
 
-    void requestZoomOut(double currentZoom);
+    void requestZoomOut();
 
     double calculateActualZoom(const QSize& viewportSize,
                                ZoomMode zoomMode,
@@ -78,24 +73,13 @@ public:
                                  int verticalScrollBarWidth = 0) const;
 
     void requestUpdateZoom(const QSize& viewportSize,
-                           ZoomMode zoomMode,
-                           double currentZoom,
-                           int currentPage,
-                           PageDisplayMode displayMode,
-                           int rotation,
-                           bool isContinuousScroll = false,
                            int verticalScrollBarWidth = 0);
 
-    void requestSetDisplayMode(PageDisplayMode mode,
-                               bool currentContinuousScroll,
-                               int currentPage);
+    void requestSetDisplayMode(PageDisplayMode mode);
 
     void requestSetContinuousScroll(bool continuous);
 
-    bool calculatePagePositions(double zoom,
-                                int rotation,
-                                int pageCount,
-                                QVector<int>& outPositions,
+    bool calculatePagePositions(QVector<int>& outPositions,
                                 QVector<int>& outHeights);
 
     // 计算给定缩放下当前显示内容的总高度（用于判断竖直滚动条是否会出现）
@@ -106,19 +90,13 @@ public:
                                        PageDisplayMode displayMode,
                                        bool isContinuousScroll) const;
 
-    int calculateCurrentPageFromScroll(int scrollY,
-                                       int margin,
-                                       const QVector<int>& pageYPositions) const;
+    int calculateCurrentPageFromScroll(int scrollY, int margin) const;
 
-    int getScrollPositionForPage(int pageIndex,
-                                 int margin,
-                                 const QVector<int>& pageYPositions) const;
+    int getScrollPositionForPage(int pageIndex, int margin) const;
 
     QSet<int> getVisiblePages(const QRect& visibleRect,
                               int preloadMargin,
-                              int margin,
-                              const QVector<int>& pageYPositions,
-                              const QVector<int>& pageHeights) const;
+                              int margin) const;
 
     void requestSetRotation(int rotation);
 
@@ -147,6 +125,7 @@ signals:
 
 private:
     PerThreadMuPDFRenderer* m_renderer;
+    const PDFDocumentState* m_state;
 
     static constexpr double DEFAULT_ZOOM = 1.0;
     static constexpr double MIN_ZOOM = 0.25;

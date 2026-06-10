@@ -88,11 +88,12 @@ private:
     std::unique_ptr<PageCacheManager> m_pageCache;
     std::unique_ptr<TextCacheManager> m_textCache;
 
+    // 在各 handler 之前声明：handler 持有指向它的指针，必须比 handler 后析构。
+    std::unique_ptr<PDFDocumentState> m_state;
+
     std::unique_ptr<PDFViewHandler> m_viewHandler;
     std::unique_ptr<PDFContentHandler> m_contentHandler;
     std::unique_ptr<PDFInteractionHandler> m_interactionHandler;
-
-    std::unique_ptr<PDFDocumentState> m_state;
 };
 
 #endif // PDFDOCUMENTSESSION_H

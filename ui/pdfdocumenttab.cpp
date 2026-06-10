@@ -875,9 +875,7 @@ void PDFDocumentTab::refreshVisiblePages()
     QSet<int> visiblePages = m_session->viewHandler()->getVisiblePages(
         visibleRect,
         AppConfig::instance().preloadMargin(),
-        AppConfig::PAGE_MARGIN,
-        state->pageYPositions(),
-        state->pageHeights()
+        AppConfig::PAGE_MARGIN
         );
 
 
