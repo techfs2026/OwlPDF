@@ -3,6 +3,7 @@
 #include "thumbnailwidget.h"
 #include "pdfdocumentsession.h"
 #include "pdfcontenthandler.h"
+#include "pdfviewhandler.h"
 #include "outlineeditor.h"
 #include "thumbnailmanagerv2.h"
 
@@ -162,7 +163,7 @@ void NavigationPanel::attachSession(PDFDocumentSession* session)
     // 建立与当前 session 的连接（detach 时统一断开）
     m_sessionConns << connect(this, &NavigationPanel::pageJumpRequested,
                               this, [this](int pageIndex) {
-                                  if (m_session) m_session->goToPage(pageIndex);
+                                  if (m_session) m_session->viewHandler()->requestGoToPage(pageIndex);
                               });
 
     m_sessionConns << connect(m_session, &PDFDocumentSession::currentPageChanged,

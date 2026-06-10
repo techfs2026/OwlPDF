@@ -96,51 +96,6 @@ void PDFDocumentSession::closeDocument()
 }
 
 
-void PDFDocumentSession::goToPage(int pageIndex, bool adjustForDoublePageMode)
-{
-    m_viewHandler->requestGoToPage(pageIndex, adjustForDoublePageMode);
-}
-
-void PDFDocumentSession::previousPage()
-{
-    m_viewHandler->requestPreviousPage();
-}
-
-void PDFDocumentSession::nextPage()
-{
-    m_viewHandler->requestNextPage();
-}
-
-void PDFDocumentSession::firstPage()
-{
-    m_viewHandler->requestFirstPage();
-}
-
-void PDFDocumentSession::lastPage()
-{
-    m_viewHandler->requestLastPage();
-}
-
-void PDFDocumentSession::zoomIn()
-{
-    m_viewHandler->requestZoomIn();
-}
-
-void PDFDocumentSession::zoomOut()
-{
-    m_viewHandler->requestZoomOut();
-}
-
-void PDFDocumentSession::updateZoom(const QSize& viewportSize, int verticalScrollBarWidth)
-{
-    m_viewHandler->requestUpdateZoom(viewportSize, verticalScrollBarWidth);
-}
-
-void PDFDocumentSession::setDisplayMode(PageDisplayMode mode)
-{
-    m_viewHandler->requestSetDisplayMode(mode);
-}
-
 void PDFDocumentSession::calculatePagePositions()
 {
     QVector<int> positions;
@@ -156,11 +111,6 @@ void PDFDocumentSession::updateCurrentPageFromScroll(int scrollY, int margin)
         m_state->setCurrentPage(newPage);
         emit currentPageChanged(newPage);
     }
-}
-
-int PDFDocumentSession::getScrollPositionForPage(int pageIndex, int margin) const
-{
-    return m_viewHandler->getScrollPositionForPage(pageIndex, margin);
 }
 
 void PDFDocumentSession::saveViewportState(int scrollY)

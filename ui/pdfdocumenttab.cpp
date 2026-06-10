@@ -126,7 +126,7 @@ void PDFDocumentTab::setupConnections()
                 if (zoom < 0) {
 
                     QSize viewportSize = m_scrollArea->viewport()->size();
-                    m_session->updateZoom(viewportSize, verticalScrollBarReserve());
+                    m_session->viewHandler()->requestUpdateZoom(viewportSize, verticalScrollBarReserve());
                 } else {
                     onZoomChanged(zoom);
                 }
@@ -162,7 +162,7 @@ void PDFDocumentTab::setupConnections()
 
     connect(m_session->interactionHandler(), &PDFInteractionHandler::internalLinkRequested,
             this, [this](int targetPage) {
-                m_session->goToPage(targetPage);
+                m_session->viewHandler()->requestGoToPage(targetPage);
             });
 
     connect(m_session, &PDFDocumentSession::textPreloadProgress,
@@ -283,38 +283,38 @@ QString PDFDocumentTab::documentTitle() const
 
 void PDFDocumentTab::previousPage()
 {
-    m_session->previousPage();
+    m_session->viewHandler()->requestPreviousPage();
 }
 
 void PDFDocumentTab::nextPage()
 {
-    m_session->nextPage();
+    m_session->viewHandler()->requestNextPage();
 }
 
 void PDFDocumentTab::firstPage()
 {
-    m_session->firstPage();
+    m_session->viewHandler()->requestFirstPage();
 }
 
 void PDFDocumentTab::lastPage()
 {
-    m_session->lastPage();
+    m_session->viewHandler()->requestLastPage();
 }
 
 void PDFDocumentTab::goToPage(int pageIndex)
 {
-    m_session->goToPage(pageIndex);
+    m_session->viewHandler()->requestGoToPage(pageIndex);
 }
 
 
 void PDFDocumentTab::zoomIn()
 {
-    m_session->zoomIn();
+    m_session->viewHandler()->requestZoomIn();
 }
 
 void PDFDocumentTab::zoomOut()
 {
-    m_session->zoomOut();
+    m_session->viewHandler()->requestZoomOut();
 }
 
 void PDFDocumentTab::actualSize()
@@ -343,7 +343,7 @@ void PDFDocumentTab::setZoom(double zoom)
 void PDFDocumentTab::setDisplayMode(PageDisplayMode mode)
 {
     if (mode != m_session->state()->currentDisplayMode()) {
-        m_session->setDisplayMode(mode);
+        m_session->viewHandler()->requestSetDisplayMode(mode);
     }
 }
 
@@ -480,7 +480,7 @@ int PDFDocumentTab::verticalScrollBarReserve() const
 void PDFDocumentTab::updateZoom(const QSize& viewportSize)
 {
     if (m_session) {
-        m_session->updateZoom(viewportSize, verticalScrollBarReserve());
+        m_session->viewHandler()->requestUpdateZoom(viewportSize, verticalScrollBarReserve());
     }
 }
 
@@ -517,7 +517,7 @@ void PDFDocumentTab::scrollToSearchResult(const SearchResult& result)
     // 非连续滚动模式下，先确保切到命中所在页（整页显示，无需页内滚动）
     if (!state->isContinuousScroll()) {
         if (result.pageIndex != state->currentPage()) {
-            m_session->goToPage(result.pageIndex);
+            m_session->viewHandler()->requestGoToPage(result.pageIndex);
         }
         return;
     }
@@ -584,7 +584,7 @@ void PDFDocumentTab::onDocumentLoaded(const QString& filePath, int pageCount)
             if (mode == ZoomMode::FitWidth || mode == ZoomMode::FitPage) {
                 QSize viewportSize = m_scrollArea->viewport()->size();
                 qDebug() << "onDocumentLoaded 2, viewport:" << viewportSize;
-                m_session->updateZoom(viewportSize, verticalScrollBarReserve());
+                m_session->viewHandler()->requestUpdateZoom(viewportSize, verticalScrollBarReserve());
             }
         }
     });
@@ -615,7 +615,7 @@ void PDFDocumentTab::onDisplayModeChanged(PageDisplayMode mode)
 
     if (m_session->state()->currentZoomMode() != ZoomMode::Custom) {
         QSize viewportSize = m_scrollArea->viewport()->size();
-        m_session->updateZoom(viewportSize, verticalScrollBarReserve());
+        m_session->viewHandler()->requestUpdateZoom(viewportSize, verticalScrollBarReserve());
     }
 
     renderAndUpdatePages();
@@ -629,7 +629,7 @@ void PDFDocumentTab::onContinuousScrollChanged(bool continuous)
 
     if (m_session->state()->currentZoomMode() != ZoomMode::Custom) {
         QSize viewportSize = m_scrollArea->viewport()->size();
-        m_session->updateZoom(viewportSize, verticalScrollBarReserve());
+        m_session->viewHandler()->requestUpdateZoom(viewportSize, verticalScrollBarReserve());
     }
 
     renderAndUpdatePages();
@@ -654,7 +654,7 @@ void PDFDocumentTab::onPagePositionsChanged(const QVector<int>& positions, const
             } else {
 
                 int currentPage = m_session->state()->currentPage();
-                targetY = m_session->getScrollPositionForPage(currentPage, AppConfig::PAGE_MARGIN);
+                targetY = m_session->viewHandler()->getScrollPositionForPage(currentPage, AppConfig::PAGE_MARGIN);
             }
 
             if (targetY >= 0) {

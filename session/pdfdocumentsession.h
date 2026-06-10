@@ -3,7 +3,6 @@
 
 #include <QObject>
 #include <QString>
-#include <QSize>
 #include <memory>
 
 #include "datastructure.h"
@@ -39,21 +38,8 @@ public:
     bool loadDocument(const QString& filePath, QString* errorMessage = nullptr);
     void closeDocument();
 
-    void goToPage(int pageIndex, bool adjustForDoublePageMode = true);
-    void previousPage();
-    void nextPage();
-    void firstPage();
-    void lastPage();
-
-    void zoomIn();
-    void zoomOut();
-    void updateZoom(const QSize& viewportSize, int verticalScrollBarWidth = 0);
-
-    void setDisplayMode(PageDisplayMode mode);
-
     void calculatePagePositions();
     void updateCurrentPageFromScroll(int scrollY, int margin = 0);
-    int getScrollPositionForPage(int pageIndex, int margin = 0) const;
 
     void saveViewportState(int scrollY);
     void clearViewportRestore();

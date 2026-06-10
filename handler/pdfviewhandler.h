@@ -23,7 +23,7 @@ public:
                             QObject* parent = nullptr);
     ~PDFViewHandler();
 
-    void requestGoToPage(int pageIndex, bool adjustForDoublePageMode);
+    void requestGoToPage(int pageIndex, bool adjustForDoublePageMode = true);
 
     void requestPreviousPage();
 

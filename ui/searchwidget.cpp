@@ -2,6 +2,7 @@
 #include "pdfdocumentsession.h"
 #include "pdfdocumentstate.h"
 #include "pdfinteractionhandler.h"
+#include "pdfviewhandler.h"
 #include "themedicon.h"
 #include "stylemanager.h"
 
@@ -279,7 +280,7 @@ void SearchWidget::navigateToResult(const SearchResult& result)
 
     const PDFDocumentState* state = m_session->state();
     if (state->currentPage() != result.pageIndex) {
-        m_session->goToPage(result.pageIndex);
+        m_session->viewHandler()->requestGoToPage(result.pageIndex);
     }
 
     emit searchResultNavigated(result);
