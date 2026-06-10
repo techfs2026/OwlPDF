@@ -250,8 +250,8 @@ void NavigationPanel::attachSession(PDFDocumentSession* session)
     }
 
     // 文档已加载则立即重建数据并恢复视图状态
-    if (m_session->isDocumentLoaded()) {
-        loadDocument(m_session->pageCount());
+    if (m_session->state()->isDocumentLoaded()) {
+        loadDocument(m_session->state()->pageCount());
         updateCurrentPage(m_session->state()->currentPage());
         restoreViewState();
     }

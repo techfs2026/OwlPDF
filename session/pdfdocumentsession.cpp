@@ -6,8 +6,6 @@
 #include "pdfcontenthandler.h"
 #include "pdfinteractionhandler.h"
 #include "pdfdocumentstate.h"
-#include "outlineitem.h"
-#include "outlineeditor.h"
 #include "appconfig.h"
 #include <QDebug>
 #include <QFileInfo>
@@ -51,7 +49,7 @@ bool PDFDocumentSession::loadDocument(const QString& filePath, QString* errorMes
         return false;
     }
 
-    if (isDocumentLoaded()) {
+    if (m_state->isDocumentLoaded()) {
         closeDocument();
     }
 
@@ -66,7 +64,7 @@ bool PDFDocumentSession::loadDocument(const QString& filePath, QString* errorMes
 
 void PDFDocumentSession::closeDocument()
 {
-    if (!isDocumentLoaded()) {
+    if (!m_state->isDocumentLoaded()) {
         return;
     }
 
@@ -97,20 +95,6 @@ void PDFDocumentSession::closeDocument()
     qInfo() << "PDFDocumentSession: Document closed";
 }
 
-bool PDFDocumentSession::isDocumentLoaded() const
-{
-    return m_state->isDocumentLoaded();
-}
-
-QString PDFDocumentSession::documentPath() const
-{
-    return m_state->documentPath();
-}
-
-int PDFDocumentSession::pageCount() const
-{
-    return m_state->pageCount();
-}
 
 void PDFDocumentSession::goToPage(int pageIndex, bool adjustForDoublePageMode)
 {
@@ -164,20 +148,6 @@ void PDFDocumentSession::lastPage()
     }
 }
 
-void PDFDocumentSession::setZoom(double zoom)
-{
-    if (m_viewHandler) {
-        m_viewHandler->requestSetZoom(zoom);
-    }
-}
-
-void PDFDocumentSession::setZoomMode(ZoomMode mode)
-{
-    if (m_viewHandler) {
-        m_viewHandler->requestSetZoomMode(mode);
-    }
-}
-
 void PDFDocumentSession::zoomIn()
 {
     if (m_viewHandler) {
@@ -190,23 +160,6 @@ void PDFDocumentSession::zoomOut()
     if (m_viewHandler) {
         m_viewHandler->requestZoomOut(m_state->currentZoom());
     }
-}
-
-void PDFDocumentSession::actualSize()
-{
-    if (m_viewHandler) {
-        m_viewHandler->requestSetZoom(AppConfig::DEFAULT_ZOOM);
-    }
-}
-
-void PDFDocumentSession::fitPage()
-{
-    setZoomMode(ZoomMode::FitPage);
-}
-
-void PDFDocumentSession::fitWidth()
-{
-    setZoomMode(ZoomMode::FitWidth);
 }
 
 void PDFDocumentSession::updateZoom(const QSize& viewportSize, int verticalScrollBarWidth)
@@ -233,20 +186,6 @@ void PDFDocumentSession::setDisplayMode(PageDisplayMode mode)
             m_state->isContinuousScroll(),
             m_state->currentPage()
             );
-    }
-}
-
-void PDFDocumentSession::setContinuousScroll(bool continuous)
-{
-    if (m_viewHandler) {
-        m_viewHandler->requestSetContinuousScroll(continuous);
-    }
-}
-
-void PDFDocumentSession::setRotation(int rotation)
-{
-    if (m_viewHandler) {
-        m_viewHandler->requestSetRotation(rotation);
     }
 }
 
@@ -297,16 +236,6 @@ int PDFDocumentSession::getScrollPositionForPage(int pageIndex, int margin) cons
         margin,
         m_state->pageYPositions()
         );
-}
-
-QString PDFDocumentSession::getCacheStatistics() const
-{
-    return m_pageCache ? m_pageCache->getStatistics() : QString();
-}
-
-QString PDFDocumentSession::getTextCacheStatistics() const
-{
-    return m_textCache ? m_textCache->getStatistics() : QString();
 }
 
 void PDFDocumentSession::saveViewportState(int scrollY)
@@ -480,9 +409,4 @@ void PDFDocumentSession::setPaperEffectEnabled(bool enabled)
 
         emit paperEffectChanged(enabled);
     }
-}
-
-bool PDFDocumentSession::paperEffectEnabled() const
-{
-    return m_renderer ? m_renderer->paperEffectEnabled() : false;
 }

@@ -3,9 +3,7 @@
 
 #include <QObject>
 #include <QString>
-#include <QImage>
 #include <QSize>
-#include <QPointF>
 #include <memory>
 
 #include "datastructure.h"
@@ -19,10 +17,6 @@ class PDFViewHandler;
 class PDFContentHandler;
 class PDFInteractionHandler;
 class PDFDocumentState;
-class OutlineItem;
-class OutlineEditor;
-struct SearchResult;
-struct PDFLink;
 
 class PDFDocumentSession : public QObject
 {
@@ -44,9 +38,6 @@ public:
 
     bool loadDocument(const QString& filePath, QString* errorMessage = nullptr);
     void closeDocument();
-    bool isDocumentLoaded() const;
-    QString documentPath() const;
-    int pageCount() const;
 
     void goToPage(int pageIndex, bool adjustForDoublePageMode = true);
     void previousPage();
@@ -54,31 +45,20 @@ public:
     void firstPage();
     void lastPage();
 
-    void setZoom(double zoom);
-    void setZoomMode(ZoomMode mode);
     void zoomIn();
     void zoomOut();
-    void actualSize();
-    void fitPage();
-    void fitWidth();
     void updateZoom(const QSize& viewportSize, int verticalScrollBarWidth = 0);
 
     void setDisplayMode(PageDisplayMode mode);
-    void setContinuousScroll(bool continuous);
-    void setRotation(int rotation);
 
     void calculatePagePositions();
     void updateCurrentPageFromScroll(int scrollY, int margin = 0);
     int getScrollPositionForPage(int pageIndex, int margin = 0) const;
 
-    QString getCacheStatistics() const;
-    QString getTextCacheStatistics() const;
-
     void saveViewportState(int scrollY);
     void clearViewportRestore();
 
     void setPaperEffectEnabled(bool enabled);
-    bool paperEffectEnabled() const;
 
 signals:
     void documentLoaded(const QString& path, int pageCount);
@@ -86,13 +66,11 @@ signals:
     void zoomSettingCompleted(double zoom, ZoomMode mode);
     void currentZoomChanged(double zoom);
     void requestCurrentScrollPosition();
-    void currentZoomModeChanged(ZoomMode mode);
     void currentDisplayModeChanged(PageDisplayMode mode);
     void continuousScrollChanged(bool continuous);
     void currentRotationChanged(int rotation);
     void pagePositionsChanged(const QVector<int>& positions, const QVector<int>& heights);
     void scrollToPositionRequested(int scrollY);
-    void linksVisibleChanged(bool visible);
     void textSelectionChanged(bool hasSelection);
     void searchCompleted(const QString& query, int totalMatches);
     void searchCancelled();

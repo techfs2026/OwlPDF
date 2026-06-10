@@ -259,7 +259,7 @@ bool PDFDocumentTab::isDocumentLoaded() const
 
 QString PDFDocumentTab::documentPath() const
 {
-    return m_session->documentPath();
+    return m_session->state()->documentPath();
 }
 
 bool PDFDocumentTab::hasUnsavedChanges() const
@@ -319,24 +319,24 @@ void PDFDocumentTab::zoomOut()
 
 void PDFDocumentTab::actualSize()
 {
-    m_session->actualSize();
+    m_session->viewHandler()->requestSetZoom(AppConfig::DEFAULT_ZOOM);
 }
 
 void PDFDocumentTab::fitPage()
 {
-    m_session->fitPage();
+    m_session->viewHandler()->requestSetZoomMode(ZoomMode::FitPage);
     updateScrollBarPolicy();
 }
 
 void PDFDocumentTab::fitWidth()
 {
-    m_session->fitWidth();
+    m_session->viewHandler()->requestSetZoomMode(ZoomMode::FitWidth);
     updateScrollBarPolicy();
 }
 
 void PDFDocumentTab::setZoom(double zoom)
 {
-    m_session->setZoom(zoom);
+    m_session->viewHandler()->requestSetZoom(zoom);
 }
 
 
@@ -349,7 +349,7 @@ void PDFDocumentTab::setDisplayMode(PageDisplayMode mode)
 
 void PDFDocumentTab::setContinuousScroll(bool continuous)
 {
-    m_session->setContinuousScroll(continuous);
+    m_session->viewHandler()->requestSetContinuousScroll(continuous);
 }
 
 
@@ -829,7 +829,7 @@ void PDFDocumentTab::renderAndUpdatePages()
 
 QImage PDFDocumentTab::renderPage(int pageIndex)
 {
-    if (pageIndex < 0 || pageIndex >= m_session->pageCount()) {
+    if (pageIndex < 0 || pageIndex >= m_session->state()->pageCount()) {
         return QImage();
     }
 
@@ -1025,7 +1025,7 @@ void PDFDocumentTab::setPaperEffectEnabled(bool enabled)
 
 bool PDFDocumentTab::paperEffectEnabled() const
 {
-    return m_session ? m_session->paperEffectEnabled() : false;
+    return m_session ? m_session->renderer()->paperEffectEnabled() : false;
 }
 
 void PDFDocumentTab::updateOCRHoverState()
