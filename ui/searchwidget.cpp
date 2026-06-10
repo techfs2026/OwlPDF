@@ -140,7 +140,7 @@ void SearchWidget::setupConnections()
 
     connect(m_session, &PDFDocumentSession::searchCompleted,
             this, &SearchWidget::onSearchCompleted);
-    connect(m_session, &PDFDocumentSession::searchProgressUpdated,
+    connect(m_session->interactionHandler(), &PDFInteractionHandler::searchProgressUpdated,
             this, &SearchWidget::onSearchProgress);
     connect(m_session, &PDFDocumentSession::searchCancelled, this, [this]() {
         m_isSearching = false;
@@ -170,18 +170,18 @@ void SearchWidget::performSearch()
 
     const QString query = m_searchEdit->text().trimmed();
     if (query.isEmpty()) {
-        m_session->cancelSearch();
+        m_session->interactionHandler()->cancelSearch();
         m_isSearching = false;
         updateUI();
         return;
     }
 
     if (m_isSearching) {
-        m_session->cancelSearch();
+        m_session->interactionHandler()->cancelSearch();
     }
 
     const int startPage = m_session->state()->currentPage();
-    m_session->startSearch(query, caseSensitive, wholeWords, startPage);
+    m_session->interactionHandler()->startSearch(query, caseSensitive, wholeWords, startPage);
 
     if (m_session->interactionHandler()) {
         m_session->interactionHandler()->addSearchHistory(query);
@@ -194,7 +194,7 @@ void SearchWidget::performSearch()
 
 void SearchWidget::findNext()
 {
-    const SearchResult result = m_session->findNext();
+    const SearchResult result = m_session->interactionHandler()->findNext();
     if (result.isValid()) {
         navigateToResult(result);
         updateUI();
@@ -203,7 +203,7 @@ void SearchWidget::findNext()
 
 void SearchWidget::findPrevious()
 {
-    const SearchResult result = m_session->findPrevious();
+    const SearchResult result = m_session->interactionHandler()->findPrevious();
     if (result.isValid()) {
         navigateToResult(result);
         updateUI();
@@ -253,7 +253,7 @@ void SearchWidget::onSearchCompleted(const QString& query, int totalMatches)
 
     if (totalMatches > 0) {
         // 结果按文档顺序编号，初始定位到当前页及之后的第一个匹配
-        const SearchResult result = m_session->findFirstFromStartPage();
+        const SearchResult result = m_session->interactionHandler()->findFirstFromStartPage();
         if (result.isValid()) {
             navigateToResult(result);
             updateUI();

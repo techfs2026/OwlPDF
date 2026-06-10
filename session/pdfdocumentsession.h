@@ -79,31 +79,6 @@ public:
     bool hasThumbnail(int pageIndex) const;
     QString getThumbnailStatistics() const;
 
-    void startSearch(const QString& query,
-                     bool caseSensitive = false,
-                     bool wholeWords = false,
-                     int startPage = 0);
-    void cancelSearch();
-    void clearSearch();
-    SearchResult findNext();
-    SearchResult findPrevious();
-    SearchResult findFirstFromStartPage();
-
-    void startTextSelection(int pageIndex, const QPointF& pagePos, double zoom);
-    void updateTextSelection(int pageIndex, const QPointF& pagePos, double zoom);
-    void extendTextSelection(int pageIndex, const QPointF& pagePos, double zoom);
-    void endTextSelection();
-    void clearTextSelection();
-    void selectWord(int pageIndex, const QPointF& pagePos, double zoom);
-    void selectLine(int pageIndex, const QPointF& pagePos, double zoom);
-    void selectAll(int pageIndex);
-    void copySelectedText();
-
-    void setLinksVisible(bool visible);
-    const PDFLink* hitTestLink(int pageIndex, const QPointF& pagePos, double zoom);
-    void clearHoveredLink();
-    bool handleLinkClick(const PDFLink* link);
-
     void calculatePagePositions();
     void updateCurrentPageFromScroll(int scrollY, int margin = 0);
     int getScrollPositionForPage(int pageIndex, int margin = 0) const;
@@ -133,18 +108,12 @@ signals:
     void scrollToPositionRequested(int scrollY);
     void linksVisibleChanged(bool visible);
     void textSelectionChanged(bool hasSelection);
-    void searchStateChanged(bool searching, int totalMatches, int currentIndex);
     void outlineLoaded(bool success, int itemCount);
     void unsavedOutlineChangesChanged(bool hasUnsaved);
     void thumbnailLoaded(int pageIndex, const QImage& thumbnail);
     void thumbnailLoadProgress(int current, int total);
-    void searchProgressUpdated(int currentPage, int totalPages, int matchCount);
     void searchCompleted(const QString& query, int totalMatches);
     void searchCancelled();
-    void linkHovered(const PDFLink* link);
-    void internalLinkRequested(int targetPage);
-    void externalLinkRequested(const QString& uri);
-    void textCopied(int characterCount);
     void textPreloadProgress(int loaded, int total);
     void textPreloadCompleted();
     void textPreloadCancelled();

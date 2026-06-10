@@ -159,7 +159,7 @@ void PDFDocumentTab::setupConnections()
     connect(m_session, &PDFDocumentSession::textSelectionChanged,
             this, &PDFDocumentTab::onTextSelectionChanged);
 
-    connect(m_session, &PDFDocumentSession::internalLinkRequested,
+    connect(m_session->interactionHandler(), &PDFInteractionHandler::internalLinkRequested,
             this, [this](int targetPage) {
                 m_session->goToPage(targetPage);
             });
@@ -381,8 +381,8 @@ void PDFDocumentTab::showSearchBar()
 void PDFDocumentTab::hideSearchBar()
 {
     m_searchWidget->hide();
-    m_session->cancelSearch();
-    m_session->clearSearch();          // 清空搜索结果，移除页面高亮标记
+    m_session->interactionHandler()->cancelSearch();
+    m_session->interactionHandler()->clearSearchResults();   // 清空搜索结果，移除页面高亮标记
     m_pageWidget->clearHighlights();
     m_pageWidget->setFocus();
 }
@@ -396,21 +396,21 @@ bool PDFDocumentTab::isSearchBarVisible() const
 void PDFDocumentTab::copySelectedText()
 {
     if (m_session->state()->hasTextSelection()) {
-        m_session->copySelectedText();
+        m_session->interactionHandler()->copySelectedText();
     }
 }
 
 void PDFDocumentTab::selectAll()
 {
     if (m_session->state()->isDocumentLoaded()) {
-        m_session->selectAll(m_session->state()->currentPage());
+        m_session->interactionHandler()->selectAll(m_session->state()->currentPage());
     }
 }
 
 
 void PDFDocumentTab::setLinksVisible(bool visible)
 {
-    m_session->setLinksVisible(visible);
+    m_session->interactionHandler()->requestSetLinksVisible(visible);
     m_pageWidget->update();
 }
 
@@ -486,7 +486,7 @@ void PDFDocumentTab::updateZoom(const QSize& viewportSize)
 void PDFDocumentTab::findNext()
 {
     if (m_session) {
-        SearchResult result = m_session->findNext();
+        SearchResult result = m_session->interactionHandler()->findNext();
         if (result.isValid()) {
             scrollToSearchResult(result);
             m_pageWidget->update();
@@ -497,7 +497,7 @@ void PDFDocumentTab::findNext()
 void PDFDocumentTab::findPrevious()
 {
     if (m_session) {
-        SearchResult result = m_session->findPrevious();
+        SearchResult result = m_session->interactionHandler()->findPrevious();
         if (result.isValid()) {
             scrollToSearchResult(result);
             m_pageWidget->update();
@@ -707,9 +707,9 @@ void PDFDocumentTab::onPageClicked(int pageIndex, const QPointF& pagePos, Qt::Mo
 
 
     if (state->linksVisible()) {
-        const PDFLink* link = m_session->hitTestLink(pageIndex, pagePos, zoom);
+        const PDFLink* link = m_session->interactionHandler()->hitTestLink(pageIndex, pagePos, zoom);
         if (link) {
-            m_session->handleLinkClick(link);
+            m_session->interactionHandler()->handleLinkClick(link);
             return;
         }
     }
@@ -718,7 +718,7 @@ void PDFDocumentTab::onPageClicked(int pageIndex, const QPointF& pagePos, Qt::Mo
     if (state->isTextPDF()) {
 
         if (modifiers & Qt::ShiftModifier) {
-            m_session->extendTextSelection(pageIndex, pagePos, zoom);
+            m_session->interactionHandler()->extendTextSelection(pageIndex, pagePos, zoom);
             return;
         }
 
@@ -739,16 +739,16 @@ void PDFDocumentTab::onPageClicked(int pageIndex, const QPointF& pagePos, Qt::Mo
 
 
         if (m_clickCount >= 3) {
-            m_session->selectLine(pageIndex, pagePos, zoom);
+            m_session->interactionHandler()->selectLine(pageIndex, pagePos, zoom);
             m_clickCount = 0;
         }
 
         else if (m_clickCount == 2) {
-            m_session->selectWord(pageIndex, pagePos, zoom);
+            m_session->interactionHandler()->selectWord(pageIndex, pagePos, zoom);
         }
 
         else {
-            m_session->startTextSelection(pageIndex, pagePos, zoom);
+            m_session->interactionHandler()->startTextSelection(pageIndex, pagePos, zoom);
             m_pageWidget->setTextSelectionMode(true);
         }
     }
@@ -761,19 +761,19 @@ void PDFDocumentTab::onMouseMovedOnPage(int pageIndex, const QPointF& pagePos)
 
 void PDFDocumentTab::onMouseLeftAllPages()
 {
-    m_session->clearHoveredLink();
+    m_session->interactionHandler()->clearHoveredLink();
     QToolTip::hideText();
 }
 
 void PDFDocumentTab::onTextSelectionDragging(int pageIndex, const QPointF& pagePos)
 {
     const PDFDocumentState* state = m_session->state();
-    m_session->updateTextSelection(pageIndex, pagePos, state->currentZoom());
+    m_session->interactionHandler()->updateTextSelection(pageIndex, pagePos, state->currentZoom());
 }
 
 void PDFDocumentTab::onTextSelectionEnded()
 {
-    m_session->endTextSelection();
+    m_session->interactionHandler()->endTextSelection();
 }
 
 void PDFDocumentTab::onContextMenuRequested(int pageIndex, const QPointF& pagePos, const QPoint& globalPos)
@@ -931,7 +931,7 @@ void PDFDocumentTab::updateCursorForPage(int pageIndex, const QPointF& pagePos)
 
 
     if (state->linksVisible()) {
-        const PDFLink* link = m_session->hitTestLink(pageIndex, pagePos, zoom);
+        const PDFLink* link = m_session->interactionHandler()->hitTestLink(pageIndex, pagePos, zoom);
         if (link) {
             m_pageWidget->setCursor(Qt::PointingHandCursor);
 
@@ -992,12 +992,12 @@ void PDFDocumentTab::showContextMenu(int pageIndex, const QPointF& pagePos, cons
 
             QAction* selectWordAction = menu.addAction(tr("Select Word"));
             connect(selectWordAction, &QAction::triggered, this, [=]() {
-                m_session->selectWord(pageIndex, pagePos, zoom);
+                m_session->interactionHandler()->selectWord(pageIndex, pagePos, zoom);
             });
 
             QAction* selectLineAction = menu.addAction(tr("Select Line"));
             connect(selectLineAction, &QAction::triggered, this, [=]() {
-                m_session->selectLine(pageIndex, pagePos, zoom);
+                m_session->interactionHandler()->selectLine(pageIndex, pagePos, zoom);
             });
 
             menu.addSeparator();

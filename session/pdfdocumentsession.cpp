@@ -311,134 +311,6 @@ QString PDFDocumentSession::getThumbnailStatistics() const
                QString();
 }
 
-void PDFDocumentSession::startSearch(const QString& query,
-                                     bool caseSensitive,
-                                     bool wholeWords,
-                                     int startPage)
-{
-    if (m_interactionHandler) {
-        m_interactionHandler->startSearch(query, caseSensitive, wholeWords, startPage);
-    }
-}
-
-void PDFDocumentSession::cancelSearch()
-{
-    if (m_interactionHandler) {
-        m_interactionHandler->cancelSearch();
-    }
-}
-
-void PDFDocumentSession::clearSearch()
-{
-    if (m_interactionHandler) {
-        m_interactionHandler->clearSearchResults();
-    }
-}
-
-SearchResult PDFDocumentSession::findNext()
-{
-    return m_interactionHandler ? m_interactionHandler->findNext() : SearchResult();
-}
-
-SearchResult PDFDocumentSession::findPrevious()
-{
-    return m_interactionHandler ? m_interactionHandler->findPrevious() : SearchResult();
-}
-
-SearchResult PDFDocumentSession::findFirstFromStartPage()
-{
-    return m_interactionHandler ? m_interactionHandler->findFirstFromStartPage() : SearchResult();
-}
-
-void PDFDocumentSession::startTextSelection(int pageIndex, const QPointF& pagePos, double zoom)
-{
-    if (m_interactionHandler) {
-        m_interactionHandler->startTextSelection(pageIndex, pagePos, zoom);
-    }
-}
-
-void PDFDocumentSession::updateTextSelection(int pageIndex, const QPointF& pagePos, double zoom)
-{
-    if (m_interactionHandler) {
-        m_interactionHandler->updateTextSelection(pageIndex, pagePos, zoom);
-    }
-}
-
-void PDFDocumentSession::extendTextSelection(int pageIndex, const QPointF& pagePos, double zoom)
-{
-    if (m_interactionHandler) {
-        m_interactionHandler->extendTextSelection(pageIndex, pagePos, zoom);
-    }
-}
-
-void PDFDocumentSession::endTextSelection()
-{
-    if (m_interactionHandler) {
-        m_interactionHandler->endTextSelection();
-    }
-}
-
-void PDFDocumentSession::clearTextSelection()
-{
-    if (m_interactionHandler) {
-        m_interactionHandler->clearTextSelection();
-    }
-}
-
-void PDFDocumentSession::selectWord(int pageIndex, const QPointF& pagePos, double zoom)
-{
-    if (m_interactionHandler) {
-        m_interactionHandler->selectWord(pageIndex, pagePos, zoom);
-    }
-}
-
-void PDFDocumentSession::selectLine(int pageIndex, const QPointF& pagePos, double zoom)
-{
-    if (m_interactionHandler) {
-        m_interactionHandler->selectLine(pageIndex, pagePos, zoom);
-    }
-}
-
-void PDFDocumentSession::selectAll(int pageIndex)
-{
-    if (m_interactionHandler) {
-        m_interactionHandler->selectAll(pageIndex);
-    }
-}
-
-void PDFDocumentSession::copySelectedText()
-{
-    if (m_interactionHandler) {
-        m_interactionHandler->copySelectedText();
-    }
-}
-
-void PDFDocumentSession::setLinksVisible(bool visible)
-{
-    if (m_interactionHandler) {
-        m_interactionHandler->requestSetLinksVisible(visible);
-    }
-}
-
-const PDFLink* PDFDocumentSession::hitTestLink(int pageIndex, const QPointF& pagePos, double zoom)
-{
-    return m_interactionHandler ?
-               m_interactionHandler->hitTestLink(pageIndex, pagePos, zoom) :
-               nullptr;
-}
-
-void PDFDocumentSession::clearHoveredLink()
-{
-    if (m_interactionHandler) {
-        m_interactionHandler->clearHoveredLink();
-    }
-}
-
-bool PDFDocumentSession::handleLinkClick(const PDFLink* link)
-{
-    return m_interactionHandler ? m_interactionHandler->handleLinkClick(link) : false;
-}
-
 void PDFDocumentSession::calculatePagePositions()
 {
     if (!m_viewHandler) {
@@ -620,9 +492,6 @@ void PDFDocumentSession::setupConnections()
     }
 
     if (m_interactionHandler) {
-        connect(m_interactionHandler.get(), &PDFInteractionHandler::searchProgressUpdated,
-                this, &PDFDocumentSession::searchProgressUpdated);
-
         connect(m_interactionHandler.get(), &PDFInteractionHandler::searchCompleted,
                 this, [this](const QString& query, int totalMatches) {
                     m_state->setSearchState(false, totalMatches, -1);
@@ -645,24 +514,12 @@ void PDFDocumentSession::setupConnections()
                     m_state->setLinksVisible(visible);
                 });
 
-        connect(m_interactionHandler.get(), &PDFInteractionHandler::linkHovered,
-                this, &PDFDocumentSession::linkHovered);
-
-        connect(m_interactionHandler.get(), &PDFInteractionHandler::internalLinkRequested,
-                this, &PDFDocumentSession::internalLinkRequested);
-
-        connect(m_interactionHandler.get(), &PDFInteractionHandler::externalLinkRequested,
-                this, &PDFDocumentSession::externalLinkRequested);
-
         connect(m_interactionHandler.get(), &PDFInteractionHandler::textSelectionChanged,
                 this, [this](bool hasSelection, const QString& selectedText) {
                     Q_UNUSED(selectedText);
                     m_state->setHasTextSelection(hasSelection);
                     emit textSelectionChanged(hasSelection);
                 });
-
-        connect(m_interactionHandler.get(), &PDFInteractionHandler::textCopied,
-                this, &PDFDocumentSession::textCopied);
     }
 
     if (m_textCache) {
