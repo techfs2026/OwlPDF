@@ -518,7 +518,13 @@ bool PerThreadMuPDFRenderer::extractText(int pageIndex, PageTextData& outData, Q
 
                 for (fz_stext_char* ch = line->first_char; ch; ch = ch->next) {
                     TextChar tc;
-                    tc.character = QChar(ch->c);
+                    // ch->c 是 Unicode 码点（int），可能落在基本多文种平面之外
+                    // （emoji、CJK 扩展、数学符号等）。QChar 只能容纳单个 UTF-16
+                    // 码元，Qt6 的 QChar(int) 会对 >0xFFFF 的值触发断言并 abort，
+                    // 故此处对增补平面字符用替换字符兜底，避免崩溃。
+                    tc.character = (ch->c >= 0 && ch->c <= 0xFFFF)
+                                       ? QChar(static_cast<char16_t>(ch->c))
+                                       : QChar(QChar::ReplacementCharacter);
 
                     fz_quad q = ch->quad;
                     qreal minX = qMin(qMin(q.ul.x, q.ur.x), qMin(q.ll.x, q.lr.x));

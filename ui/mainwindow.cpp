@@ -26,6 +26,7 @@
 #include <QComboBox>
 #include <QTabWidget>
 #include <QTabBar>
+#include <QMouseEvent>
 #include <QToolButton>
 #include <QApplication>
 #include <QFileInfo>
@@ -72,6 +73,8 @@ MainWindow::MainWindow(QWidget* parent)
     m_tabWidget->setDocumentMode(true);
     m_tabWidget->setUsesScrollButtons(true);
     m_tabWidget->tabBar()->setExpanding(false);
+    // 鼠标中键（滚轮）点击 tab 即关闭该 tab
+    m_tabWidget->tabBar()->installEventFilter(this);
 
     setCentralWidget(m_tabWidget);
 
@@ -1287,6 +1290,20 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event)
     if (watched == m_navigationDock && event->type() == QEvent::Resize) {
         m_resizeDebounceTimer.start();
     }
+
+    // 鼠标中键点击 tab 关闭对应文档
+    if (watched == m_tabWidget->tabBar()
+        && event->type() == QEvent::MouseButtonRelease) {
+        auto* me = static_cast<QMouseEvent*>(event);
+        if (me->button() == Qt::MiddleButton) {
+            int index = m_tabWidget->tabBar()->tabAt(me->pos());
+            if (index >= 0) {
+                onTabCloseRequested(index);
+                return true;
+            }
+        }
+    }
+
     return QMainWindow::eventFilter(watched, event);
 }
 
