@@ -7,6 +7,8 @@
 #include <QRect>
 #include <QTimer>
 
+#include "pdfannotationhandler.h"   // AnnotTool
+
 class PDFDocumentSession;
 class PerThreadMuPDFRenderer;
 class PageCacheManager;
@@ -93,6 +95,17 @@ private:
     void drawSearchHighlights(QPainter& painter, int pageIndex, int pageX, int pageY, double zoom);
     void drawLinkAreas(QPainter& painter, int pageIndex, int pageX, int pageY, double zoom);
     void drawTextSelection(QPainter& painter, int pageIndex, int pageX, int pageY, double zoom);
+    void drawAnnotations(QPainter& painter, int pageIndex, int pageX, int pageY, double zoom);
+    void drawEraserCursor(QPainter& painter);
+
+    // 批注交互辅助
+    AnnotTool annotTool() const;
+    void onAnnotationToolChanged(AnnotTool tool);
+    // 未旋转页面坐标(pt) ↔ 当前旋转下的显示页面坐标(pt) 互转
+    QPointF displayToUnrotated(const QPointF& displayPt, int pageIndex) const;
+    QPointF unrotatedToDisplay(const QPointF& pt, int pageIndex) const;
+    // 鼠标位置 → (页码, 未旋转页面坐标pt)；返回页码，-1 表示不在任何页上
+    int posToPageStroke(const QPoint& pos, QPointF* unrotatedPt) const;
 
 private:
     void setupOCRHover();
@@ -108,6 +121,9 @@ private:
 
     bool m_isTextSelecting;
     QPoint m_dragStartPos;
+
+    // 批注：钢笔/橡皮按下中（左键拖拽）
+    bool m_annotMouseDown = false;
 
     bool m_ocrHoverEnabled;
     QPoint m_lastHoverPos;

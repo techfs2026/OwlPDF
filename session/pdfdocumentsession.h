@@ -15,6 +15,8 @@ class PageCacheManager;
 class PDFViewHandler;
 class PDFContentHandler;
 class PDFInteractionHandler;
+class PDFAnnotationHandler;
+class AnnotationManager;
 class PDFDocumentState;
 
 class PDFDocumentSession : public QObject
@@ -32,6 +34,8 @@ public:
     PDFViewHandler* viewHandler() const { return m_viewHandler.get(); }
     PDFContentHandler* contentHandler() const { return m_contentHandler.get(); }
     PDFInteractionHandler* interactionHandler() const { return m_interactionHandler.get(); }
+    PDFAnnotationHandler* annotationHandler() const { return m_annotationHandler.get(); }
+    AnnotationManager* annotationManager() const { return m_annotationManager.get(); }
 
     const PDFDocumentState* state() const { return m_state.get(); }
 
@@ -77,9 +81,13 @@ private:
     // 在各 handler 之前声明：handler 持有指向它的指针，必须比 handler 后析构。
     std::unique_ptr<PDFDocumentState> m_state;
 
+    // AnnotationManager 须在依赖它的 annotationHandler 之前声明（后析构）。
+    std::unique_ptr<AnnotationManager> m_annotationManager;
+
     std::unique_ptr<PDFViewHandler> m_viewHandler;
     std::unique_ptr<PDFContentHandler> m_contentHandler;
     std::unique_ptr<PDFInteractionHandler> m_interactionHandler;
+    std::unique_ptr<PDFAnnotationHandler> m_annotationHandler;
 };
 
 #endif // PDFDOCUMENTSESSION_H

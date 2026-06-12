@@ -43,5 +43,9 @@
         <file>resources/icons/plus.svg</file>
         <file>resources/icons/save.svg</file>
         <file>resources/icons/trash.svg</file>
+        <file>resources/icons/pen.svg</file>
+        <file>resources/icons/eraser.svg</file>
+        <file>resources/icons/undo.svg</file>
+        <file>resources/icons/redo.svg</file>
     </qresource>
 </RCC>

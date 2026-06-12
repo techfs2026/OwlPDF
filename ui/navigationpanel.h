@@ -13,6 +13,7 @@
 class PDFDocumentSession;
 class OutlineWidget;
 class ThumbnailWidget;
+class AnnotationWidget;
 class QToolButton;
 
 class NavigationPanel : public QWidget
@@ -31,6 +32,9 @@ public:
 
     void clear();
     void updateCurrentPage(int pageIndex);
+
+    // 工具栏「批注」入口：切到批注 Tab 并激活钢笔。
+    void showAnnotationTab();
 
 signals:
     void pageJumpRequested(int pageIndex);
@@ -56,6 +60,8 @@ private:
     QTabWidget* m_tabWidget;
     OutlineWidget* m_outlineWidget;
     ThumbnailWidget* m_thumbnailWidget;
+    AnnotationWidget* m_annotationWidget;
+    int m_annotationTabIndex = -1;
     QToolButton* m_addOutlineBtn;
     QToolButton* m_deleteOutlineBtn;
     QToolButton* m_deleteAllOutlineBtn;

@@ -1,6 +1,9 @@
 #include "mainwindow.h"
 #include "themedicon.h"
 #include "pdfdocumenttab.h"
+#include "pdfdocumentsession.h"
+#include "pdfannotationhandler.h"
+#include "annotationmanager.h"
 #include "navigationpanel.h"
 #include "dictionaryconnector.h"
 #include "ocrstatusindicator.h"
@@ -28,6 +31,9 @@
 #include <QTabBar>
 #include <QMouseEvent>
 #include <QToolButton>
+#include <QColorDialog>
+#include <QPixmap>
+#include <QIcon>
 #include <QApplication>
 #include <QFileInfo>
 #include <QCloseEvent>
@@ -202,8 +208,8 @@ bool MainWindow::maybeSaveTab(PDFDocumentTab* tab)
     }
 
     QMessageBox box(this);
-    box.setWindowTitle(tr("Unsaved Outline Changes"));
-    box.setText(tr("\"%1\" has unsaved outline changes.").arg(tab->documentTitle()));
+    box.setWindowTitle(tr("Unsaved Changes"));
+    box.setText(tr("\"%1\" has unsaved changes.").arg(tab->documentTitle()));
     box.setInformativeText(tr("Do you want to save them to the PDF?"));
     box.setIcon(QMessageBox::Warning);
     box.setStandardButtons(QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
@@ -905,6 +911,23 @@ void MainWindow::createActions()
     m_toggleToolBarAction = new QAction(tr("Toggle Toolbar"), this);
     m_toggleToolBarAction->setShortcut(tr("F11"));
     connect(m_toggleToolBarAction, &QAction::triggered, this, &MainWindow::toggleToolBar);
+
+    // —— 批注 ——
+    // 工具栏单入口：展开侧边栏并切到「批注」Tab（控件在 Tab 顶部）
+    m_annotationAction = new QAction(ThemedIcon::toolButton("pen"), tr("Annotate"), this);
+    m_annotationAction->setToolTip(tr("Annotate — pen & eraser (in the side panel)"));
+    connect(m_annotationAction, &QAction::triggered, this, &MainWindow::showAnnotations);
+
+    // 全局撤销/重做快捷键（作用于当前文档），无工具栏按钮，仅快捷键
+    m_undoAnnotAction = new QAction(tr("Undo Annotation"), this);
+    m_undoAnnotAction->setShortcut(QKeySequence::Undo);   // Ctrl+Z
+    connect(m_undoAnnotAction, &QAction::triggered, this, &MainWindow::undoAnnotation);
+    addAction(m_undoAnnotAction);
+
+    m_redoAnnotAction = new QAction(tr("Redo Annotation"), this);
+    m_redoAnnotAction->setShortcut(QKeySequence::Redo);   // Ctrl+Y / Ctrl+Shift+Z
+    connect(m_redoAnnotAction, &QAction::triggered, this, &MainWindow::redoAnnotation);
+    addAction(m_redoAnnotAction);
 }
 
 void MainWindow::createMenuBar()
@@ -1023,8 +1046,50 @@ void MainWindow::createToolBar()
 
     m_toolBar->addAction(m_paperEffectAction);
     m_toolBar->addAction(m_ocrHoverAction);
+    m_toolBar->addSeparator();
+
+    // 批注：单入口图标（控件都在侧边栏「批注」Tab）
+    m_toolBar->addAction(m_annotationAction);
+    m_toolBar->addSeparator();
 
     m_toolBar->addAction(m_findAction);
+}
+
+// ============================================================
+// 批注：单入口 + 全局撤销/重做
+// ============================================================
+
+void MainWindow::showAnnotations()
+{
+    PDFDocumentTab* tab = currentTab();
+    if (!tab || !tab->isDocumentLoaded()) {
+        return;
+    }
+    // 确保侧边栏可见并切到「批注」Tab、激活钢笔
+    m_navigationDock->setVisible(true);
+    m_showNavigationAction->setChecked(true);
+    m_navPanelAction->setChecked(true);
+    m_navigationPanel->showAnnotationTab();
+}
+
+void MainWindow::undoAnnotation()
+{
+    PDFDocumentTab* tab = currentTab();
+    if (tab) {
+        if (AnnotationManager* am = tab->session()->annotationManager()) {
+            am->undo();
+        }
+    }
+}
+
+void MainWindow::redoAnnotation()
+{
+    PDFDocumentTab* tab = currentTab();
+    if (tab) {
+        if (AnnotationManager* am = tab->session()->annotationManager()) {
+            am->redo();
+        }
+    }
 }
 
 void MainWindow::createStatusBar()
@@ -1125,6 +1190,10 @@ void MainWindow::updateUIState()
     }
 
     m_findAction->setEnabled(hasDocument && tab->isTextPDF());
+
+    m_annotationAction->setEnabled(hasDocument);
+    m_undoAnnotAction->setEnabled(hasDocument);
+    m_redoAnnotAction->setEnabled(hasDocument);
 
     m_firstPageAction->setEnabled(hasDocument && currentPage > 0);
     m_previousPageAction->setEnabled(hasDocument && currentPage > 0);

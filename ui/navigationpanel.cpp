@@ -1,6 +1,7 @@
 #include "navigationpanel.h"
 #include "outlinewidget.h"
 #include "thumbnailwidget.h"
+#include "annotationwidget.h"
 #include "pdfdocumentsession.h"
 #include "pdfcontenthandler.h"
 #include "pdfviewhandler.h"
@@ -111,6 +112,7 @@ NavigationPanel::NavigationPanel(QWidget* parent)
     , m_tabWidget(nullptr)
     , m_outlineWidget(nullptr)
     , m_thumbnailWidget(nullptr)
+    , m_annotationWidget(nullptr)
     , m_expandAllBtn(nullptr)
     , m_collapseAllBtn(nullptr)
     , m_thumbnailStatusLabel(nullptr)
@@ -159,6 +161,9 @@ void NavigationPanel::attachSession(PDFDocumentSession* session)
     if (ch && ch->thumbnailManager()) {
         m_thumbnailWidget->setThumbnailManager(ch->thumbnailManager());
     }
+    m_annotationWidget->setManager(m_session->annotationManager());
+    m_annotationWidget->setHandler(m_session->annotationHandler());
+    m_annotationWidget->setCurrentPage(m_session->state()->currentPage());
 
     // 建立与当前 session 的连接（detach 时统一断开）
     m_sessionConns << connect(this, &NavigationPanel::pageJumpRequested,
@@ -272,6 +277,8 @@ void NavigationPanel::detachSession()
     clear();
     m_outlineWidget->setContentHandler(nullptr);
     m_thumbnailWidget->setThumbnailManager(nullptr);
+    m_annotationWidget->setManager(nullptr);
+    m_annotationWidget->setHandler(nullptr);
 
     m_session = nullptr;
 }
@@ -385,6 +392,20 @@ void NavigationPanel::updateCurrentPage(int pageIndex)
 
     if (m_thumbnailWidget) {
         m_thumbnailWidget->highlightCurrentPage(pageIndex);
+    }
+
+    if (m_annotationWidget) {
+        m_annotationWidget->setCurrentPage(pageIndex);
+    }
+}
+
+void NavigationPanel::showAnnotationTab()
+{
+    if (m_annotationTabIndex >= 0) {
+        m_tabWidget->setCurrentIndex(m_annotationTabIndex);
+    }
+    if (m_annotationWidget) {
+        m_annotationWidget->activatePen();
     }
 }
 
@@ -505,13 +526,29 @@ void NavigationPanel::setupUI()
 
     thumbnailTab->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
+    // 批注 Tab
+    QWidget* annotationTab = new QWidget(this);
+    QVBoxLayout* annotationLayout = new QVBoxLayout(annotationTab);
+    annotationLayout->setContentsMargins(0, 0, 0, 0);
+    annotationLayout->setSpacing(0);
+
+    m_annotationWidget = new AnnotationWidget(this);
+    m_annotationWidget->setObjectName("annotationWidget");
+    m_annotationWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    annotationLayout->addWidget(m_annotationWidget, 1);
+    annotationTab->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
     // Tab 用图标 + tooltip 表达（规避竖排文字与国际化问题）
     // 图标由 IconTabBar 自绘，名称在此注册，颜色跟随主题
     int outlineIdx = m_tabWidget->addTab(outlineTab, QString());
     int thumbIdx   = m_tabWidget->addTab(thumbnailTab, QString());
+    int annotIdx   = m_tabWidget->addTab(annotationTab, QString());
+    m_annotationTabIndex = annotIdx;
     m_tabWidget->setTabToolTip(outlineIdx, tr("Outline"));
     m_tabWidget->setTabToolTip(thumbIdx, tr("Thumbnails"));
-    static_cast<CustomTabWidget*>(m_tabWidget)->setIconNames({"tab-outline", "tab-thumbnail"});
+    m_tabWidget->setTabToolTip(annotIdx, tr("Annotations"));
+    static_cast<CustomTabWidget*>(m_tabWidget)->setIconNames({"tab-outline", "tab-thumbnail", "edit"});
 
     m_tabWidget->setTabPosition(QTabWidget::West);
     m_tabWidget->setUsesScrollButtons(false);
@@ -561,6 +598,9 @@ void NavigationPanel::setupConnections()
             m_outlineWidget, &OutlineWidget::collapseAll);
 
     connect(m_thumbnailWidget, &ThumbnailWidget::pageJumpRequested,
+            this, &NavigationPanel::pageJumpRequested);
+
+    connect(m_annotationWidget, &AnnotationWidget::pageJumpRequested,
             this, &NavigationPanel::pageJumpRequested);
 
     connect(m_thumbnailWidget, &ThumbnailWidget::visibleRangeChanged,

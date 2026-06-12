@@ -13,6 +13,7 @@ class QDockWidget;
 class QSpinBox;
 class QComboBox;
 class QLabel;
+class QToolButton;
 class QActionGroup;
 class PDFDocumentTab;
 class NavigationPanel;
@@ -85,6 +86,11 @@ private slots:
 
     void toggleToolBar();
 
+    // 批注：单入口 + 撤销/重做
+    void showAnnotations();
+    void undoAnnotation();
+    void redoAnnotation();
+
     void showSettingsDialog();
 
 public slots:
@@ -122,6 +128,7 @@ private:
 
     void saveSession();
     void applyTabViewState(PDFDocumentTab* tab, const SessionTabState& state);
+
 
 #ifdef Q_OS_WIN
 private slots:
@@ -175,6 +182,11 @@ private:
     QAction* m_navPanelAction;
 
     QAction* m_paperEffectAction;
+
+    // 批注：工具栏单入口 + 全局撤销/重做快捷键
+    QAction* m_annotationAction;
+    QAction* m_undoAnnotAction;
+    QAction* m_redoAnnotAction;
 
     QAction* m_settingsAction;
 

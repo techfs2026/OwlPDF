@@ -10,6 +10,8 @@
 #include "pdfcontenthandler.h"
 #include "textcachemanager.h"
 #include "pdfviewhandler.h"
+#include "annotationmanager.h"
+#include "annotationpdfio.h"
 #include "linkmanager.h"
 #include "ocrmanager.h"
 #include "chinesetokenizer.h"
@@ -114,6 +116,12 @@ void PDFDocumentTab::setupConnections()
 
     connect(m_session->contentHandler(), &PDFContentHandler::documentError,
             this, &PDFDocumentTab::documentError);
+
+    // 批注脏标志变化 → 复用未保存信号（驱动标签页圆点与 Save 可用态）
+    if (AnnotationManager* am = m_session->annotationManager()) {
+        connect(am, &AnnotationManager::dirtyChanged,
+                this, [this](bool dirty) { emit unsavedChangesChanged(dirty); });
+    }
 
     connect(m_session, &PDFDocumentSession::currentPageChanged,
             this, &PDFDocumentTab::onPageChanged);
@@ -264,12 +272,41 @@ QString PDFDocumentTab::documentPath() const
 
 bool PDFDocumentTab::hasUnsavedChanges() const
 {
-    return m_session && m_session->contentHandler()->hasUnsavedOutlineChanges();
+    if (!m_session) {
+        return false;
+    }
+    if (m_session->contentHandler()->hasUnsavedOutlineChanges()) {
+        return true;
+    }
+    AnnotationManager* am = m_session->annotationManager();
+    return am && am->isDirty();
 }
 
 bool PDFDocumentTab::saveOutline()
 {
-    return m_session && m_session->contentHandler()->saveOutlineChanges(QString());
+    if (!m_session) {
+        return false;
+    }
+    // 仅在目录确有改动时才写目录，避免只改批注时多余重写。
+    bool ok = true;
+    if (m_session->contentHandler()->hasUnsavedOutlineChanges()) {
+        ok = m_session->contentHandler()->saveOutlineChanges(QString());
+    }
+
+    // 批注与目录并入同一保存手势（Cmd+S）：有脏批注则一并写回。
+    AnnotationManager* am = m_session->annotationManager();
+    if (am && am->isDirty()) {
+        QString err;
+        if (AnnotationPdfIO::save(m_session->renderer(), am, &err)) {
+            // 写回后内存 doc 已移除 Ink，清缓存重渲，避免显示残留
+            m_session->pageCache()->clear();
+            refreshVisiblePages();
+        } else {
+            qWarning() << "PDFDocumentTab: annotation save failed:" << err;
+            ok = false;
+        }
+    }
+    return ok;
 }
 
 QString PDFDocumentTab::documentTitle() const
@@ -572,6 +609,12 @@ void PDFDocumentTab::scrollToSearchResult(const SearchResult& result)
 void PDFDocumentTab::onDocumentLoaded(const QString& filePath, int pageCount)
 {
     // 侧边栏已改为公共单例，由 MainWindow 在 documentLoaded 后挂载/刷新
+
+    // 读入已存 Ink 批注到 overlay，并从内存 doc 删除（避免双重绘制）。
+    // 在首帧渲染前完成；若读到批注，loadStrokes 会重置脏标志为 false。
+    if (AnnotationPdfIO::load(m_session->renderer(), m_session->annotationManager())) {
+        m_session->pageCache()->clear();   // 清掉可能已含 Ink 的缓存
+    }
 
     if (m_session->state()->isTextPDF()) {
         m_session->textCache()->startPreload();

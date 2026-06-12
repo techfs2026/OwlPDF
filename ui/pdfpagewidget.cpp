@@ -4,16 +4,20 @@
 #include "perthreadmupdfrenderer.h"
 #include "pagecachemanager.h"
 #include "pdfinteractionhandler.h"
+#include "pdfannotationhandler.h"
+#include "annotationmanager.h"
 #include "textselector.h"
 #include "linkmanager.h"
 #include "ocrmanager.h"
 #include "appconfig.h"
 
 #include <QPainter>
+#include <QPainterPath>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QMouseEvent>
 #include <QDebug>
+#include <functional>
 
 namespace {
 // 渲染图带有 devicePixelRatio 标记后，width()/height() 仍返回物理像素。
@@ -42,6 +46,15 @@ PDFPageWidget::PDFPageWidget(PDFDocumentSession* session, QWidget* parent)
 
     setMouseTracking(true);
     setFocusPolicy(Qt::StrongFocus);
+
+    if (AnnotationManager* am = m_session->annotationManager()) {
+        connect(am, &AnnotationManager::annotationsChanged,
+                this, [this](int) { update(); });
+    }
+    if (PDFAnnotationHandler* ah = m_session->annotationHandler()) {
+        connect(ah, &PDFAnnotationHandler::toolChanged,
+                this, &PDFPageWidget::onAnnotationToolChanged);
+    }
 
     setupOCRHover();
 }
@@ -238,6 +251,7 @@ void PDFPageWidget::paintEvent(QPaintEvent* event)
 
     if (state->isContinuousScroll() && !state->pageYPositions().isEmpty()) {
         paintContinuousMode(painter, event->rect());
+        drawEraserCursor(painter);
         return;
     }
 
@@ -259,6 +273,8 @@ void PDFPageWidget::paintEvent(QPaintEvent* event)
     } else {
         paintDoublePageMode(painter);
     }
+
+    drawEraserCursor(painter);
 }
 
 void PDFPageWidget::paintSinglePageMode(QPainter& painter)
@@ -390,6 +406,8 @@ void PDFPageWidget::drawOverlays(QPainter& painter, int pageIndex, int pageX, in
     if (state->linksVisible()) {
         drawLinkAreas(painter, pageIndex, pageX, pageY, zoom);
     }
+
+    drawAnnotations(painter, pageIndex, pageX, pageY, zoom);
 }
 
 void PDFPageWidget::drawSearchHighlights(QPainter& painter, int pageIndex, int pageX, int pageY, double zoom)
@@ -484,6 +502,175 @@ void PDFPageWidget::drawTextSelection(QPainter& painter, int pageIndex, int page
     painter.restore();
 }
 
+// ============================================================
+// 批注（钢笔/橡皮）
+// ============================================================
+
+namespace {
+// 把一条笔迹画到 painter：坐标 未旋转pt → 旋转显示pt → ×zoom + 页面偏移。
+void paintStroke(QPainter& painter, const InkStroke& stroke, double zoom,
+                 int pageX, int pageY,
+                 const std::function<QPointF(const QPointF&)>& toDisplay)
+{
+    if (stroke.points.isEmpty()) {
+        return;
+    }
+
+    auto toScreen = [&](const QPointF& p) {
+        const QPointF d = toDisplay(p);
+        return QPointF(d.x() * zoom + pageX, d.y() * zoom + pageY);
+    };
+
+    QPen pen(stroke.color, qMax(0.5, stroke.width * zoom));
+    pen.setCapStyle(Qt::RoundCap);
+    pen.setJoinStyle(Qt::RoundJoin);
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
+    if (stroke.points.size() == 1) {
+        // 单点 → 画一个圆点
+        const QPointF c = toScreen(stroke.points.first());
+        const qreal r = qMax(0.5, stroke.width * zoom / 2.0);
+        painter.setBrush(stroke.color);
+        painter.drawEllipse(c, r, r);
+        return;
+    }
+
+    QPainterPath path(toScreen(stroke.points.first()));
+    for (int i = 1; i < stroke.points.size(); ++i) {
+        path.lineTo(toScreen(stroke.points[i]));
+    }
+    painter.drawPath(path);
+}
+}
+
+void PDFPageWidget::drawAnnotations(QPainter& painter, int pageIndex, int pageX, int pageY, double zoom)
+{
+    AnnotationManager* manager = m_session->annotationManager();
+    if (!manager) return;
+
+    auto toDisplay = [this, pageIndex](const QPointF& p) {
+        return unrotatedToDisplay(p, pageIndex);
+    };
+
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    for (const InkStroke& stroke : manager->strokesForPage(pageIndex)) {
+        paintStroke(painter, stroke, zoom, pageX, pageY, toDisplay);
+    }
+
+    // 正在画的当前笔
+    PDFAnnotationHandler* handler = m_session->annotationHandler();
+    if (handler && handler->isDrawing()) {
+        const InkStroke& cur = handler->currentStroke();
+        if (cur.pageIndex == pageIndex) {
+            paintStroke(painter, cur, zoom, pageX, pageY, toDisplay);
+        }
+    }
+
+    painter.restore();
+}
+
+void PDFPageWidget::drawEraserCursor(QPainter& painter)
+{
+    PDFAnnotationHandler* handler = m_session->annotationHandler();
+    if (!handler || handler->tool() != AnnotTool::Eraser) {
+        return;
+    }
+    if (m_lastHoverPos.isNull() || !rect().contains(m_lastHoverPos)) {
+        return;
+    }
+
+    const double zoom = m_session->state()->currentZoom();
+    const qreal r = qMax(2.0, handler->eraserRadius() * zoom);
+
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setBrush(QColor(0, 0, 0, 20));
+    painter.setPen(QPen(QColor(80, 80, 80, 160), 1));
+    painter.drawEllipse(QPointF(m_lastHoverPos), r, r);
+    painter.restore();
+}
+
+AnnotTool PDFPageWidget::annotTool() const
+{
+    PDFAnnotationHandler* handler = m_session ? m_session->annotationHandler() : nullptr;
+    return handler ? handler->tool() : AnnotTool::None;
+}
+
+void PDFPageWidget::onAnnotationToolChanged(AnnotTool tool)
+{
+    switch (tool) {
+    case AnnotTool::Pen:
+        setCursor(Qt::CrossCursor);
+        break;
+    case AnnotTool::Eraser:
+        setCursor(Qt::BlankCursor);   // 用绘制的圆圈代替光标
+        break;
+    case AnnotTool::None: {
+        const PDFDocumentState* state = m_session->state();
+        setCursor(state && state->isTextPDF() ? Qt::IBeamCursor : Qt::ArrowCursor);
+        break;
+    }
+    }
+    update();
+}
+
+QPointF PDFPageWidget::unrotatedToDisplay(const QPointF& pt, int pageIndex) const
+{
+    const int rot = m_session->state()->currentRotation();
+    if (rot == 0 || !m_renderer) {
+        return pt;
+    }
+    const QSizeF sz = m_renderer->pageSize(pageIndex);
+    const qreal W = sz.width();
+    const qreal H = sz.height();
+    const qreal x = pt.x();
+    const qreal y = pt.y();
+    switch (rot) {
+    case 90:  return QPointF(H - y, x);
+    case 180: return QPointF(W - x, H - y);
+    case 270: return QPointF(y, W - x);
+    default:  return pt;
+    }
+}
+
+QPointF PDFPageWidget::displayToUnrotated(const QPointF& d, int pageIndex) const
+{
+    const int rot = m_session->state()->currentRotation();
+    if (rot == 0 || !m_renderer) {
+        return d;
+    }
+    const QSizeF sz = m_renderer->pageSize(pageIndex);
+    const qreal W = sz.width();
+    const qreal H = sz.height();
+    const qreal X = d.x();
+    const qreal Y = d.y();
+    switch (rot) {
+    case 90:  return QPointF(Y, H - X);
+    case 180: return QPointF(W - X, H - Y);
+    case 270: return QPointF(W - Y, X);
+    default:  return d;
+    }
+}
+
+int PDFPageWidget::posToPageStroke(const QPoint& pos, QPointF* unrotatedPt) const
+{
+    int pageX = 0, pageY = 0;
+    int pageIndex = getPageAtPos(pos, &pageX, &pageY);
+    if (pageIndex < 0) {
+        return -1;
+    }
+    const double zoom = m_session->state()->currentZoom();
+    // 屏幕 → 显示页面坐标(pt)
+    const QPointF displayPt = screenToPageCoord(pos, pageX, pageY) / qMax(0.0001, zoom);
+    if (unrotatedPt) {
+        *unrotatedPt = displayToUnrotated(displayPt, pageIndex);
+    }
+    return pageIndex;
+}
+
 void PDFPageWidget::triggerOCRAtCurrentPosition()
 {
     if (!OCRManager::instance().isOCRHoverEnabled()) {
@@ -533,6 +720,31 @@ void PDFPageWidget::mouseMoveEvent(QMouseEvent* event)
 {
     m_lastHoverPos = event->pos();
 
+    // 批注工具优先：钢笔/橡皮接管移动
+    const AnnotTool tool = annotTool();
+    if (tool != AnnotTool::None) {
+        PDFAnnotationHandler* handler = m_session->annotationHandler();
+        if (m_annotMouseDown && (event->buttons() & Qt::LeftButton)) {
+            QPointF pt;
+            int pageIndex = posToPageStroke(event->pos(), &pt);
+            if (pageIndex >= 0) {
+                if (tool == AnnotTool::Pen) {
+                    // 仅在同一页内延笔，跨页暂停（v1 简化）
+                    if (handler->isDrawing() && handler->currentStroke().pageIndex == pageIndex) {
+                        handler->extendStroke(pt);
+                    }
+                } else {
+                    handler->eraseAt(pageIndex, pt);
+                }
+            }
+            update();
+        } else if (tool == AnnotTool::Eraser) {
+            update();   // 刷新橡皮光标圆圈
+        }
+        event->accept();
+        return;
+    }
+
     if (m_ocrHoverEnabled) {
         event->accept();
         return;
@@ -573,6 +785,27 @@ void PDFPageWidget::mouseMoveEvent(QMouseEvent* event)
 
 void PDFPageWidget::mousePressEvent(QMouseEvent* event)
 {
+    // 批注工具优先
+    const AnnotTool tool = annotTool();
+    if (tool != AnnotTool::None) {
+        if (event->button() == Qt::LeftButton) {
+            QPointF pt;
+            int pageIndex = posToPageStroke(event->pos(), &pt);
+            if (pageIndex >= 0) {
+                PDFAnnotationHandler* handler = m_session->annotationHandler();
+                if (tool == AnnotTool::Pen) {
+                    handler->beginStroke(pageIndex, pt);
+                } else {
+                    handler->eraseAt(pageIndex, pt);
+                }
+                m_annotMouseDown = true;
+                update();
+            }
+        }
+        event->accept();
+        return;
+    }
+
     int pageX, pageY;
     int pageIndex = getPageAtPos(event->pos(), &pageX, &pageY);
 
@@ -594,6 +827,19 @@ void PDFPageWidget::mousePressEvent(QMouseEvent* event)
 
 void PDFPageWidget::mouseReleaseEvent(QMouseEvent* event)
 {
+    const AnnotTool tool = annotTool();
+    if (tool != AnnotTool::None) {
+        if (event->button() == Qt::LeftButton) {
+            if (tool == AnnotTool::Pen) {
+                m_session->annotationHandler()->endStroke();
+            }
+            m_annotMouseDown = false;
+            update();
+        }
+        event->accept();
+        return;
+    }
+
     if (event->button() == Qt::LeftButton && m_isTextSelecting) {
         m_isTextSelecting = false;
         emit textSelectionEnded();

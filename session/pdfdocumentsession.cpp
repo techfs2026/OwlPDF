@@ -5,6 +5,8 @@
 #include "pdfviewhandler.h"
 #include "pdfcontenthandler.h"
 #include "pdfinteractionhandler.h"
+#include "pdfannotationhandler.h"
+#include "annotationmanager.h"
 #include "pdfdocumentstate.h"
 #include "appconfig.h"
 #include <QDebug>
@@ -23,6 +25,9 @@ PDFDocumentSession::PDFDocumentSession(QObject* parent)
     m_textCache = std::make_unique<TextCacheManager>(m_renderer.get(), this);
 
     m_state = std::make_unique<PDFDocumentState>(this);
+
+    m_annotationManager = std::make_unique<AnnotationManager>(this);
+    m_annotationHandler = std::make_unique<PDFAnnotationHandler>(m_annotationManager.get(), this);
 
     m_viewHandler = std::make_unique<PDFViewHandler>(m_renderer.get(), m_state.get(), this);
     m_contentHandler = std::make_unique<PDFContentHandler>(m_renderer.get(), this);
@@ -84,6 +89,10 @@ void PDFDocumentSession::closeDocument()
 
     if (m_textCache) {
         m_textCache->clear();
+    }
+
+    if (m_annotationManager) {
+        m_annotationManager->reset();
     }
 
     if (m_contentHandler) {
