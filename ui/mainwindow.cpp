@@ -137,8 +137,13 @@ MainWindow::MainWindow(QWidget* parent)
 
 MainWindow::~MainWindow()
 {
+    // 未保存询问已在 closeEvent 统一处理；析构只做无交互清理。
+    // 不能走 closeTab()——它会再调 maybeSaveTab，用户在 closeEvent 选了
+    // "放弃"后脏标志仍在，这里会重复弹第二次保存对话框。
     while (m_tabWidget->count() > 0) {
-        closeTab(0);
+        QWidget* w = m_tabWidget->widget(0);
+        m_tabWidget->removeTab(0);
+        delete w;
     }
 
     if (m_ocrInitialized) {
@@ -263,7 +268,9 @@ void MainWindow::closeTab(int index)
 
 void MainWindow::quit()
 {
-    QApplication::quit();
+    // 走 close() 而非 QApplication::quit()：让 closeEvent 统一处理
+    // 未保存询问/多文档确认/会话保存，避免绕过这些逻辑直接退出。
+    close();
 }
 
 PDFDocumentTab* MainWindow::currentTab() const
@@ -1841,8 +1848,7 @@ void MainWindow::openFileFromCommandLine(const QString& filePath)
 
     if (tab && tab->loadDocument(filePath)) {
         int index = m_tabWidget->indexOf(tab);
-        m_tabWidget->setTabText(index, fileInfo.fileName());
-        m_tabWidget->setTabToolTip(index, filePath);
+        updateTabTitle(index);  // 统一走截断逻辑（xxx…xxx.pdf），勿用原始全名
 
         statusBar()->showMessage(tr("Opened: %1").arg(filePath), 3000);
     }
@@ -1878,10 +1884,8 @@ void MainWindow::restoreLastSession()
             continue;
         }
 
-        QFileInfo fileInfo(st.filePath);
         int index = m_tabWidget->indexOf(tab);
-        m_tabWidget->setTabText(index, fileInfo.fileName());
-        m_tabWidget->setTabToolTip(index, st.filePath);
+        updateTabTitle(index);  // 统一走截断逻辑（xxx…xxx.pdf），勿用原始全名
 
         applyTabViewState(tab, st);
 

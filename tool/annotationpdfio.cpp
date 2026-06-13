@@ -7,12 +7,41 @@
 #include <mupdf/pdf.h>
 
 #include <QFile>
+#include <QFileInfo>
+#include <QDir>
+#include <QDateTime>
+#include <QStandardPaths>
 #include <QHash>
 #include <QVector>
 #include <QDebug>
 #include <vector>
 
 namespace {
+
+// 备份统一落在 AppDataLocation/backups（与 OutlineEditor 同一约定，不污染原 PDF 同级目录）。
+// 文件名 *_backup_<时间戳>.pdf，仍以 .pdf 结尾，可直接打开；并被启动时的备份清理逻辑回收。
+QString createPdfBackup(const QString& filePath)
+{
+    if (filePath.isEmpty() || !QFile::exists(filePath)) {
+        return QString();
+    }
+
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+                        + "/backups";
+    if (!QDir().mkpath(dir)) {
+        qWarning() << "AnnotationPdfIO: failed to create backup dir:" << dir;
+        return QString();
+    }
+
+    const QFileInfo fileInfo(filePath);
+    const QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
+    // completeBaseName + suffix，避免 "a.b.pdf" 被错误拆分
+    const QString backupPath = dir + "/" +
+                               fileInfo.completeBaseName() + "_backup_" + timestamp + "." +
+                               fileInfo.suffix();
+
+    return QFile::copy(filePath, backupPath) ? backupPath : QString();
+}
 
 // 取某页 MediaBox（用于 y 翻转与原点偏移）。失败时回退到 (0,0,w,h)。
 fz_rect pageMediaBox(fz_context* ctx, pdf_document* doc, int pageIndex,
@@ -33,8 +62,19 @@ fz_rect pageMediaBox(fz_context* ctx, pdf_document* doc, int pageIndex,
     return box;
 }
 
-// 删除某页全部 Ink 批注（在内存 doc 上；不落盘）。
-void deleteInkAnnots(fz_context* ctx, pdf_document* doc, int pageIndex)
+// 自家批注的识别标记：保存时在注释字典写入私有键 /OwlPDF true。
+// 编辑能力只对带标记的注释开放（行业惯例：别家批注只显示、不可编辑），
+// 其余注释一概不碰——既不导入 overlay，也绝不删除/改写。
+const char kOwlKey[] = "OwlPDF";
+
+bool isOwlAnnot(fz_context* ctx, pdf_annot* annot)
+{
+    pdf_obj* flag = pdf_dict_gets(ctx, pdf_annot_obj(ctx, annot), kOwlKey);
+    return flag && pdf_to_bool(ctx, flag);
+}
+
+// 删除某页全部「自家」Ink 批注（在内存 doc 上；不落盘）。别家注释保持原样。
+void deleteOwlInkAnnots(fz_context* ctx, pdf_document* doc, int pageIndex)
 {
     pdf_page* page = pdf_load_page(ctx, doc, pageIndex);
     if (!page) {
@@ -44,7 +84,7 @@ void deleteInkAnnots(fz_context* ctx, pdf_document* doc, int pageIndex)
         pdf_annot* annot = pdf_first_annot(ctx, page);
         while (annot) {
             pdf_annot* next = pdf_next_annot(ctx, annot);
-            if (pdf_annot_type(ctx, annot) == PDF_ANNOT_INK) {
+            if (pdf_annot_type(ctx, annot) == PDF_ANNOT_INK && isOwlAnnot(ctx, annot)) {
                 pdf_delete_annot(ctx, page, annot);
             }
             annot = next;
@@ -55,7 +95,7 @@ void deleteInkAnnots(fz_context* ctx, pdf_document* doc, int pageIndex)
     }
     fz_catch(ctx) {
         // 删除失败不致命，记录即可
-        qWarning() << "AnnotationPdfIO: deleteInkAnnots failed on page" << pageIndex;
+        qWarning() << "AnnotationPdfIO: deleteOwlInkAnnots failed on page" << pageIndex;
     }
 }
 
@@ -102,7 +142,10 @@ bool AnnotationPdfIO::load(PerThreadMuPDFRenderer* renderer, AnnotationManager* 
 
             for (pdf_annot* annot = pdf_first_annot(ctx, page); annot;
                  annot = pdf_next_annot(ctx, annot)) {
-                if (pdf_annot_type(ctx, annot) != PDF_ANNOT_INK) {
+                // 只导入自家批注；别家的（含无标记的 Ink）留在文档里由
+                // MuPDF 原样渲染——只显示、不可编辑。
+                if (pdf_annot_type(ctx, annot) != PDF_ANNOT_INK ||
+                    !isOwlAnnot(ctx, annot)) {
                     continue;
                 }
 
@@ -155,9 +198,9 @@ bool AnnotationPdfIO::load(PerThreadMuPDFRenderer* renderer, AnnotationManager* 
         return false;
     }
 
-    // 读入 overlay 后，从内存 doc 删除 Ink，避免与 overlay 双重绘制（文件不变）。
+    // 读入 overlay 后，从内存 doc 删除自家 Ink，避免与 overlay 双重绘制（文件不变）。
     for (auto it = byPage.constBegin(); it != byPage.constEnd(); ++it) {
-        deleteInkAnnots(ctx, doc, it.key());
+        deleteOwlInkAnnots(ctx, doc, it.key());
     }
     return true;
 }
@@ -178,11 +221,8 @@ bool AnnotationPdfIO::save(PerThreadMuPDFRenderer* renderer, AnnotationManager* 
         return false;
     }
 
-    // 简易备份：首次保存时复制一份 .owlpdf-backup（已存在则跳过）。
-    const QString backupPath = savePath + QStringLiteral(".owlpdf-backup");
-    if (!QFile::exists(backupPath)) {
-        QFile::copy(savePath, backupPath);
-    }
+    // 写回前先备份原文件到 AppDataLocation/backups（每次保存留一份带时间戳的 .pdf）。
+    createPdfBackup(savePath);
 
     const QHash<int, QVector<InkStroke>> all = manager->allStrokes();
     bool success = false;
@@ -202,11 +242,11 @@ bool AnnotationPdfIO::save(PerThreadMuPDFRenderer* renderer, AnnotationManager* 
             }
 
             fz_try(ctx) {
-                // 清旧 Ink
+                // 清旧的自家 Ink（别家注释不碰），再按 overlay 重建
                 pdf_annot* a = pdf_first_annot(ctx, page);
                 while (a) {
                     pdf_annot* next = pdf_next_annot(ctx, a);
-                    if (pdf_annot_type(ctx, a) == PDF_ANNOT_INK) {
+                    if (pdf_annot_type(ctx, a) == PDF_ANNOT_INK && isOwlAnnot(ctx, a)) {
                         pdf_delete_annot(ctx, page, a);
                     }
                     a = next;
@@ -237,6 +277,8 @@ bool AnnotationPdfIO::save(PerThreadMuPDFRenderer* renderer, AnnotationManager* 
                     };
                     pdf_set_annot_color(ctx, annot, 3, col);
                     pdf_set_annot_border_width(ctx, annot, static_cast<float>(stroke.width));
+                    // 自家标记：load/删除/重写只认带此键的注释
+                    pdf_dict_puts(ctx, pdf_annot_obj(ctx, annot), kOwlKey, PDF_TRUE);
                 }
             }
             fz_always(ctx) {
@@ -248,11 +290,27 @@ bool AnnotationPdfIO::save(PerThreadMuPDFRenderer* renderer, AnnotationManager* 
         }
 
         pdf_write_options opts = pdf_default_write_options;
-        opts.do_incremental = 1;
-        opts.do_garbage = 0;
 
-        QByteArray pathBytes = savePath.toUtf8();
-        pdf_save_document(ctx, doc, pathBytes.constData(), &opts);
+        if (pdf_can_be_saved_incrementally(ctx, doc)) {
+            // 正常文档：增量追加，最快且不动原有字节。
+            opts.do_incremental = 1;
+            opts.do_garbage = 0;
+            pdf_save_document(ctx, doc, savePath.toUtf8().constData(), &opts);
+        } else {
+            // 被修复过的文档（MuPDF 拒绝增量写）：完整重写到临时文件后替换原文件。
+            // 不能直接全量写回正在被惰性读取的原文件，否则会读到半写状态而损坏。
+            opts.do_incremental = 0;
+            opts.do_garbage = 1;
+            opts.do_clean = 1;
+            const QString tmpPath = savePath + QStringLiteral(".owlsave.tmp");
+            QFile::remove(tmpPath);
+            pdf_save_document(ctx, doc, tmpPath.toUtf8().constData(), &opts);
+            // 原子替换：原文件已在 createPdfBackup() 备份，替换失败也可回滚。
+            if (!QFile::remove(savePath) || !QFile::rename(tmpPath, savePath)) {
+                QFile::remove(tmpPath);
+                fz_throw(ctx, FZ_ERROR_GENERIC, "replace original file failed");
+            }
+        }
         success = true;
     }
     fz_catch(ctx) {
@@ -263,10 +321,10 @@ bool AnnotationPdfIO::save(PerThreadMuPDFRenderer* renderer, AnnotationManager* 
         return false;
     }
 
-    // 保存后再次从内存 doc 删除 Ink，保持 overlay 为唯一渲染来源。
+    // 保存后再次从内存 doc 删除自家 Ink，保持 overlay 为唯一渲染来源。
     for (auto it = all.constBegin(); it != all.constEnd(); ++it) {
         if (!it.value().isEmpty()) {
-            deleteInkAnnots(ctx, doc, it.key());
+            deleteOwlInkAnnots(ctx, doc, it.key());
         }
     }
 

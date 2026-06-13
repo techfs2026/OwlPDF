@@ -398,15 +398,11 @@ void PDFPageWidget::drawPagePlaceholder(QPainter& painter, const QRect& rect, in
 
 void PDFPageWidget::drawOverlays(QPainter& painter, int pageIndex, int pageX, int pageY, double zoom)
 {
-    const PDFDocumentState* state = m_session->state();
-
     drawSearchHighlights(painter, pageIndex, pageX, pageY, zoom);
     drawTextSelection(painter, pageIndex, pageX, pageY, zoom);
 
-    if (state->linksVisible()) {
-        drawLinkAreas(painter, pageIndex, pageX, pageY, zoom);
-    }
-
+    // 不论何种 PDF 都不画链接外框（外框干扰阅读）；链接的点击跳转/悬停提示
+    // 仍由 state->linksVisible() 控制，绘制层不再涉及链接。
     drawAnnotations(painter, pageIndex, pageX, pageY, zoom);
 }
 

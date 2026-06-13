@@ -40,6 +40,16 @@ void TextSelector::startSelection(int pageIndex, const QPointF& pagePos, double 
     m_startCharPos = charPos;
     m_startZoom = zoom;
 
+    // 单击（Character）只落锚点、不高亮单个字符：真正的选区在拖动时由
+    // updateSelection 用 m_startCharPos→当前点建立。双击词/三击行/Shift 扩展不变。
+    if (mode == SelectionMode::Character) {
+        m_selection.clear();
+        m_anchorPos = charPos;
+        m_hasAnchor = true;
+        emit selectionChanged();
+        return;
+    }
+
     CharPosition start, end;
 
     switch (mode) {

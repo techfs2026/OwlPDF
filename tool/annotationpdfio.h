@@ -17,13 +17,16 @@ class AnnotationManager;
 // 使页面渲染不再画出 Ink，统一交给 overlay。文件本身不变，直到显式 save()。
 namespace AnnotationPdfIO {
 
-// 打开文档后调用：把已存 Ink 批注读入 manager，并从内存 doc 删除它们。
+// 边界约定（行业惯例）：只有带自家标记（注释字典 /OwlPDF true）的 Ink 批注
+// 可被本程序导入/编辑/重写；别家软件的批注一律只显示、不可编辑、原样保留。
+//
+// 打开文档后调用：把已存「自家」Ink 批注读入 manager，并从内存 doc 删除它们。
 // 返回是否读到任何批注（用于决定是否清缓存重渲）。
 bool load(PerThreadMuPDFRenderer* renderer, AnnotationManager* manager);
 
-// 保存：把 manager 当前全部笔迹写回 PDF（先删页面所有 Ink，再按 overlay 重建），
-// 增量保存到原文件；保存后再次从内存 doc 删除 Ink 以保持 overlay 为唯一来源。
-// 成功时 manager->markSaved()。errorMessage 选填。
+// 保存：把 manager 当前全部笔迹写回 PDF（先删页面自家 Ink，再按 overlay 重建并打标记），
+// 增量保存到原文件（被修复过的文档退化为完整重写+替换）；保存后再次从内存 doc
+// 删除自家 Ink 以保持 overlay 为唯一来源。成功时 manager->markSaved()。
 bool save(PerThreadMuPDFRenderer* renderer, AnnotationManager* manager,
           QString* errorMessage = nullptr);
 
